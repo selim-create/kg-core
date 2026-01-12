@@ -188,12 +188,26 @@ class JWTHandler {
 
     /**
      * Invalidate token (for logout)
-     * Note: With stateless JWT, we can't truly invalidate tokens
-     * In production, implement a blacklist or use refresh tokens
+     * Note: With stateless JWT, we can't truly invalidate tokens server-side
+     * without a database. This is a known limitation of stateless JWT.
+     * For production, consider:
+     * 1. Using refresh tokens with shorter-lived access tokens
+     * 2. Implementing a token blacklist in database
+     * 3. Using Redis/Memcached for token blacklist
      */
     public static function invalidate_token( $token ) {
-        // Store in blacklist (implement as needed)
-        // For now, just return true
+        // TODO: Implement token blacklist if required
+        // For now, client should discard the token
+        // The token will expire naturally after 24 hours
+        
+        // Optional: Store invalidated tokens in database
+        // global $wpdb;
+        // $table_name = $wpdb->prefix . 'kg_token_blacklist';
+        // $wpdb->insert( $table_name, [
+        //     'token' => hash('sha256', $token),
+        //     'invalidated_at' => current_time('mysql')
+        // ]);
+        
         return true;
     }
 }

@@ -162,6 +162,19 @@ class UserController {
             return new \WP_Error( 'weak_password', 'Password must be at least 8 characters long', [ 'status' => 400 ] );
         }
 
+        // Check password complexity
+        $has_uppercase = preg_match( '/[A-Z]/', $password );
+        $has_lowercase = preg_match( '/[a-z]/', $password );
+        $has_number = preg_match( '/[0-9]/', $password );
+        
+        if ( ! ( $has_uppercase && $has_lowercase && $has_number ) ) {
+            return new \WP_Error( 
+                'weak_password', 
+                'Password must contain at least one uppercase letter, one lowercase letter, and one number', 
+                [ 'status' => 400 ] 
+            );
+        }
+
         if ( email_exists( $email ) ) {
             return new \WP_Error( 'email_exists', 'Email already registered', [ 'status' => 409 ] );
         }

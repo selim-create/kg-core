@@ -115,13 +115,18 @@ class Helper {
             return 0;
         }
 
-        $birth = new \DateTime( $birth_date );
-        $now = new \DateTime();
-        $interval = $birth->diff( $now );
+        try {
+            $birth = new \DateTime( $birth_date );
+            $now = new \DateTime();
+            $interval = $birth->diff( $now );
 
-        $months = ( $interval->y * 12 ) + $interval->m;
-        
-        return $months;
+            $months = ( $interval->y * 12 ) + $interval->m;
+            
+            return $months;
+        } catch ( \Exception $e ) {
+            // Invalid date format, return 0
+            return 0;
+        }
     }
 
     /**

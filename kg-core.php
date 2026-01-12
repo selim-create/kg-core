@@ -99,17 +99,24 @@ add_action( 'rest_api_init', function() {
     // CORS headers ekle
     remove_filter( 'rest_pre_serve_request', 'rest_send_cors_headers' );
     add_filter( 'rest_pre_serve_request', function( $value ) {
-        // PRODUCTION NOTE: For production, replace * with specific origin(s)
-        // Example: header( 'Access-Control-Allow-Origin: https://kidsgourmet.com' );
-        // For development with multiple frontends, you can use:
-        // $allowed_origins = ['https://kidsgourmet.com', 'http://localhost:3000'];
-        // $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-        // if ( in_array( $origin, $allowed_origins ) ) {
-        //     header( 'Access-Control-Allow-Origin: ' . $origin );
-        // }
-        header( 'Access-Control-Allow-Origin: *' );
+        // SECURITY NOTE: Wildcard origin (*) with credentials is a security risk
+        // For development only. In production, specify exact allowed origins:
+        $allowed_origins = apply_filters( 'kg_core_allowed_origins', [
+            'http://localhost:3000',
+            'http://localhost:3001',
+        ]);
+        
+        $origin = isset( $_SERVER['HTTP_ORIGIN'] ) ? $_SERVER['HTTP_ORIGIN'] : '';
+        
+        if ( in_array( $origin, $allowed_origins ) ) {
+            header( 'Access-Control-Allow-Origin: ' . $origin );
+            header( 'Access-Control-Allow-Credentials: true' );
+        } else {
+            // For non-authenticated requests, allow any origin
+            header( 'Access-Control-Allow-Origin: *' );
+        }
+        
         header( 'Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS' );
-        header( 'Access-Control-Allow-Credentials: true' );
         header( 'Access-Control-Allow-Headers: Authorization, Content-Type, X-WP-Nonce' );
         
         // Handle preflight requests
