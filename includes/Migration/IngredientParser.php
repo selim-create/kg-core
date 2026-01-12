@@ -49,12 +49,24 @@ class IngredientParser {
         }
         
         // What remains should be ingredient name + optional preparation notes
-        // Pattern: preparation notes are usually at the end (doğranmış, kıyılmış, rendelenmiş, etc.)
-        $preparationPattern = '/(ince|kalın|küçük|büyük|orta|küp|dilim|rendel\w+|doğran\w+|kıyıl\w+|soyul\w+|çekilmiş|püre|haşlan\w+|ez\w+|yıkan\w+|temizlen\w+|ayıklan\w+|kesilmiş|sıkıl\w+)/iu';
+        // Pattern: preparation notes can be at start or end (ince kıyılmış lahana OR lahana kıyılmış)
+        $preparationPattern = '/\b(ince|kalın|küçük|büyük|orta boy|orta|küp|dilim halinde|dilim|rendel\w+|doğran\w+|kıyıl\w+|soyul\w+|çekilmiş|püre|haşlan\w+|ez\w+|yıkan\w+|temizlen\w+|ayıklan\w+|kesilmiş|sıkıl\w+|ufalanmış)\b/iu';
         
-        if (preg_match($preparationPattern, $ingredientStr, $matches, PREG_OFFSET_CAPTURE)) {
-            $result['name'] = trim(substr($ingredientStr, 0, $matches[0][1]));
-            $result['preparation_note'] = trim(substr($ingredientStr, $matches[0][1]));
+        // Find all preparation terms
+        $allMatches = [];
+        preg_match_all($preparationPattern, $ingredientStr, $allMatches, PREG_OFFSET_CAPTURE);
+        
+        if (!empty($allMatches[0])) {
+            // Extract preparation notes
+            $prepTerms = [];
+            foreach ($allMatches[0] as $match) {
+                $prepTerms[] = $match[0];
+            }
+            $result['preparation_note'] = implode(' ', $prepTerms);
+            
+            // Remove preparation terms to get ingredient name
+            $nameStr = preg_replace($preparationPattern, '', $ingredientStr);
+            $result['name'] = trim(preg_replace('/\s+/', ' ', $nameStr));
         } else {
             $result['name'] = $ingredientStr;
         }

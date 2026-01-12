@@ -125,9 +125,9 @@ class ContentParser {
                 }
             }
             
-            // If still empty, try paragraph-based extraction
+            // If still empty, try paragraph-based extraction with bullets
             if (empty($instructions)) {
-                preg_match_all('/<p[^>]*>([^<]+)<\/p>/i', $instructionSection, $pMatches);
+                preg_match_all('/<p[^>]*>[•\*]?\s*([^<]+)<\/p>/i', $instructionSection, $pMatches);
                 if (!empty($pMatches[1])) {
                     $instructions = array_map('trim', $pMatches[1]);
                 }
