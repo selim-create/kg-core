@@ -297,6 +297,7 @@ class AgeGroup {
 
         // Validate range if both values are provided
         if ( $min_month !== null && $max_month !== null && $max_month < $min_month ) {
+            error_log( 'KG Core: max_month (' . $max_month . ') < min_month (' . $min_month . ') for term ' . $term_id . ', adjusting max_month to match min_month' );
             $max_month = $min_month;
         }
 
@@ -344,8 +345,8 @@ class AgeGroup {
         // Validate and sanitize JSON field
         if ( isset( $_POST['kg_forbidden_list'] ) ) {
             $forbidden_list = stripslashes( $_POST['kg_forbidden_list'] );
-            // Validate JSON
-            json_decode( $forbidden_list );
+            // Validate JSON and decode once
+            $decoded = json_decode( $forbidden_list );
             if ( json_last_error() === JSON_ERROR_NONE ) {
                 update_term_meta( $term_id, '_kg_forbidden_list', $forbidden_list );
             } else {
