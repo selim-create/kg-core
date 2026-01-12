@@ -384,7 +384,14 @@ class SettingsPage {
                             
                             $('#kg_test_result').html(html);
                         } else {
-                            $('#kg_test_result').html('<p style="color: red;">❌ Hata: ' + response.data.message + '</p>');
+                            var errorMsg = response.data && response.data.message ? response.data.message : 'Bilinmeyen hata';
+                            
+                            // Handle nonce verification failure by suggesting page refresh
+                            if (errorMsg.includes('Güvenlik kontrolü')) {
+                                errorMsg += ' Lütfen sayfayı yenileyin ve tekrar deneyin.';
+                            }
+                            
+                            $('#kg_test_result').html('<p style="color: red;">❌ Hata: ' + errorMsg + '</p>');
                         }
                     },
                     error: function(xhr, status, error) {

@@ -284,18 +284,21 @@ class ImageService {
         
         $fruits = ['elma', 'muz', 'armut', 'şeftali', 'kayısı', 'erik', 'kiraz', 'çilek', 'üzüm', 'karpuz', 'kavun', 
                    'portakal', 'mandalina', 'kivi', 'hurma', 'incir', 'nar', 'avokado', 'mango', 'ananas', 'papaya',
-                   'böğürtlen', 'ahududu', 'yaban mersini', 'vişne', 'limon', 'greyfurt', 'ayva'];
+                   'böğürtlen', 'ahududu', 'yaban mersini', 'vişne', 'limon', 'greyfurt', 'ayva',
+                   'kuru hurma', 'kuru üzüm', 'kuru kayısı', 'kuru incir'];
         
         $vegetables = ['havuç', 'patates', 'brokoli', 'tatlı patates', 'kabak', 'balkabağı', 'karnabahar', 'ıspanak',
                       'pırasa', 'bezelye', 'fasulye', 'domates', 'salatalık', 'biber', 'patlıcan', 'lahana', 'soğan',
-                      'sarımsak', 'kereviz', 'pancar', 'marul', 'roka', 'turp', 'bamya', 'enginar'];
+                      'sarımsak', 'kereviz', 'pancar', 'marul', 'roka', 'turp', 'bamya', 'enginar',
+                      'kırmızı biber', 'yeşil biber', 'kornişon', 'kuşkonmaz'];
         
         $proteins = ['tavuk göğsü', 'tavuk', 'hindi', 'somon', 'levrek', 'çipura', 'ton balığı', 'yumurta', 'dana eti',
-                    'kuzu eti', 'kırmızı et', 'balık'];
+                    'kuzu eti', 'kırmızı et', 'balık', 'hamsi', 'palamut', 'uskumru'];
         
-        $grains = ['pirinç', 'yulaf', 'mercimek', 'nohut', 'bulgur', 'kinoa', 'arpa', 'buğday', 'mısır', 'kuskus'];
+        $grains = ['pirinç', 'yulaf', 'mercimek', 'nohut', 'bulgur', 'kinoa', 'arpa', 'buğday', 'mısır', 'kuskus',
+                  'kırmızı mercimek', 'yeşil mercimek', 'barbunya', 'kuru fasulye'];
         
-        $dairy = ['yoğurt', 'süt', 'peynir', 'lor peyniri', 'beyaz peynir', 'kaşar peyniri'];
+        $dairy = ['yoğurt', 'süt', 'peynir', 'lor peyniri', 'beyaz peynir', 'kaşar peyniri', 'labne', 'tereyağı'];
         
         if (in_array($lower, $fruits)) {
             return 'fruits';
@@ -309,7 +312,9 @@ class ImageService {
             return 'dairy';
         }
         
-        return 'vegetables'; // Default to vegetables
+        // Log when using fallback to help identify missing ingredients
+        error_log("KG Core: Using default category for ingredient: {$name}");
+        return 'vegetables'; // Default to vegetables as most common
     }
     
     /**
@@ -399,7 +404,7 @@ class ImageService {
             'palamut' => 'raw bonito fish',
             'uskumru' => 'whole fresh mackerel',
             
-            // Grains & Legumes
+            // Grains & Legumes (raw/dry forms)
             'pirinç' => 'raw white rice grains',
             'yulaf' => 'dry rolled oats',
             'mercimek' => 'raw red lentils',
@@ -413,7 +418,7 @@ class ImageService {
             'kırmızı mercimek' => 'raw red lentils',
             'yeşil mercimek' => 'raw green lentils',
             'barbunya' => 'dried pinto beans',
-            'fasulye' => 'dried white beans',
+            'kuru fasulye' => 'dried white beans',
             
             // Dairy
             'yoğurt' => 'plain white yogurt in glass bowl',
@@ -446,14 +451,16 @@ class ImageService {
             'biberiye' => 'fresh rosemary sprigs',
             'tarhun' => 'fresh tarragon',
             
+            // Dried fruits (with distinct names)
+            'kuru hurma' => 'dried dates',
+            'kuru üzüm' => 'dried raisins',
+            'kuru kayısı' => 'dried apricots',
+            'kuru incir' => 'dried figs',
+            
             // Other
             'zeytinyağı' => 'bottle of olive oil',
             'bal' => 'jar of honey',
-            'zeytin' => 'whole black olives',
-            'hurma' => 'dried dates',
-            'üzüm' => 'dried raisins',
-            'kuru kayısı' => 'dried apricots',
-            'kuru incir' => 'dried figs'
+            'zeytin' => 'whole black olives'
         ];
         
         $lower = mb_strtolower($name, 'UTF-8');
