@@ -288,19 +288,24 @@ class AgeGroup {
     }
 
     public function save_term_meta( $term_id ) {
-        // Validate and sanitize numeric fields
-        if ( isset( $_POST['kg_min_month'] ) ) {
-            $min_month = absint( $_POST['kg_min_month'] );
+        // WordPress handles nonce verification for taxonomy term updates automatically
+        // via check_admin_referer() in wp-admin/edit-tags.php
+        
+        // Get both values first for validation
+        $min_month = isset( $_POST['kg_min_month'] ) ? absint( $_POST['kg_min_month'] ) : null;
+        $max_month = isset( $_POST['kg_max_month'] ) ? absint( $_POST['kg_max_month'] ) : null;
+
+        // Validate range if both values are provided
+        if ( $min_month !== null && $max_month !== null && $max_month < $min_month ) {
+            $max_month = $min_month;
+        }
+
+        // Save validated numeric fields
+        if ( $min_month !== null ) {
             update_term_meta( $term_id, '_kg_min_month', $min_month );
         }
 
-        if ( isset( $_POST['kg_max_month'] ) ) {
-            $max_month = absint( $_POST['kg_max_month'] );
-            // Validate that max_month >= min_month
-            $min_month = get_term_meta( $term_id, '_kg_min_month', true );
-            if ( $min_month && $max_month < $min_month ) {
-                $max_month = $min_month;
-            }
+        if ( $max_month !== null ) {
             update_term_meta( $term_id, '_kg_max_month', $max_month );
         }
 
@@ -314,8 +319,17 @@ class AgeGroup {
             update_term_meta( $term_id, '_kg_max_salt_limit', sanitize_text_field( $_POST['kg_max_salt_limit'] ) );
         }
 
+        // Validate and sanitize HEX color code
         if ( isset( $_POST['kg_color_code'] ) ) {
-            update_term_meta( $term_id, '_kg_color_code', sanitize_text_field( $_POST['kg_color_code'] ) );
+            $color_code = sanitize_text_field( $_POST['kg_color_code'] );
+            // Validate HEX color format
+            if ( preg_match( '/^#[0-9A-Fa-f]{6}$/', $color_code ) ) {
+                update_term_meta( $term_id, '_kg_color_code', $color_code );
+            } else {
+                // Log error and use default color
+                error_log( 'KG Core: Invalid HEX color code for age-group term ' . $term_id . ': ' . $color_code );
+                update_term_meta( $term_id, '_kg_color_code', '#E8F5E9' );
+            }
         }
 
         // Sanitize textarea fields

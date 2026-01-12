@@ -187,6 +187,9 @@ class MealType {
     }
 
     public function save_term_meta( $term_id ) {
+        // WordPress handles nonce verification for taxonomy term updates automatically
+        // via check_admin_referer() in wp-admin/edit-tags.php
+        
         // Sanitize text fields
         if ( isset( $_POST['kg_icon'] ) ) {
             update_term_meta( $term_id, '_kg_icon', sanitize_text_field( $_POST['kg_icon'] ) );
