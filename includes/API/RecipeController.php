@@ -15,6 +15,13 @@ class RecipeController {
             'permission_callback' => '__return_true',
         ]);
 
+        // GET /wp-json/kg/v1/recipes/featured
+        register_rest_route( 'kg/v1', '/recipes/featured', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_featured_recipes' ],
+            'permission_callback' => '__return_true', // Public
+        ]);
+
         // GET /wp-json/kg/v1/recipes/{slug} (Single recipe by slug)
         register_rest_route( 'kg/v1', '/recipes/(?P<slug>[a-zA-Z0-9-]+)', [
             'methods'  => 'GET',
@@ -27,13 +34,6 @@ class RecipeController {
             'methods'  => 'GET',
             'callback' => [ $this, 'get_recipes_by_age' ],
             'permission_callback' => '__return_true',
-        ]);
-        
-        // GET /wp-json/kg/v1/recipes/featured
-        register_rest_route( 'kg/v1', '/recipes/featured', [
-            'methods'  => 'GET',
-            'callback' => [ $this, 'get_featured_recipes' ],
-            'permission_callback' => '__return_true', // Public
         ]);
         
         // GET /wp-json/kg/v1/recipes/filter (Advanced Filtering)
