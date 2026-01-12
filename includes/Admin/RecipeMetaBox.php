@@ -38,6 +38,27 @@ class RecipeMetaBox {
         $cross_sell_url = get_post_meta( $post->ID, '_kg_cross_sell_url', true );
         $cross_sell_title = get_post_meta( $post->ID, '_kg_cross_sell_title', true );
         
+        // New cross-sell data structure
+        $cross_sell_data = get_post_meta( $post->ID, '_kg_cross_sell', true );
+        if ( ! is_array( $cross_sell_data ) ) {
+            // Migration: use old data if available
+            $cross_sell_data = [
+                'mode' => ! empty( $cross_sell_url ) ? 'manual' : 'manual',
+                'url' => $cross_sell_url,
+                'title' => $cross_sell_title,
+                'image' => '',
+                'ingredient' => '',
+                'tariften_id' => ''
+            ];
+        }
+        
+        $mode = isset( $cross_sell_data['mode'] ) ? $cross_sell_data['mode'] : 'manual';
+        $cross_sell_url = isset( $cross_sell_data['url'] ) ? $cross_sell_data['url'] : $cross_sell_url;
+        $cross_sell_title = isset( $cross_sell_data['title'] ) ? $cross_sell_data['title'] : $cross_sell_title;
+        $cross_sell_image = isset( $cross_sell_data['image'] ) ? $cross_sell_data['image'] : '';
+        $cross_sell_ingredient = isset( $cross_sell_data['ingredient'] ) ? $cross_sell_data['ingredient'] : '';
+        $cross_sell_tariften_id = isset( $cross_sell_data['tariften_id'] ) ? $cross_sell_data['tariften_id'] : '';
+        
         // Ensure arrays are properly initialized
         if ( ! is_array( $ingredients ) ) $ingredients = [];
         if ( ! is_array( $instructions ) ) $instructions = [];
@@ -140,16 +161,61 @@ class RecipeMetaBox {
                 <small>YouTube, Vimeo vb. video linki</small>
             </p>
 
-            <h3>Cross-Sell (Tariften.com)</h3>
-            <p>
-                <label for="kg_cross_sell_url"><strong>Tariften.com Linki:</strong></label><br>
-                <input type="url" id="kg_cross_sell_url" name="kg_cross_sell_url" value="<?php echo esc_attr( $cross_sell_url ); ?>" style="width:100%;">
-            </p>
-            <p>
-                <label for="kg_cross_sell_title"><strong>Cross-Sell Başlığı:</strong></label><br>
-                <input type="text" id="kg_cross_sell_title" name="kg_cross_sell_title" value="<?php echo esc_attr( $cross_sell_title ); ?>" style="width:100%;">
-                <small>Boş bırakılırsa varsayılan mesaj gösterilir</small>
-            </p>
+            <h3>Cross-Sell (Tariften.com) - Bizimkiler Ne Yiyecek?</h3>
+            
+            <div class="kg-cross-sell-mode">
+                <label>
+                    <input type="radio" name="kg_cross_sell_mode" value="manual" <?php checked( $mode, 'manual' ); ?>>
+                    Manuel Seçim
+                </label>
+                <label>
+                    <input type="radio" name="kg_cross_sell_mode" value="auto" <?php checked( $mode, 'auto' ); ?>>
+                    Otomatik Öneri (Malzeme Bazlı)
+                </label>
+            </div>
+
+            <!-- Manuel Mod -->
+            <div class="kg-cross-sell-manual" style="display: <?php echo $mode === 'manual' ? 'block' : 'none'; ?>">
+                <p>
+                    <label><strong>Tariften.com Linki:</strong></label><br>
+                    <input type="url" name="kg_cross_sell_url" value="<?php echo esc_attr( $cross_sell_url ); ?>" style="width:100%;">
+                </p>
+                <p>
+                    <label><strong>Başlık:</strong></label><br>
+                    <input type="text" name="kg_cross_sell_title" value="<?php echo esc_attr( $cross_sell_title ); ?>" style="width:100%;">
+                </p>
+                <p>
+                    <label><strong>Görsel URL (opsiyonel):</strong></label><br>
+                    <input type="url" name="kg_cross_sell_image" value="<?php echo esc_attr( $cross_sell_image ); ?>" style="width:100%;">
+                </p>
+            </div>
+
+            <!-- Otomatik Mod -->
+            <div class="kg-cross-sell-auto" style="display: <?php echo $mode === 'auto' ? 'block' : 'none'; ?>">
+                <p>
+                    <label><strong>Ana Malzeme Seç:</strong></label><br>
+                    <select id="kg_cross_sell_ingredient" name="kg_cross_sell_ingredient" style="width:70%;">
+                        <option value="">-- Malzeme Seçin --</option>
+                        <?php foreach ( $ingredients as $ing ): 
+                            $ing_name = isset( $ing['name'] ) ? $ing['name'] : $ing;
+                            $selected = ( $cross_sell_ingredient === $ing_name ) ? 'selected' : '';
+                        ?>
+                            <option value="<?php echo esc_attr( $ing_name ); ?>" <?php echo $selected; ?>><?php echo esc_html( $ing_name ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="button" id="kg_fetch_suggestions" class="button">🔄 Öneri Getir</button>
+                </p>
+                
+                <div id="kg_suggestions_container" style="margin-top:15px;">
+                    <!-- AJAX ile doldurulacak -->
+                </div>
+                
+                <!-- Seçilen öneri (hidden fields) -->
+                <input type="hidden" name="kg_cross_sell_selected_id" id="kg_cross_sell_selected_id" value="<?php echo esc_attr( $cross_sell_tariften_id ); ?>">
+                <input type="hidden" name="kg_cross_sell_selected_url" id="kg_cross_sell_selected_url" value="">
+                <input type="hidden" name="kg_cross_sell_selected_title" id="kg_cross_sell_selected_title" value="">
+                <input type="hidden" name="kg_cross_sell_selected_image" id="kg_cross_sell_selected_image" value="">
+            </div>
         </div>
         <?php
     }
@@ -365,13 +431,39 @@ class RecipeMetaBox {
             update_post_meta( $post_id, '_kg_video_url', esc_url_raw( $_POST['kg_video_url'] ) );
         }
 
-        // Cross-sell
-        if ( isset( $_POST['kg_cross_sell_url'] ) ) {
-            update_post_meta( $post_id, '_kg_cross_sell_url', esc_url_raw( $_POST['kg_cross_sell_url'] ) );
+        // Cross-sell - New JSON structure
+        $cross_sell_mode = isset( $_POST['kg_cross_sell_mode'] ) ? sanitize_text_field( $_POST['kg_cross_sell_mode'] ) : 'manual';
+        
+        // Validate mode value
+        if ( ! in_array( $cross_sell_mode, [ 'manual', 'auto' ], true ) ) {
+            $cross_sell_mode = 'manual';
         }
-        if ( isset( $_POST['kg_cross_sell_title'] ) ) {
-            update_post_meta( $post_id, '_kg_cross_sell_title', sanitize_text_field( $_POST['kg_cross_sell_title'] ) );
+        
+        $cross_sell_data = [
+            'mode' => $cross_sell_mode
+        ];
+        
+        if ( $cross_sell_mode === 'manual' ) {
+            // Manuel mod
+            $cross_sell_data['url'] = isset( $_POST['kg_cross_sell_url'] ) ? esc_url_raw( $_POST['kg_cross_sell_url'] ) : '';
+            $cross_sell_data['title'] = isset( $_POST['kg_cross_sell_title'] ) ? sanitize_text_field( $_POST['kg_cross_sell_title'] ) : '';
+            $cross_sell_data['image'] = isset( $_POST['kg_cross_sell_image'] ) ? esc_url_raw( $_POST['kg_cross_sell_image'] ) : '';
+            $cross_sell_data['ingredient'] = '';
+            $cross_sell_data['tariften_id'] = '';
+        } else {
+            // Otomatik mod
+            $cross_sell_data['ingredient'] = isset( $_POST['kg_cross_sell_ingredient'] ) ? sanitize_text_field( $_POST['kg_cross_sell_ingredient'] ) : '';
+            $cross_sell_data['tariften_id'] = isset( $_POST['kg_cross_sell_selected_id'] ) ? sanitize_text_field( $_POST['kg_cross_sell_selected_id'] ) : '';
+            $cross_sell_data['url'] = isset( $_POST['kg_cross_sell_selected_url'] ) ? esc_url_raw( $_POST['kg_cross_sell_selected_url'] ) : '';
+            $cross_sell_data['title'] = isset( $_POST['kg_cross_sell_selected_title'] ) ? sanitize_text_field( $_POST['kg_cross_sell_selected_title'] ) : '';
+            $cross_sell_data['image'] = isset( $_POST['kg_cross_sell_selected_image'] ) ? esc_url_raw( $_POST['kg_cross_sell_selected_image'] ) : '';
         }
+        
+        update_post_meta( $post_id, '_kg_cross_sell', $cross_sell_data );
+        
+        // Backward compatibility - also save old meta keys
+        update_post_meta( $post_id, '_kg_cross_sell_url', $cross_sell_data['url'] );
+        update_post_meta( $post_id, '_kg_cross_sell_title', $cross_sell_data['title'] );
     }
 
     /**
