@@ -90,12 +90,6 @@ class SettingsPage {
         $preferred_image_api = get_option('kg_preferred_image_api', 'unsplash');
         $auto_generate = get_option('kg_auto_generate_on_missing', false);
         
-        // Check if form was submitted
-        if (isset($_POST['kg_ai_settings_submit'])) {
-            check_admin_referer('kg_ai_settings_action', 'kg_ai_settings_nonce');
-            echo '<div class="notice notice-success is-dismissible"><p>Ayarlar kaydedildi!</p></div>';
-        }
-        
         ?>
         <div class="wrap">
             <h1>⚙️ AI Ayarları</h1>

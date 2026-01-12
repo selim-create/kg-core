@@ -37,7 +37,7 @@ class IngredientGenerator {
             'post_excerpt' => $ai_data['excerpt'],
             'post_type' => 'ingredient',
             'post_status' => 'draft', // Draft for manual review
-            'post_author' => get_current_user_id()
+            'post_author' => $this->getAuthorId()
         ];
         
         $post_id = wp_insert_post($post_data);
@@ -204,5 +204,27 @@ class IngredientGenerator {
         if (!empty($term_ids)) {
             wp_set_post_terms($post_id, $term_ids, 'allergen');
         }
+    }
+    
+    /**
+     * Get author ID for creating posts
+     * Handles cron context where get_current_user_id() returns 0
+     * 
+     * @return int User ID
+     */
+    private function getAuthorId() {
+        $user_id = get_current_user_id();
+        
+        // If called from cron (no user context), use first admin user
+        if ($user_id === 0) {
+            $admins = get_users(['role' => 'administrator', 'number' => 1]);
+            if (!empty($admins)) {
+                $user_id = $admins[0]->ID;
+            } else {
+                $user_id = 1; // Fallback to user ID 1
+            }
+        }
+        
+        return $user_id;
     }
 }

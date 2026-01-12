@@ -182,7 +182,7 @@ class ImageService {
         
         // Remove temp file
         if (file_exists($temp_file)) {
-            @unlink($temp_file);
+            unlink($temp_file);
         }
         
         if (is_wp_error($attachment_id)) {
