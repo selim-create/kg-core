@@ -67,14 +67,25 @@ class AIService {
             'title' => 'Malzeme Adı (Türkçe)',
             'excerpt' => '100 karakter kısa açıklama',
             'content' => '3-4 paragraf detaylı açıklama (HTML <p> etiketleri ile)',
+            'category' => 'Meyveler|Sebzeler|Proteinler|Tahıllar|Süt Ürünleri',
             'start_age' => 6,
             'benefits' => 'Sağlık faydaları detaylı açıklama (HTML formatında)',
             'allergy_risk' => 'Düşük/Orta/Yüksek',
             'allergens' => ['varsa alerjen listesi'],
             'season' => 'İlkbahar/Yaz/Sonbahar/Kış/Tüm Yıl',
             'storage_tips' => 'Saklama koşulları',
+            'selection_tips' => 'Taze malzeme nasıl seçilir ipuçları',
+            'pro_tips' => 'Bebekler için özel püf noktaları',
             'preparation_tips' => 'Bebekler için hazırlama ipuçları',
             'prep_methods' => ['Püre', 'Haşlama', 'Buhar', 'Ezme'],
+            'prep_by_age' => [
+                ['age' => '6-9 Ay', 'method' => 'Püre', 'text' => 'Detaylı hazırlama talimatı...'],
+                ['age' => '9+ Ay (BLW)', 'method' => 'Parmak Yiyecek', 'text' => 'BLW için talimat...']
+            ],
+            'pairings' => [
+                ['emoji' => '🍌', 'name' => 'Uyumlu malzeme adı'],
+                ['emoji' => '🥚', 'name' => 'Başka uyumlu malzeme']
+            ],
             'nutrition' => [
                 'calories' => '100g için kalori değeri (sadece sayı)',
                 'protein' => 'gram (sadece sayı)',
