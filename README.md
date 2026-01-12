@@ -7,7 +7,7 @@ WordPress headless CMS plugin providing comprehensive REST API for the KidsGourm
 KG Core is a complete backend solution for a baby food recipes platform, offering:
 
 - **Custom Post Types:** Recipes, Ingredients, Tools
-- **Taxonomies:** Age Groups, Allergens, Diet Types
+- **Taxonomies:** Age Groups (with WHO-based metadata), Meal Types, Allergens, Diet Types
 - **REST API:** Full CRUD operations with JWT authentication
 - **User Management:** Profile, children profiles, favorites, shopping lists
 - **Expert Reviews:** Recipe validation by nutritionists
@@ -135,7 +135,8 @@ kg-core/
 │   │   ├── Ingredient.php
 │   │   └── Tool.php
 │   ├── Taxonomies/             # Custom Taxonomies
-│   │   ├── AgeGroup.php
+│   │   ├── AgeGroup.php             # WHO-based age categories with metadata
+│   │   ├── MealType.php             # 🆕 Meal types (breakfast, lunch, etc.)
 │   │   ├── Allergen.php
 │   │   └── DietType.php
 │   └── Utils/                  # Helper Functions
@@ -148,7 +149,7 @@ kg-core/
 ### Recipe
 - Fields: title, content, excerpt, thumbnail
 - Meta: prep_time, ingredients, instructions, nutrition, expert info, video_url
-- Taxonomies: age-group, allergen, diet-type
+- Taxonomies: age-group, meal-type, allergen, diet-type
 
 ### Ingredient
 - Fields: title, content, excerpt, thumbnail
@@ -160,11 +161,48 @@ kg-core/
 
 ## Taxonomies
 
-### Age Group
-- 4-6 ay (4-6 months)
-- 6-12 ay (6-12 months)
-- 12-24 ay (1-2 years)
-- 2 yaş üzeri (2+ years)
+### Age Group (WHO-Based with Rich Metadata)
+
+Age groups aligned with WHO guidelines and developmental milestones:
+
+| Age Group | Slug | Months | Daily Meals | Salt Limit | Color |
+|-----------|------|--------|-------------|------------|-------|
+| Hazırlık Evresi (0-6 Ay) | `0-6-ay-sadece-sut` | 0-6 | 0 | 0g (Yasak) | #E8F5E9 |
+| Başlangıç & Tadım (6-8 Ay) | `6-8-ay-baslangic` | 6-8 | 2 | 0g (Yasak) | #A8E6CF |
+| Keşif & Pütürlüye Geçiş (9-11 Ay) | `9-11-ay-kesif` | 9-11 | 3 | 0g (Yasak) | #FDFD96 |
+| Aile Sofrasına Geçiş (12-24 Ay) | `12-24-ay-gecis` | 12-24 | 5 | <1g/gün | #FFB347 |
+| Çocuk Gurme (2+ Yaş) | `2-yas-ve-uzeri` | 24-144 | 5 | <2g/gün | #87CEEB |
+
+**Metadata Fields:**
+- `min_month`, `max_month`: Age range in months
+- `daily_meal_count`: Recommended daily meals
+- `max_salt_limit`: Salt consumption guidelines
+- `texture_guide`: Food texture recommendations
+- `forbidden_list`: JSON array of prohibited foods
+- `color_code`: HEX color for UI
+- `warning_message`: Age-specific warnings
+
+**REST API:** Accessible at `/wp-json/wp/v2/age-group` with `age_group_meta` field
+
+### Meal Type
+
+Meal types for recipe categorization:
+
+| Meal Type | Slug | Icon | Time Range | Color |
+|-----------|------|------|------------|-------|
+| Kahvaltı | `kahvalti` | 🌅 | 07:00-09:00 | #FFE4B5 |
+| Ara Öğün (Kuşluk) | `ara-ogun-kusluk` | 🍎 | 10:00-11:00 | #98FB98 |
+| Öğle Yemeği | `ogle-yemegi` | 🍽️ | 12:00-13:00 | #FFD700 |
+| Ara Öğün (İkindi) | `ara-ogun-ikindi` | 🧃 | 15:00-16:00 | #DDA0DD |
+| Akşam Yemeği | `aksam-yemegi` | 🌙 | 18:00-19:00 | #87CEEB |
+| Beslenme Çantası | `beslenme-cantasi` | 🎒 | Değişken | #F0E68C |
+
+**Metadata Fields:**
+- `icon`: Emoji icon for the meal type
+- `time_range`: Recommended time range
+- `color_code`: HEX color for UI
+
+**REST API:** Accessible at `/wp-json/wp/v2/meal-type` with `meal_type_meta` field
 
 ### Allergen
 - Süt, Yumurta, Gluten, Fıstık, Balık, Soya, Kabuklu Deniz Ürünleri, Fındık, Susam, Hardal
