@@ -361,6 +361,12 @@ class AIEnrichButton {
         // Use ingredient name from post title
         $ingredient_name = get_the_title($post_id);
         
+        // Validate ingredient name is not empty
+        if (empty($ingredient_name)) {
+            error_log("KG Core: Cannot generate image - ingredient name is empty");
+            return;
+        }
+        
         $image_service = new ImageService();
         
         // Generate image using new system

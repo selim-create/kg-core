@@ -230,6 +230,12 @@ class IngredientGenerator {
         // Use ingredient name instead of image_search_query
         $ingredient_name = $data['title'] ?? get_the_title($post_id);
         
+        // Validate ingredient name is not empty
+        if (empty($ingredient_name)) {
+            error_log("KG Core: Cannot generate image - ingredient name is empty");
+            return;
+        }
+        
         // Generate image using new system
         $image_data = $this->image_service->generateImage($ingredient_name);
         
