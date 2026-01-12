@@ -49,10 +49,8 @@ class IngredientGenerator {
         // Save meta fields
         $this->saveMetaFields($post_id, $ai_data);
         
-        // Attach image
-        if (!empty($ai_data['image_search_query'])) {
-            $this->attachImage($post_id, $ai_data);
-        }
+        // Attach image (always try to attach if configured)
+        $this->attachImage($post_id, $ai_data);
         
         // Assign allergens
         if (!empty($ai_data['allergens']) && is_array($ai_data['allergens'])) {
@@ -229,18 +227,19 @@ class IngredientGenerator {
      * @param array $data AI-generated data
      */
     private function attachImage($post_id, $data) {
-        $query = $data['image_search_query'];
+        // Use ingredient name instead of image_search_query
+        $ingredient_name = $data['title'] ?? get_the_title($post_id);
         
-        // Fetch image from API
-        $image_data = $this->image_service->fetchImage($query);
+        // Generate image using new system
+        $image_data = $this->image_service->generateImage($ingredient_name);
         
         if ($image_data === null) {
-            error_log("KG Core: No image found for query: {$query}");
+            error_log("KG Core: No image generated for: {$ingredient_name}");
             return;
         }
         
         // Generate filename
-        $filename = sanitize_title($data['title']) . '.jpg';
+        $filename = sanitize_title($ingredient_name) . '.png';
         
         // Download to media library
         $attachment_id = $this->image_service->downloadToMediaLibrary($image_data['url'], $filename);
@@ -253,10 +252,16 @@ class IngredientGenerator {
         // Set as featured image
         set_post_thumbnail($post_id, $attachment_id);
         
-        // Save credit information as post meta
-        update_post_meta($post_id, '_kg_image_credit', $image_data['credit']);
-        update_post_meta($post_id, '_kg_image_credit_url', $image_data['credit_url']);
-        update_post_meta($post_id, '_kg_image_source', $image_data['source']);
+        // Save source information as post meta
+        if (isset($image_data['source'])) {
+            update_post_meta($post_id, '_kg_image_source', $image_data['source']);
+        }
+        if (isset($image_data['credit'])) {
+            update_post_meta($post_id, '_kg_image_credit', $image_data['credit']);
+        }
+        if (isset($image_data['credit_url'])) {
+            update_post_meta($post_id, '_kg_image_credit_url', $image_data['credit_url']);
+        }
     }
     
     /**

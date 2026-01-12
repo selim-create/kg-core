@@ -521,51 +521,15 @@ class ImageService {
     }
 
     /**
-     * Fetch image for given search query
+     * Legacy method for backward compatibility
+     * Redirects to generateImage() to use the new system
      *
-     * @param string $query Search query (in English)
+     * @param string $ingredient_name Name of ingredient (Turkish or English)
      * @return array|null Image data or null if not found
      */
-    public function fetchImage($query) {
-        $query = trim((string) $query);
-        if ($query === '') {
-            return null;
-        }
-
-        // Try preferred API first
-        if ($this->preferred_api === 'dall-e' && !empty($this->openai_api_key)) {
-            $result = $this->generateImage($query);
-            if ($result !== null) {
-                return $result;
-            }
-        } elseif ($this->preferred_api === 'unsplash' && !empty($this->unsplash_key)) {
-            $result = $this->fetchFromUnsplash($query);
-            if ($result !== null) {
-                return $result;
-            }
-        } elseif ($this->preferred_api === 'pexels' && !empty($this->pexels_key)) {
-            $result = $this->fetchFromPexels($query);
-            if ($result !== null) {
-                return $result;
-            }
-        }
-
-        // Fallback to other APIs
-        if ($this->preferred_api === 'dall-e') {
-            if (!empty($this->unsplash_key)) {
-                $result = $this->fetchFromUnsplash($query);
-                if ($result !== null) return $result;
-            }
-            if (!empty($this->pexels_key)) {
-                return $this->fetchFromPexels($query);
-            }
-        } elseif ($this->preferred_api === 'unsplash' && !empty($this->pexels_key)) {
-            return $this->fetchFromPexels($query);
-        } elseif ($this->preferred_api === 'pexels' && !empty($this->unsplash_key)) {
-            return $this->fetchFromUnsplash($query);
-        }
-
-        return null;
+    public function fetchImage($ingredient_name) {
+        // Legacy method - redirect to generateImage
+        return $this->generateImage($ingredient_name);
     }
 
     /**
@@ -613,7 +577,7 @@ class ImageService {
      * @return array|null Image data or null
      */
     private function fetchFromUnsplash($query) {
-        if (empty($this->unsplash_key)) {
+        if (empty($this->unsplash_api_key)) {
             return null;
         }
 
@@ -626,7 +590,7 @@ class ImageService {
 
         $response = wp_remote_get($url, [
             'headers' => [
-                'Authorization' => 'Client-ID ' . $this->unsplash_key
+                'Authorization' => 'Client-ID ' . $this->unsplash_api_key
             ],
             'timeout' => 30
         ]);
@@ -665,7 +629,7 @@ class ImageService {
      * @return array|null Image data or null
      */
     private function fetchFromPexels($query) {
-        if (empty($this->pexels_key)) {
+        if (empty($this->pexels_api_key)) {
             return null;
         }
 
@@ -677,7 +641,7 @@ class ImageService {
 
         $response = wp_remote_get($url, [
             'headers' => [
-                'Authorization' => $this->pexels_key
+                'Authorization' => $this->pexels_api_key
             ],
             'timeout' => 30
         ]);
