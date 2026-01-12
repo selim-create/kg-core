@@ -35,6 +35,9 @@ if ( file_exists( KG_CORE_PATH . 'includes/CORS/CORSHandler.php' ) ) {
     new \KG_Core\CORS\CORSHandler();
 }
 
+// 2.7. SERVİS SINIFLARI DAHİL ET
+if ( file_exists( KG_CORE_PATH . 'includes/Services/TariftenService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/TariftenService.php';
+
 // 3. POST TYPE SINIFLARINI DAHİL ET (CPT)
 // Dosyalar mevcutsa dahil et
 if ( file_exists( KG_CORE_PATH . 'includes/PostTypes/Recipe.php' ) ) require_once KG_CORE_PATH . 'includes/PostTypes/Recipe.php';
@@ -55,6 +58,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/RecipeController.php' ) ) require
 if ( file_exists( KG_CORE_PATH . 'includes/API/IngredientController.php' ) ) require_once KG_CORE_PATH . 'includes/API/IngredientController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/UserController.php' ) ) require_once KG_CORE_PATH . 'includes/API/UserController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/SearchController.php' ) ) require_once KG_CORE_PATH . 'includes/API/SearchController.php';
+if ( file_exists( KG_CORE_PATH . 'includes/API/CrossSellController.php' ) ) require_once KG_CORE_PATH . 'includes/API/CrossSellController.php';
 
 // 7. SINIFLARI BAŞLAT (INIT HOOK)
 function kg_core_init() {
@@ -87,6 +91,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\IngredientController' ) ) new \KG_Core\API\IngredientController();
     if ( class_exists( '\KG_Core\API\UserController' ) ) new \KG_Core\API\UserController();
     if ( class_exists( '\KG_Core\API\SearchController' ) ) new \KG_Core\API\SearchController();
+    if ( class_exists( '\KG_Core\API\CrossSellController' ) ) new \KG_Core\API\CrossSellController();
 }
 add_action( 'plugins_loaded', 'kg_core_init' );
 
@@ -116,10 +121,24 @@ function kg_core_enqueue_admin_assets( $hook ) {
             true 
         );
         
+        // Enqueue cross-sell JS
+        wp_enqueue_script( 
+            'kg-cross-sell-js', 
+            KG_CORE_URL . 'assets/admin/js/cross-sell.js', 
+            [ 'jquery' ], 
+            KG_CORE_VERSION, 
+            true 
+        );
+        
         // Localize script with AJAX URL and nonce
         wp_localize_script( 'kg-metabox-js', 'kgMetaBox', [
             'ajaxUrl' => admin_url( 'admin-ajax.php' ),
             'nonce'   => wp_create_nonce( 'kg_metabox_nonce' ),
+        ]);
+        
+        // Localize cross-sell script with nonce
+        wp_localize_script( 'kg-cross-sell-js', 'kg_cross_sell', [
+            'nonce' => wp_create_nonce( 'kg_cross_sell_nonce' ),
         ]);
     }
 }
