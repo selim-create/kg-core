@@ -63,6 +63,16 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientMetaBox.php' ) ) requ
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/SettingsPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/SettingsPage.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/MigrationPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/MigrationPage.php';
+
+// 5.6. MIGRATION SINIFLARINI DAHİL ET
+if ( file_exists( KG_CORE_PATH . 'includes/Migration/ContentParser.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/ContentParser.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Migration/IngredientParser.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/IngredientParser.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Migration/AgeGroupMapper.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/AgeGroupMapper.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Migration/AIEnhancer.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/AIEnhancer.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Migration/SEOHandler.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/SEOHandler.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Migration/MigrationLogger.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/MigrationLogger.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php';
 
 // 6. API KONTROL CİHAZLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/API/RecipeController.php' ) ) require_once KG_CORE_PATH . 'includes/API/RecipeController.php';
@@ -110,6 +120,9 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\AIEnrichButton' ) ) {
         new \KG_Core\Admin\AIEnrichButton();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\MigrationPage' ) ) {
+        new \KG_Core\Admin\MigrationPage();
     }
 
     // API Controllers

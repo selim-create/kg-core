@@ -34,6 +34,7 @@ class RecipeMetaBox {
         $video_url = get_post_meta( $post->ID, '_kg_video_url', true );
         $expert_name = get_post_meta( $post->ID, '_kg_expert_name', true );
         $expert_title = get_post_meta( $post->ID, '_kg_expert_title', true );
+        $expert_note = get_post_meta( $post->ID, '_kg_expert_note', true );
         $expert_approved = get_post_meta( $post->ID, '_kg_expert_approved', true );
         $cross_sell_url = get_post_meta( $post->ID, '_kg_cross_sell_url', true );
         $cross_sell_title = get_post_meta( $post->ID, '_kg_cross_sell_title', true );
@@ -148,6 +149,11 @@ class RecipeMetaBox {
                 <label for="kg_expert_title"><strong>Uzman Ünvanı:</strong></label><br>
                 <input type="text" id="kg_expert_title" name="kg_expert_title" value="<?php echo esc_attr( $expert_title ); ?>" style="width:100%;">
                 <small>Örnek: Diyetisyen, Pediatrist</small>
+            </p>
+            <p>
+                <label for="kg_expert_note"><strong>Uzman Notu:</strong></label><br>
+                <textarea id="kg_expert_note" name="kg_expert_note" rows="4" style="width:100%;"><?php echo esc_textarea( $expert_note ); ?></textarea>
+                <small>Uzmanın tarifte önemli gördüğü bilgiler, açıklamalar</small>
             </p>
             <p>
                 <label for="kg_expert_approved"><strong>Uzman Onaylı:</strong></label>
@@ -422,6 +428,9 @@ class RecipeMetaBox {
         }
         if ( isset( $_POST['kg_expert_title'] ) ) {
             update_post_meta( $post_id, '_kg_expert_title', sanitize_text_field( $_POST['kg_expert_title'] ) );
+        }
+        if ( isset( $_POST['kg_expert_note'] ) ) {
+            update_post_meta( $post_id, '_kg_expert_note', sanitize_textarea_field( $_POST['kg_expert_note'] ) );
         }
         $expert_approved = isset( $_POST['kg_expert_approved'] ) ? '1' : '0';
         update_post_meta( $post_id, '_kg_expert_approved', $expert_approved );
