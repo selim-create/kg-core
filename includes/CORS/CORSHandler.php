@@ -15,12 +15,15 @@ class CORSHandler {
      * İzin verilen origin'ler
      */
     private function get_allowed_origins() {
-        return [
+        $default_origins = [
             'http://localhost:3000',
             'http://localhost:3001',
             'https://kidsgourmet.com.tr',
             'https://www.kidsgourmet.com.tr',
         ];
+        
+        // Allow filtering for environment-specific configuration
+        return apply_filters('kg_core_allowed_origins', $default_origins);
     }
     
     /**
@@ -32,7 +35,7 @@ class CORSHandler {
         add_filter('rest_pre_serve_request', function($value) {
             $origin = $this->get_origin();
             
-            if ($origin && in_array($origin, $this->get_allowed_origins())) {
+            if ($origin && in_array($origin, $this->get_allowed_origins(), true)) {
                 header('Access-Control-Allow-Origin: ' . $origin);
             }
             
@@ -49,13 +52,14 @@ class CORSHandler {
      * OPTIONS preflight isteklerini yönet
      */
     public function handle_preflight() {
-        if ($_SERVER['REQUEST_METHOD'] !== 'OPTIONS') {
+        // Validate REQUEST_METHOD exists and is OPTIONS
+        if (!isset($_SERVER['REQUEST_METHOD']) || $_SERVER['REQUEST_METHOD'] !== 'OPTIONS') {
             return;
         }
         
         $origin = $this->get_origin();
         
-        if ($origin && in_array($origin, $this->get_allowed_origins())) {
+        if ($origin && in_array($origin, $this->get_allowed_origins(), true)) {
             header('Access-Control-Allow-Origin: ' . $origin);
         }
         
@@ -65,7 +69,7 @@ class CORSHandler {
         header('Access-Control-Max-Age: 86400');
         header('Content-Type: text/plain');
         header('Content-Length: 0');
-        header('HTTP/1.1 200 OK');
+        status_header(200);
         exit();
     }
     
@@ -74,11 +78,12 @@ class CORSHandler {
      */
     private function get_origin() {
         if (function_exists('get_http_origin')) {
-            return get_http_origin();
+            return esc_url_raw(get_http_origin());
         }
         
         if (isset($_SERVER['HTTP_ORIGIN'])) {
-            return $_SERVER['HTTP_ORIGIN'];
+            // Sanitize to prevent header injection attacks
+            return esc_url_raw($_SERVER['HTTP_ORIGIN']);
         }
         
         return null;
