@@ -26,6 +26,9 @@ if ( file_exists( KG_CORE_PATH . 'includes/Utils/Helper.php' ) ) {
     error_log( 'KG Core: Helper.php dosyası bulunamadı.' );
 }
 
+// 2.5. AUTH SINIFLARI DAHİL ET
+if ( file_exists( KG_CORE_PATH . 'includes/Auth/JWTHandler.php' ) ) require_once KG_CORE_PATH . 'includes/Auth/JWTHandler.php';
+
 // 3. POST TYPE SINIFLARINI DAHİL ET (CPT)
 // Dosyalar mevcutsa dahil et
 if ( file_exists( KG_CORE_PATH . 'includes/PostTypes/Recipe.php' ) ) require_once KG_CORE_PATH . 'includes/PostTypes/Recipe.php';
@@ -39,9 +42,12 @@ if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/DietType.php' ) ) require_
 
 // 5. ADMIN PANELİ ÖZEL ALANLARI (ACF Alternatifi)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/RecipeMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/RecipeMetaBox.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/IngredientMetaBox.php';
 
 // 6. API KONTROL CİHAZLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/API/RecipeController.php' ) ) require_once KG_CORE_PATH . 'includes/API/RecipeController.php';
+if ( file_exists( KG_CORE_PATH . 'includes/API/IngredientController.php' ) ) require_once KG_CORE_PATH . 'includes/API/IngredientController.php';
+if ( file_exists( KG_CORE_PATH . 'includes/API/UserController.php' ) ) require_once KG_CORE_PATH . 'includes/API/UserController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/SearchController.php' ) ) require_once KG_CORE_PATH . 'includes/API/SearchController.php';
 
 // 7. SINIFLARI BAŞLAT (INIT HOOK)
@@ -66,9 +72,14 @@ function kg_core_init() {
     if ( is_admin() && class_exists( '\KG_Core\Admin\RecipeMetaBox' ) ) {
         new \KG_Core\Admin\RecipeMetaBox();
     }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\IngredientMetaBox' ) ) {
+        new \KG_Core\Admin\IngredientMetaBox();
+    }
 
     // API Controllers
     if ( class_exists( '\KG_Core\API\RecipeController' ) ) new \KG_Core\API\RecipeController();
+    if ( class_exists( '\KG_Core\API\IngredientController' ) ) new \KG_Core\API\IngredientController();
+    if ( class_exists( '\KG_Core\API\UserController' ) ) new \KG_Core\API\UserController();
     if ( class_exists( '\KG_Core\API\SearchController' ) ) new \KG_Core\API\SearchController();
 }
 add_action( 'plugins_loaded', 'kg_core_init' );
@@ -82,3 +93,41 @@ add_filter('acf/settings/load_json', function( $paths ) {
     $paths[] = KG_CORE_PATH . 'includes/Fields/acf-json';
     return $paths;
 });
+
+// 8. CORS AYARLARI (Frontend farklı domain'de çalışacağı için)
+add_action( 'rest_api_init', function() {
+    // CORS headers ekle
+    remove_filter( 'rest_pre_serve_request', 'rest_send_cors_headers' );
+    add_filter( 'rest_pre_serve_request', function( $value ) {
+        // Configure allowed origins - use filter for production
+        $allowed_origins = apply_filters( 'kg_core_allowed_origins', [
+            'http://localhost:3000',
+            'http://localhost:3001',
+            // Add production domains here or via filter
+        ]);
+        
+        $origin = isset( $_SERVER['HTTP_ORIGIN'] ) ? $_SERVER['HTTP_ORIGIN'] : '';
+        
+        if ( in_array( $origin, $allowed_origins ) ) {
+            // Authenticated requests - specific origin only
+            header( 'Access-Control-Allow-Origin: ' . $origin );
+            header( 'Access-Control-Allow-Credentials: true' );
+        } elseif ( ! empty( $origin ) && apply_filters( 'kg_core_allow_public_cors', false ) ) {
+            // Public requests - only if explicitly enabled
+            // This is disabled by default for security
+            header( 'Access-Control-Allow-Origin: ' . $origin );
+        }
+        // If no match and public CORS not enabled, no CORS headers sent
+        
+        header( 'Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS' );
+        header( 'Access-Control-Allow-Headers: Authorization, Content-Type, X-WP-Nonce' );
+        
+        // Handle preflight requests
+        if ( 'OPTIONS' === $_SERVER['REQUEST_METHOD'] ) {
+            status_header( 200 );
+            exit();
+        }
+        
+        return $value;
+    });
+}, 15 );

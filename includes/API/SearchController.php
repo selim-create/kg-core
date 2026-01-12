@@ -17,14 +17,39 @@ class SearchController {
 
     public function search_items( $request ) {
         $query = $request->get_param( 'q' );
+        $type = $request->get_param( 'type' ) ?: 'all'; // 'recipe', 'ingredient', or 'all'
+        $age_filter = $request->get_param( 'age_group' );
         
-        // Placeholder search logic (Standard WP Query)
-        // In production, this might connect to Algolia or Meilisearch
+        if ( empty( $query ) ) {
+            return new \WP_Error( 'missing_query', 'Search query is required', [ 'status' => 400 ] );
+        }
+
+        $post_types = [];
+        if ( $type === 'recipe' ) {
+            $post_types = ['recipe'];
+        } elseif ( $type === 'ingredient' ) {
+            $post_types = ['ingredient'];
+        } else {
+            $post_types = ['recipe', 'ingredient'];
+        }
+
         $args = [
-            'post_type' => ['recipe', 'post'], // Search in recipes and blog posts
+            'post_type' => $post_types,
             's'         => $query,
-            'posts_per_page' => 10
+            'posts_per_page' => 20,
+            'post_status' => 'publish',
         ];
+
+        // Add age filter if specified (only for recipes)
+        if ( $age_filter && in_array( 'recipe', $post_types ) ) {
+            $args['tax_query'] = [
+                [
+                    'taxonomy' => 'age-group',
+                    'field'    => 'slug',
+                    'terms'    => $age_filter,
+                ],
+            ];
+        }
 
         $search_query = new \WP_Query( $args );
         $results = [];
@@ -32,15 +57,34 @@ class SearchController {
         if ( $search_query->have_posts() ) {
             while ( $search_query->have_posts() ) {
                 $search_query->the_post();
-                $results[] = [
+                $post_type = get_post_type();
+                
+                $result = [
                     'id'    => get_the_ID(),
                     'title' => get_the_title(),
-                    'type'  => get_post_type(),
-                    'link'  => get_permalink()
+                    'slug'  => get_post_field( 'post_name', get_the_ID() ),
+                    'type'  => $post_type,
+                    'image' => get_the_post_thumbnail_url( get_the_ID(), 'medium' ),
                 ];
+
+                // Add type-specific data
+                if ( $post_type === 'recipe' ) {
+                    $result['prep_time'] = get_post_meta( get_the_ID(), '_kg_prep_time', true );
+                    $result['age_groups'] = wp_get_post_terms( get_the_ID(), 'age-group', ['fields' => 'names'] );
+                } elseif ( $post_type === 'ingredient' ) {
+                    $result['start_age'] = get_post_meta( get_the_ID(), '_kg_start_age', true );
+                }
+
+                $results[] = $result;
             }
         }
+        wp_reset_postdata();
         
-        return new \WP_REST_Response( $results, 200 );
+        return new \WP_REST_Response( [
+            'query' => $query,
+            'type' => $type,
+            'results' => $results,
+            'total' => $search_query->found_posts,
+        ], 200 );
     }
 }
