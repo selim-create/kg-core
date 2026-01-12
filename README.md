@@ -12,8 +12,18 @@ KG Core is a complete backend solution for a baby food recipes platform, offerin
 - **User Management:** Profile, children profiles, favorites, shopping lists
 - **Expert Reviews:** Recipe validation by nutritionists
 - **Cross-selling:** Integration with Tariften.com
+- **🤖 AI-Powered Content:** Automated ingredient generation with multiple AI providers
 
 ## Features
+
+### 🤖 AI-Powered Ingredient Management (NEW)
+- Multi-provider AI support (OpenAI GPT-4, Anthropic Claude, Google Gemini)
+- Automated ingredient content generation in Turkish
+- Bulk ingredient creation (100+ predefined items)
+- Automatic image fetching (Unsplash/Pexels)
+- Smart allergen assignment
+- Auto-generation on recipe save
+- See [AI_DOCUMENTATION.md](./AI_DOCUMENTATION.md) for details
 
 ### 🍽️ Recipe Management
 - Complete recipe CRUD with nutritional information
@@ -32,6 +42,7 @@ KG Core is a complete backend solution for a baby food recipes platform, offerin
 - Seasonal availability
 - Storage tips
 - FAQ support
+- AI-generated content with manual review
 
 ### 👤 User Features
 - JWT-based authentication
@@ -85,6 +96,17 @@ Content-Type: application/json
 GET /wp-json/kg/v1/search?q=kabak&type=recipe
 ```
 
+**AI-powered ingredient generation:**
+```bash
+POST /wp-json/kg/v1/ai/generate-ingredient
+Authorization: Bearer YOUR_TOKEN
+Content-Type: application/json
+
+{
+  "name": "Havuç"
+}
+```
+
 ## Architecture
 
 ```
@@ -94,12 +116,20 @@ kg-core/
 │   │   ├── RecipeController.php
 │   │   ├── IngredientController.php
 │   │   ├── UserController.php
-│   │   └── SearchController.php
+│   │   ├── SearchController.php
+│   │   └── AIController.php         # 🆕 AI endpoints
 │   ├── Admin/                  # WordPress Admin Meta Boxes
 │   │   ├── RecipeMetaBox.php
-│   │   └── IngredientMetaBox.php
+│   │   ├── IngredientMetaBox.php
+│   │   ├── SettingsPage.php         # 🆕 AI Settings
+│   │   └── BulkIngredientSeeder.php # 🆕 Bulk AI Generator
 │   ├── Auth/                   # Authentication
 │   │   └── JWTHandler.php
+│   ├── Services/               # Business Logic Services
+│   │   ├── TariftenService.php
+│   │   ├── AIService.php            # 🆕 Multi-provider AI
+│   │   ├── ImageService.php         # 🆕 Unsplash/Pexels
+│   │   └── IngredientGenerator.php  # 🆕 Ingredient creation
 │   ├── PostTypes/              # Custom Post Types
 │   │   ├── Recipe.php
 │   │   ├── Ingredient.php
