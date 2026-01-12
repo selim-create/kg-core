@@ -574,6 +574,150 @@ Look for:
 - [ ] Nutrition databases (USDA, etc.)
 - [ ] Translation services for multi-language
 
+## Taxonomies with Rich Metadata
+
+### Age Group Taxonomy
+
+The Age Group taxonomy has been enhanced with WHO-based metadata to provide comprehensive age-appropriate recipe filtering.
+
+#### Structure
+
+File: `includes/Taxonomies/AgeGroup.php`
+
+#### Default Terms
+
+Five age categories are automatically created on plugin activation:
+
+1. **Hazırlık Evresi (0-6 Ay)** - `0-6-ay-sadece-sut`
+2. **Başlangıç & Tadım (6-8 Ay)** - `6-8-ay-baslangic`
+3. **Keşif & Pütürlüye Geçiş (9-11 Ay)** - `9-11-ay-kesif`
+4. **Aile Sofrasına Geçiş (12-24 Ay)** - `12-24-ay-gecis`
+5. **Çocuk Gurme (2+ Yaş)** - `2-yas-ve-uzeri`
+
+#### Metadata Fields
+
+Each age group includes the following metadata (prefix: `_kg_`):
+
+- `min_month` (int): Minimum age in months
+- `max_month` (int): Maximum age in months
+- `daily_meal_count` (int): Recommended daily meal count
+- `max_salt_limit` (string): Maximum salt consumption guideline
+- `texture_guide` (string): Food texture recommendations
+- `forbidden_list` (JSON array): List of prohibited foods
+- `color_code` (string): HEX color code for UI representation
+- `warning_message` (string): Age-specific warnings
+
+#### Admin Interface
+
+- **Add Term Form:** Custom fields for all metadata when creating new age groups
+- **Edit Term Form:** Editable fields for existing age groups
+- **Auto-save:** Metadata automatically saved with term creation/update
+
+#### REST API Support
+
+Age group metadata is exposed via REST API:
+
+**Endpoint:** `/wp-json/wp/v2/age-group`
+
+**Response Example:**
+```json
+{
+  "id": 15,
+  "name": "Başlangıç & Tadım (6-8 Ay)",
+  "slug": "6-8-ay-baslangic",
+  "age_group_meta": {
+    "min_month": 6,
+    "max_month": 8,
+    "daily_meal_count": 2,
+    "max_salt_limit": "0g (Yasak)",
+    "texture_guide": "Yoğurt kıvamı, pürüzsüz püreler veya parmak boyutunda yumuşak parçalar (BLW)",
+    "forbidden_list": ["Bal", "İnek Sütü", "Tuz", "Şeker", "Yumurta Beyazı"],
+    "color_code": "#A8E6CF",
+    "warning_message": "Her yeni gıdayı 3 gün arayla deneyin."
+  }
+}
+```
+
+### Meal Type Taxonomy
+
+A new taxonomy for categorizing recipes by meal type.
+
+#### Structure
+
+File: `includes/Taxonomies/MealType.php`
+
+**Configuration:**
+- Slug: `meal-type`
+- Post Type: `recipe`
+- Hierarchical: `false` (tag-like flat structure)
+- REST API: Enabled
+
+#### Default Terms
+
+Six meal types are automatically created:
+
+1. **Kahvaltı** - `kahvalti` (Breakfast) 🌅
+2. **Ara Öğün (Kuşluk)** - `ara-ogun-kusluk` (Morning Snack) 🍎
+3. **Öğle Yemeği** - `ogle-yemegi` (Lunch) 🍽️
+4. **Ara Öğün (İkindi)** - `ara-ogun-ikindi` (Afternoon Snack) 🧃
+5. **Akşam Yemeği** - `aksam-yemegi` (Dinner) 🌙
+6. **Beslenme Çantası** - `beslenme-cantasi` (Lunch Box) 🎒
+
+#### Metadata Fields
+
+Each meal type includes (prefix: `_kg_`):
+
+- `icon` (string): Emoji icon representation
+- `time_range` (string): Recommended time range
+- `color_code` (string): HEX color code for UI
+
+#### Admin Interface
+
+- **Add/Edit Forms:** Custom fields for icon, time range, and color code
+- **Visual Display:** Emoji icons visible in admin columns
+
+#### REST API Support
+
+Meal type metadata is exposed via REST API:
+
+**Endpoint:** `/wp-json/wp/v2/meal-type`
+
+**Response Example:**
+```json
+{
+  "id": 20,
+  "name": "Kahvaltı",
+  "slug": "kahvalti",
+  "meal_type_meta": {
+    "icon": "🌅",
+    "time_range": "07:00-09:00",
+    "color_code": "#FFE4B5"
+  }
+}
+```
+
+#### Usage in Recipes
+
+To assign meal types to recipes, use the standard WordPress term assignment:
+
+```php
+// Assign meal type to recipe
+wp_set_object_terms( $recipe_id, ['kahvalti', 'ara-ogun-kusluk'], 'meal-type' );
+
+// Get recipes by meal type
+$args = [
+    'post_type' => 'recipe',
+    'tax_query' => [
+        [
+            'taxonomy' => 'meal-type',
+            'field'    => 'slug',
+            'terms'    => 'kahvalti',
+        ],
+    ],
+];
+$breakfast_recipes = new WP_Query( $args );
+```
+
 ## Support
 
 For issues or feature requests:
