@@ -11,18 +11,27 @@ class JWTHandler {
 
     /**
      * Get or generate secret key
+     * Priority order:
+     * 1. KG_JWT_SECRET constant (highest priority)
+     * 2. JWT_AUTH_SECRET_KEY constant (WordPress standard)
+     * 3. kg_jwt_secret option from database
+     * 4. Generate new secret key
      */
     private static function get_secret_key() {
         if ( self::$secret_key !== null ) {
             return self::$secret_key;
         }
 
-        // Try to get from WordPress constant or option
+        // Try to get from WordPress constants (priority order)
         if ( defined( 'KG_JWT_SECRET' ) ) {
             self::$secret_key = KG_JWT_SECRET;
+        } elseif ( defined( 'JWT_AUTH_SECRET_KEY' ) ) {
+            self::$secret_key = JWT_AUTH_SECRET_KEY;
         } else {
+            // Try to get from database option
             $secret = get_option( 'kg_jwt_secret' );
             if ( ! $secret ) {
+                // Generate new secret key and save it
                 $secret = wp_generate_password( 64, true, true );
                 update_option( 'kg_jwt_secret', $secret );
             }
