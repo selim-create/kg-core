@@ -173,11 +173,43 @@ kg-core/
 
 ## CORS Configuration
 
-CORS is enabled by default for all origins. For production, configure specific origins in `kg-core.php`:
+CORS is configured for security by default. To enable access from your frontend:
+
+### Development Setup
+
+Add this to your theme's `functions.php` or a custom plugin:
 
 ```php
-header( 'Access-Control-Allow-Origin: https://yourdomain.com' );
+// Allow localhost development
+add_filter( 'kg_core_allowed_origins', function( $origins ) {
+    return array_merge( $origins, [
+        'http://localhost:3000',
+        'http://localhost:3001',
+    ]);
+});
 ```
+
+### Production Setup
+
+```php
+// Production domains only
+add_filter( 'kg_core_allowed_origins', function( $origins ) {
+    return [
+        'https://kidsgourmet.com',
+        'https://www.kidsgourmet.com',
+    ];
+});
+```
+
+### Enable Public CORS (Not Recommended)
+
+Only use this if you need to allow any domain for public endpoints:
+
+```php
+add_filter( 'kg_core_allow_public_cors', '__return_true' );
+```
+
+**Security Note:** By default, CORS is restricted to whitelisted origins. Public CORS is disabled to prevent API abuse.
 
 ## License
 

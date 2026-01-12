@@ -153,6 +153,12 @@ class JWTHandler {
      * Base64 URL decode
      */
     private static function base64_url_decode( $data ) {
+        // Restore padding
+        $remainder = strlen( $data ) % 4;
+        if ( $remainder ) {
+            $padlen = 4 - $remainder;
+            $data .= str_repeat( '=', $padlen );
+        }
         return base64_decode( strtr( $data, '-_', '+/' ) );
     }
 

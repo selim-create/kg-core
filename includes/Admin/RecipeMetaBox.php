@@ -169,6 +169,10 @@ class RecipeMetaBox {
             if ( json_last_error() === JSON_ERROR_NONE && is_array($instructions) ) {
                 update_post_meta( $post_id, '_kg_instructions', $instructions );
             } else {
+                // Log JSON parsing error
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                    error_log( 'KG Core: Invalid JSON in instructions for post ' . $post_id . ': ' . json_last_error_msg() );
+                }
                 update_post_meta( $post_id, '_kg_instructions', [] );
             }
         }
@@ -180,6 +184,10 @@ class RecipeMetaBox {
             if ( json_last_error() === JSON_ERROR_NONE && is_array($substitutes) ) {
                 update_post_meta( $post_id, '_kg_substitutes', $substitutes );
             } else {
+                // Log JSON parsing error
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                    error_log( 'KG Core: Invalid JSON in substitutes for post ' . $post_id . ': ' . json_last_error_msg() );
+                }
                 update_post_meta( $post_id, '_kg_substitutes', [] );
             }
         }

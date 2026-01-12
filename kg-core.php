@@ -99,22 +99,25 @@ add_action( 'rest_api_init', function() {
     // CORS headers ekle
     remove_filter( 'rest_pre_serve_request', 'rest_send_cors_headers' );
     add_filter( 'rest_pre_serve_request', function( $value ) {
-        // SECURITY NOTE: Wildcard origin (*) with credentials is a security risk
-        // For development only. In production, specify exact allowed origins:
+        // Configure allowed origins - use filter for production
         $allowed_origins = apply_filters( 'kg_core_allowed_origins', [
             'http://localhost:3000',
             'http://localhost:3001',
+            // Add production domains here or via filter
         ]);
         
         $origin = isset( $_SERVER['HTTP_ORIGIN'] ) ? $_SERVER['HTTP_ORIGIN'] : '';
         
         if ( in_array( $origin, $allowed_origins ) ) {
+            // Authenticated requests - specific origin only
             header( 'Access-Control-Allow-Origin: ' . $origin );
             header( 'Access-Control-Allow-Credentials: true' );
-        } else {
-            // For non-authenticated requests, allow any origin
-            header( 'Access-Control-Allow-Origin: *' );
+        } elseif ( ! empty( $origin ) && apply_filters( 'kg_core_allow_public_cors', false ) ) {
+            // Public requests - only if explicitly enabled
+            // This is disabled by default for security
+            header( 'Access-Control-Allow-Origin: ' . $origin );
         }
+        // If no match and public CORS not enabled, no CORS headers sent
         
         header( 'Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS' );
         header( 'Access-Control-Allow-Headers: Authorization, Content-Type, X-WP-Nonce' );

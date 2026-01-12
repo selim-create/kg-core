@@ -148,6 +148,10 @@ class IngredientMetaBox {
             if ( json_last_error() === JSON_ERROR_NONE && is_array($faq) ) {
                 update_post_meta( $post_id, '_kg_faq', $faq );
             } else {
+                // Log JSON parsing error
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                    error_log( 'KG Core: Invalid JSON in FAQ for ingredient ' . $post_id . ': ' . json_last_error_msg() );
+                }
                 update_post_meta( $post_id, '_kg_faq', [] );
             }
         }
