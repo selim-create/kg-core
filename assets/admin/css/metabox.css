@@ -1,0 +1,367 @@
+/**
+ * KG Core - Recipe MetaBox Admin Styles
+ * Modern, user-friendly styling for repeater fields
+ */
+
+/* Container */
+.kg-meta-box {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, sans-serif;
+}
+
+.kg-meta-box h3 {
+    margin: 20px 0 15px 0;
+    padding: 10px 0;
+    border-bottom: 2px solid #0073aa;
+    font-size: 16px;
+    color: #23282d;
+}
+
+.kg-meta-box h3:first-child {
+    margin-top: 0;
+}
+
+/* Repeater Container */
+.kg-repeater {
+    margin: 15px 0;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+}
+
+.kg-repeater-items {
+    margin-bottom: 15px;
+}
+
+/* Repeater Item */
+.kg-repeater-item {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 10px;
+    position: relative;
+    transition: box-shadow 0.2s;
+}
+
+.kg-repeater-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.kg-repeater-item.ui-sortable-helper {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    cursor: move;
+}
+
+.kg-repeater-item.ui-sortable-placeholder {
+    background: #f0f0f0;
+    border: 2px dashed #0073aa;
+    visibility: visible !important;
+    height: 50px !important;
+}
+
+/* Drag Handle */
+.kg-drag-handle {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: move;
+    color: #999;
+    font-size: 18px;
+    width: 20px;
+    text-align: center;
+}
+
+.kg-drag-handle:hover {
+    color: #0073aa;
+}
+
+.kg-drag-handle::before {
+    content: "☰";
+    display: block;
+}
+
+/* Remove Button */
+.kg-remove-item {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    background: #dc3232;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.2s;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.kg-remove-item:hover {
+    background: #a00;
+}
+
+/* Item Content */
+.kg-item-content {
+    margin-left: 35px;
+    margin-right: 40px;
+}
+
+/* Ingredients Grid */
+.kg-ingredient-row {
+    display: grid;
+    grid-template-columns: 100px 150px 1fr;
+    gap: 10px;
+    align-items: start;
+}
+
+.kg-ingredient-row label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 13px;
+    color: #555;
+}
+
+.kg-ingredient-row input[type="text"],
+.kg-ingredient-row input[type="number"],
+.kg-ingredient-row select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 14px;
+}
+
+.kg-ingredient-row input:focus,
+.kg-ingredient-row select:focus {
+    outline: none;
+    border-color: #0073aa;
+    box-shadow: 0 0 0 1px #0073aa;
+}
+
+/* Instructions Fields */
+.kg-instruction-header {
+    font-weight: 600;
+    font-size: 14px;
+    color: #0073aa;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.kg-instruction-fields {
+    display: grid;
+    gap: 12px;
+}
+
+.kg-instruction-fields label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 13px;
+    color: #555;
+}
+
+.kg-instruction-fields input[type="text"],
+.kg-instruction-fields textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.kg-instruction-fields textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.kg-instruction-fields input:focus,
+.kg-instruction-fields textarea:focus {
+    outline: none;
+    border-color: #0073aa;
+    box-shadow: 0 0 0 1px #0073aa;
+}
+
+.kg-instruction-fields small {
+    color: #666;
+    font-size: 12px;
+    font-style: italic;
+}
+
+/* Substitutes Grid */
+.kg-substitute-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    align-items: start;
+}
+
+.kg-substitute-row label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 13px;
+    color: #555;
+}
+
+.kg-substitute-row input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 14px;
+}
+
+.kg-substitute-row input:focus {
+    outline: none;
+    border-color: #0073aa;
+    box-shadow: 0 0 0 1px #0073aa;
+}
+
+/* Add Button */
+.kg-add-item {
+    background: #0073aa;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    padding: 10px 20px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.kg-add-item:hover {
+    background: #005177;
+}
+
+.kg-add-item::before {
+    content: "+";
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* Empty State */
+.kg-empty-state {
+    text-align: center;
+    padding: 30px;
+    color: #666;
+    font-style: italic;
+}
+
+/* Autocomplete */
+.kg-autocomplete-wrap {
+    position: relative;
+}
+
+.kg-autocomplete-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 3px 3px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    display: none;
+}
+
+.kg-autocomplete-results.active {
+    display: block;
+}
+
+.kg-autocomplete-item {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.kg-autocomplete-item:hover,
+.kg-autocomplete-item.selected {
+    background: #0073aa;
+    color: #fff;
+}
+
+.kg-autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.kg-autocomplete-loading {
+    padding: 10px;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 782px) {
+    .kg-ingredient-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .kg-substitute-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .kg-item-content {
+        margin-left: 0;
+        margin-right: 35px;
+        margin-top: 35px;
+    }
+    
+    .kg-drag-handle {
+        top: 10px;
+        left: 10px;
+        transform: none;
+    }
+}
+
+/* Loading State */
+.kg-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Validation */
+.kg-field-error {
+    border-color: #dc3232 !important;
+}
+
+.kg-error-message {
+    color: #dc3232;
+    font-size: 12px;
+    margin-top: 5px;
+    display: none;
+}
+
+.kg-field-error + .kg-error-message {
+    display: block;
+}
+
+/* Info boxes */
+.kg-info-box {
+    background: #e7f5fe;
+    border-left: 4px solid #0073aa;
+    padding: 10px 15px;
+    margin: 10px 0;
+    font-size: 13px;
+}
+
+.kg-info-box p {
+    margin: 5px 0;
+}

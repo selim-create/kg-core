@@ -90,6 +90,41 @@ function kg_core_init() {
 }
 add_action( 'plugins_loaded', 'kg_core_init' );
 
+// 8. ADMIN ASSETS ENQUEUE
+function kg_core_enqueue_admin_assets( $hook ) {
+    // Only load on post edit screens for recipe post type
+    global $post_type;
+    
+    if ( ( $hook === 'post.php' || $hook === 'post-new.php' ) && $post_type === 'recipe' ) {
+        // Enqueue jQuery UI Sortable (already included in WordPress)
+        wp_enqueue_script( 'jquery-ui-sortable' );
+        
+        // Enqueue custom admin CSS
+        wp_enqueue_style( 
+            'kg-metabox-css', 
+            KG_CORE_URL . 'assets/admin/css/metabox.css', 
+            [], 
+            KG_CORE_VERSION 
+        );
+        
+        // Enqueue custom admin JS
+        wp_enqueue_script( 
+            'kg-metabox-js', 
+            KG_CORE_URL . 'assets/admin/js/metabox.js', 
+            [ 'jquery', 'jquery-ui-sortable' ], 
+            KG_CORE_VERSION, 
+            true 
+        );
+        
+        // Localize script with AJAX URL and nonce
+        wp_localize_script( 'kg-metabox-js', 'kgMetaBox', [
+            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+            'nonce'   => wp_create_nonce( 'kg_metabox_nonce' ),
+        ]);
+    }
+}
+add_action( 'admin_enqueue_scripts', 'kg_core_enqueue_admin_assets' );
+
 // Opsiyonel: ACF JSON Kayıt Yeri (Eğer ACF kurarsanız diye)
 add_filter('acf/settings/save_json', function( $path ) {
     return KG_CORE_PATH . 'includes/Fields/acf-json';

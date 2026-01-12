@@ -6,6 +6,7 @@ class RecipeMetaBox {
     public function __construct() {
         add_action( 'add_meta_boxes', [ $this, 'add_custom_meta_boxes' ] );
         add_action( 'save_post', [ $this, 'save_custom_meta_data' ] );
+        add_action( 'wp_ajax_kg_search_ingredients', [ $this, 'ajax_search_ingredients' ] );
     }
 
     public function add_custom_meta_boxes() {
@@ -23,6 +24,9 @@ class RecipeMetaBox {
         // Mevcut değerleri çek
         $prep_time = get_post_meta( $post->ID, '_kg_prep_time', true );
         $is_featured = get_post_meta( $post->ID, '_kg_is_featured', true );
+        $ingredients = get_post_meta( $post->ID, '_kg_ingredients', true );
+        $instructions = get_post_meta( $post->ID, '_kg_instructions', true );
+        $substitutes = get_post_meta( $post->ID, '_kg_substitutes', true );
         $calories = get_post_meta( $post->ID, '_kg_calories', true );
         $protein = get_post_meta( $post->ID, '_kg_protein', true );
         $fiber = get_post_meta( $post->ID, '_kg_fiber', true );
@@ -33,6 +37,11 @@ class RecipeMetaBox {
         $expert_approved = get_post_meta( $post->ID, '_kg_expert_approved', true );
         $cross_sell_url = get_post_meta( $post->ID, '_kg_cross_sell_url', true );
         $cross_sell_title = get_post_meta( $post->ID, '_kg_cross_sell_title', true );
+        
+        // Ensure arrays are properly initialized
+        if ( ! is_array( $ingredients ) ) $ingredients = [];
+        if ( ! is_array( $instructions ) ) $instructions = [];
+        if ( ! is_array( $substitutes ) ) $substitutes = [];
         
         // Güvenlik için nonce
         wp_nonce_field( 'kg_recipe_save', 'kg_recipe_nonce' );
@@ -48,37 +57,47 @@ class RecipeMetaBox {
                 <input type="checkbox" id="kg_is_featured" name="kg_is_featured" value="1" <?php checked( $is_featured, 1 ); ?>>
             </p>
             
-            <h3>Malzemeler ve Adımlar</h3>
-            <p>
-                <label for="kg_ingredients"><strong>Malzemeler (Her satıra bir tane):</strong></label><br>
-                <textarea id="kg_ingredients" name="kg_ingredients" rows="5" style="width:100%;"><?php 
-                    $ing = get_post_meta( $post->ID, '_kg_ingredients', true );
-                    echo is_array($ing) ? implode("\n", $ing) : ''; 
-                ?></textarea>
-                <small>Örnek: 1 adet Yumurta</small>
-            </p>
-            
-            <p>
-                <label for="kg_instructions"><strong>Hazırlanış Adımları (JSON Format):</strong></label><br>
-                <textarea id="kg_instructions" name="kg_instructions" rows="8" style="width:100%; font-family: monospace;"><?php 
-                    $inst = get_post_meta( $post->ID, '_kg_instructions', true );
-                    if ( is_array($inst) ) {
-                        echo esc_textarea( json_encode($inst, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) );
+            <h3>Malzemeler</h3>
+            <div id="kg-ingredients-repeater" class="kg-repeater">
+                <div class="kg-repeater-items">
+                    <?php
+                    if ( ! empty( $ingredients ) ) {
+                        foreach ( $ingredients as $index => $ingredient ) {
+                            $this->render_ingredient_item( $index, $ingredient );
+                        }
                     }
-                ?></textarea>
-                <small>Örnek: [{"title":"Adım 1","text":"Havucu yıkayın","tip":"İnce dilimleyin"}]</small>
-            </p>
+                    ?>
+                </div>
+                <button type="button" class="kg-add-item">Malzeme Ekle</button>
+            </div>
 
-            <p>
-                <label for="kg_substitutes"><strong>İkame Malzemeler (JSON Format):</strong></label><br>
-                <textarea id="kg_substitutes" name="kg_substitutes" rows="4" style="width:100%; font-family: monospace;"><?php 
-                    $subs = get_post_meta( $post->ID, '_kg_substitutes', true );
-                    if ( is_array($subs) ) {
-                        echo esc_textarea( json_encode($subs, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) );
+            <h3>Hazırlanış Adımları</h3>
+            <div id="kg-instructions-repeater" class="kg-repeater">
+                <div class="kg-repeater-items">
+                    <?php
+                    if ( ! empty( $instructions ) ) {
+                        foreach ( $instructions as $index => $instruction ) {
+                            $this->render_instruction_item( $index, $instruction );
+                        }
                     }
-                ?></textarea>
-                <small>Örnek: [{"original":"Süt","substitute":"Badem sütü"}]</small>
-            </p>
+                    ?>
+                </div>
+                <button type="button" class="kg-add-item">Adım Ekle</button>
+            </div>
+
+            <h3>İkame Malzemeler</h3>
+            <div id="kg-substitutes-repeater" class="kg-repeater">
+                <div class="kg-repeater-items">
+                    <?php
+                    if ( ! empty( $substitutes ) ) {
+                        foreach ( $substitutes as $index => $substitute ) {
+                            $this->render_substitute_item( $index, $substitute );
+                        }
+                    }
+                    ?>
+                </div>
+                <button type="button" class="kg-add-item">İkame Ekle</button>
+            </div>
 
             <h3>Beslenme Değerleri</h3>
             <p>
@@ -135,6 +154,114 @@ class RecipeMetaBox {
         <?php
     }
 
+    /**
+     * Render single ingredient item
+     */
+    private function render_ingredient_item( $index, $ingredient ) {
+        $amount = isset( $ingredient['amount'] ) ? $ingredient['amount'] : '';
+        $unit = isset( $ingredient['unit'] ) ? $ingredient['unit'] : 'adet';
+        $name = isset( $ingredient['name'] ) ? $ingredient['name'] : '';
+        $ingredient_id = isset( $ingredient['ingredient_id'] ) ? $ingredient['ingredient_id'] : '';
+        ?>
+        <div class="kg-repeater-item">
+            <div class="kg-drag-handle"></div>
+            <button type="button" class="kg-remove-item" title="Kaldır">×</button>
+            <div class="kg-item-content">
+                <div class="kg-ingredient-row">
+                    <div>
+                        <label>Miktar</label>
+                        <input type="text" name="kg_ingredients[<?php echo $index; ?>][amount]" class="kg-ingredient-amount" value="<?php echo esc_attr( $amount ); ?>" placeholder="2">
+                    </div>
+                    <div>
+                        <label>Birim</label>
+                        <select name="kg_ingredients[<?php echo $index; ?>][unit]" class="kg-ingredient-unit">
+                            <option value="adet" <?php selected( $unit, 'adet' ); ?>>Adet</option>
+                            <option value="su bardağı" <?php selected( $unit, 'su bardağı' ); ?>>Su Bardağı</option>
+                            <option value="yemek kaşığı" <?php selected( $unit, 'yemek kaşığı' ); ?>>Yemek Kaşığı</option>
+                            <option value="çay kaşığı" <?php selected( $unit, 'çay kaşığı' ); ?>>Çay Kaşığı</option>
+                            <option value="gram" <?php selected( $unit, 'gram' ); ?>>Gram</option>
+                            <option value="ml" <?php selected( $unit, 'ml' ); ?>>ML</option>
+                            <option value="kg" <?php selected( $unit, 'kg' ); ?>>KG</option>
+                            <option value="litre" <?php selected( $unit, 'litre' ); ?>>Litre</option>
+                            <option value="tutam" <?php selected( $unit, 'tutam' ); ?>>Tutam</option>
+                        </select>
+                    </div>
+                    <div class="kg-autocomplete-wrap">
+                        <label>Malzeme Adı</label>
+                        <input type="text" name="kg_ingredients[<?php echo $index; ?>][name]" class="kg-ingredient-name" value="<?php echo esc_attr( $name ); ?>" placeholder="Un" autocomplete="off">
+                        <input type="hidden" name="kg_ingredients[<?php echo $index; ?>][ingredient_id]" class="kg-ingredient-id" value="<?php echo esc_attr( $ingredient_id ); ?>">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render single instruction item
+     */
+    private function render_instruction_item( $index, $instruction ) {
+        $id = isset( $instruction['id'] ) ? $instruction['id'] : ( $index + 1 );
+        $title = isset( $instruction['title'] ) ? $instruction['title'] : '';
+        $text = isset( $instruction['text'] ) ? $instruction['text'] : '';
+        $tip = isset( $instruction['tip'] ) ? $instruction['tip'] : '';
+        ?>
+        <div class="kg-repeater-item">
+            <div class="kg-drag-handle"></div>
+            <button type="button" class="kg-remove-item" title="Kaldır">×</button>
+            <div class="kg-item-content">
+                <div class="kg-instruction-header">Adım <?php echo $id; ?></div>
+                <div class="kg-instruction-fields">
+                    <input type="hidden" name="kg_instructions[<?php echo $index; ?>][id]" class="kg-instruction-id" value="<?php echo esc_attr( $id ); ?>">
+                    <div>
+                        <label>Adım Başlığı</label>
+                        <input type="text" name="kg_instructions[<?php echo $index; ?>][title]" class="kg-instruction-title" value="<?php echo esc_attr( $title ); ?>" placeholder="Malzemeleri hazırlayın">
+                    </div>
+                    <div>
+                        <label>Açıklama</label>
+                        <textarea name="kg_instructions[<?php echo $index; ?>][text]" class="kg-instruction-text" placeholder="Havuçları yıkayıp soyun, küçük küpler halinde doğrayın..." rows="3"><?php echo esc_textarea( $text ); ?></textarea>
+                    </div>
+                    <div>
+                        <label>Püf Noktası <small>(opsiyonel)</small></label>
+                        <input type="text" name="kg_instructions[<?php echo $index; ?>][tip]" class="kg-instruction-tip" value="<?php echo esc_attr( $tip ); ?>" placeholder="İnce rendeleyin">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render single substitute item
+     */
+    private function render_substitute_item( $index, $substitute ) {
+        $original = isset( $substitute['original'] ) ? $substitute['original'] : '';
+        $sub = isset( $substitute['substitute'] ) ? $substitute['substitute'] : '';
+        $note = isset( $substitute['note'] ) ? $substitute['note'] : '';
+        ?>
+        <div class="kg-repeater-item">
+            <div class="kg-drag-handle"></div>
+            <button type="button" class="kg-remove-item" title="Kaldır">×</button>
+            <div class="kg-item-content">
+                <div class="kg-substitute-row">
+                    <div>
+                        <label>Orijinal Malzeme</label>
+                        <input type="text" name="kg_substitutes[<?php echo $index; ?>][original]" class="kg-substitute-original" value="<?php echo esc_attr( $original ); ?>" placeholder="Süt">
+                    </div>
+                    <div>
+                        <label>İkame Malzeme</label>
+                        <input type="text" name="kg_substitutes[<?php echo $index; ?>][substitute]" class="kg-substitute-substitute" value="<?php echo esc_attr( $sub ); ?>" placeholder="Badem sütü">
+                    </div>
+                    <div>
+                        <label>Not <small>(opsiyonel)</small></label>
+                        <input type="text" name="kg_substitutes[<?php echo $index; ?>][note]" class="kg-substitute-note" value="<?php echo esc_attr( $note ); ?>" placeholder="Laktoz intoleransı için">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
     public function save_custom_meta_data( $post_id ) {
         // Autosave kontrolü
         if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
@@ -156,40 +283,57 @@ class RecipeMetaBox {
         $is_featured = isset( $_POST['kg_is_featured'] ) ? '1' : '0';
         update_post_meta( $post_id, '_kg_is_featured', $is_featured );
 
-        // Malzemeleri array olarak kaydet (satır satır bölerek)
-        if ( isset( $_POST['kg_ingredients'] ) ) {
-            $ingredients_array = array_filter(array_map('trim', explode("\n", $_POST['kg_ingredients'])));
-            update_post_meta( $post_id, '_kg_ingredients', $ingredients_array );
+        // Malzemeleri array olarak kaydet
+        if ( isset( $_POST['kg_ingredients'] ) && is_array( $_POST['kg_ingredients'] ) ) {
+            $ingredients = [];
+            foreach ( $_POST['kg_ingredients'] as $ingredient ) {
+                if ( ! empty( $ingredient['name'] ) ) {
+                    $ingredients[] = [
+                        'amount' => sanitize_text_field( $ingredient['amount'] ),
+                        'unit' => sanitize_text_field( $ingredient['unit'] ),
+                        'name' => sanitize_text_field( $ingredient['name'] ),
+                        'ingredient_id' => ! empty( $ingredient['ingredient_id'] ) ? intval( $ingredient['ingredient_id'] ) : null,
+                    ];
+                }
+            }
+            update_post_meta( $post_id, '_kg_ingredients', $ingredients );
+        } else {
+            update_post_meta( $post_id, '_kg_ingredients', [] );
         }
 
-        // Instructions - JSON decode
-        if ( isset( $_POST['kg_instructions'] ) ) {
-            $instructions_json = stripslashes( $_POST['kg_instructions'] );
-            $instructions = json_decode( $instructions_json, true );
-            if ( json_last_error() === JSON_ERROR_NONE && is_array($instructions) ) {
-                update_post_meta( $post_id, '_kg_instructions', $instructions );
-            } else {
-                // Log JSON parsing error
-                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                    error_log( 'KG Core: Invalid JSON in instructions for post ' . $post_id . ': ' . json_last_error_msg() );
+        // Instructions - Array olarak kaydet
+        if ( isset( $_POST['kg_instructions'] ) && is_array( $_POST['kg_instructions'] ) ) {
+            $instructions = [];
+            foreach ( $_POST['kg_instructions'] as $instruction ) {
+                if ( ! empty( $instruction['title'] ) || ! empty( $instruction['text'] ) ) {
+                    $instructions[] = [
+                        'id' => intval( $instruction['id'] ),
+                        'title' => sanitize_text_field( $instruction['title'] ),
+                        'text' => sanitize_textarea_field( $instruction['text'] ),
+                        'tip' => sanitize_text_field( $instruction['tip'] ),
+                    ];
                 }
-                update_post_meta( $post_id, '_kg_instructions', [] );
             }
+            update_post_meta( $post_id, '_kg_instructions', $instructions );
+        } else {
+            update_post_meta( $post_id, '_kg_instructions', [] );
         }
 
-        // Substitutes - JSON decode
-        if ( isset( $_POST['kg_substitutes'] ) ) {
-            $substitutes_json = stripslashes( $_POST['kg_substitutes'] );
-            $substitutes = json_decode( $substitutes_json, true );
-            if ( json_last_error() === JSON_ERROR_NONE && is_array($substitutes) ) {
-                update_post_meta( $post_id, '_kg_substitutes', $substitutes );
-            } else {
-                // Log JSON parsing error
-                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                    error_log( 'KG Core: Invalid JSON in substitutes for post ' . $post_id . ': ' . json_last_error_msg() );
+        // Substitutes - Array olarak kaydet
+        if ( isset( $_POST['kg_substitutes'] ) && is_array( $_POST['kg_substitutes'] ) ) {
+            $substitutes = [];
+            foreach ( $_POST['kg_substitutes'] as $substitute ) {
+                if ( ! empty( $substitute['original'] ) || ! empty( $substitute['substitute'] ) ) {
+                    $substitutes[] = [
+                        'original' => sanitize_text_field( $substitute['original'] ),
+                        'substitute' => sanitize_text_field( $substitute['substitute'] ),
+                        'note' => sanitize_text_field( $substitute['note'] ),
+                    ];
                 }
-                update_post_meta( $post_id, '_kg_substitutes', [] );
             }
+            update_post_meta( $post_id, '_kg_substitutes', $substitutes );
+        } else {
+            update_post_meta( $post_id, '_kg_substitutes', [] );
         }
 
         // Nutrition values
@@ -228,5 +372,44 @@ class RecipeMetaBox {
         if ( isset( $_POST['kg_cross_sell_title'] ) ) {
             update_post_meta( $post_id, '_kg_cross_sell_title', sanitize_text_field( $_POST['kg_cross_sell_title'] ) );
         }
+    }
+
+    /**
+     * AJAX handler for ingredient search
+     */
+    public function ajax_search_ingredients() {
+        // Check nonce
+        if ( ! isset( $_GET['nonce'] ) || ! wp_verify_nonce( $_GET['nonce'], 'kg_metabox_nonce' ) ) {
+            wp_send_json_error( 'Invalid nonce' );
+        }
+
+        $query = isset( $_GET['q'] ) ? sanitize_text_field( $_GET['q'] ) : '';
+
+        if ( empty( $query ) ) {
+            wp_send_json_success( [] );
+        }
+
+        $args = [
+            'post_type'      => 'ingredient',
+            'posts_per_page' => 10,
+            'post_status'    => 'publish',
+            's'              => $query,
+        ];
+
+        $query_obj = new \WP_Query( $args );
+        $results = [];
+
+        if ( $query_obj->have_posts() ) {
+            while ( $query_obj->have_posts() ) {
+                $query_obj->the_post();
+                $results[] = [
+                    'id'   => get_the_ID(),
+                    'name' => get_the_title(),
+                ];
+            }
+        }
+        wp_reset_postdata();
+
+        wp_send_json_success( $results );
     }
 }
