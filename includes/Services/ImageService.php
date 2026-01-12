@@ -6,12 +6,33 @@ class ImageService {
     private $pexels_key;
     private $preferred_api;
     private $openai_api_key;
+    private $image_provider;
+    private $stability_api_key;
     
     public function __construct() {
         $this->unsplash_key = get_option('kg_unsplash_api_key', '');
         $this->pexels_key = get_option('kg_pexels_api_key', '');
         $this->preferred_api = get_option('kg_preferred_image_api', 'unsplash');
         $this->openai_api_key = get_option('kg_ai_api_key', '');
+        $this->image_provider = get_option('kg_image_provider', 'dalle');
+        $this->stability_api_key = get_option('kg_stability_api_key', '');
+    }
+    
+    /**
+     * Generate image using configured provider (DALL-E or Stable Diffusion)
+     * 
+     * @param string $ingredient_name Name of ingredient in Turkish
+     * @return array|null Image data with URL and source or null on failure
+     */
+    public function generateImage($ingredient_name) {
+        if ($this->image_provider === 'stability' && !empty($this->stability_api_key)) {
+            return $this->generateWithStableDiffusion($ingredient_name);
+        } else if (!empty($this->openai_api_key)) {
+            return $this->generateWithDallE($ingredient_name);
+        }
+        
+        error_log('KG Core: No image generation API key configured');
+        return null;
     }
     
     /**
@@ -20,13 +41,13 @@ class ImageService {
      * @param string $ingredient_name Name of ingredient in Turkish
      * @return array|null Image data with URL and source or null on failure
      */
-    public function generateImage($ingredient_name) {
+    private function generateWithDallE($ingredient_name) {
         if (empty($this->openai_api_key)) {
             error_log('KG Core: OpenAI API key not configured for DALL-E');
             return null;
         }
         
-        $prompt = $this->buildImagePrompt($ingredient_name);
+        $prompt = $this->buildDallEPrompt($ingredient_name);
         
         $response = wp_remote_post('https://api.openai.com/v1/images/generations', [
             'headers' => [
@@ -68,80 +89,385 @@ class ImageService {
             'url' => $body['data'][0]['url'],
             'source' => 'dall-e-3',
             'credit' => 'AI Generated (DALL-E 3)',
-            'credit_url' => ''
+            'credit_url' => '',
+            'prompt' => $prompt
         ];
     }
     
     /**
-     * Build DALL-E 3 prompt for ingredient image
+     * Generate image using Stable Diffusion (Stability AI)
+     * 
+     * @param string $ingredient_name Name of ingredient in Turkish
+     * @return array|null Image data with URL and source or null on failure
+     */
+    private function generateWithStableDiffusion($ingredient_name) {
+        if (empty($this->stability_api_key)) {
+            error_log('KG Core: Stability AI API key not configured');
+            return null;
+        }
+        
+        $prompt = $this->buildStabilityPrompt($ingredient_name);
+        $negative_prompt = $this->getStabilityNegativePrompt();
+        
+        $response = wp_remote_post('https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->stability_api_key,
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+            ],
+            'body' => json_encode([
+                'text_prompts' => [
+                    [
+                        'text' => $prompt,
+                        'weight' => 1
+                    ],
+                    [
+                        'text' => $negative_prompt,
+                        'weight' => -1
+                    ]
+                ],
+                'cfg_scale' => 7,
+                'height' => 1024,
+                'width' => 1024,
+                'steps' => 30,
+                'samples' => 1
+            ]),
+            'timeout' => 90
+        ]);
+        
+        if (is_wp_error($response)) {
+            error_log('KG Core Stability AI Error: ' . $response->get_error_message());
+            return null;
+        }
+        
+        $status_code = wp_remote_retrieve_response_code($response);
+        if ($status_code !== 200) {
+            $body = json_decode(wp_remote_retrieve_body($response), true);
+            $error_msg = isset($body['message']) ? $body['message'] : 'Unknown error';
+            error_log('KG Core Stability AI HTTP Error: ' . $error_msg);
+            return null;
+        }
+        
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+        
+        if (empty($body['artifacts'][0]['base64'])) {
+            error_log('KG Core Stability AI Error: No image data in response');
+            return null;
+        }
+        
+        // Convert base64 to data URL
+        $base64_image = $body['artifacts'][0]['base64'];
+        $data_url = 'data:image/png;base64,' . $base64_image;
+        
+        return [
+            'url' => $data_url,
+            'source' => 'stability-ai',
+            'credit' => 'AI Generated (Stable Diffusion)',
+            'credit_url' => '',
+            'prompt' => $prompt,
+            'negative_prompt' => $negative_prompt
+        ];
+    }
+    
+    /**
+     * Build DALL-E 3 prompt for ingredient image (optimized to avoid prepared food)
      * 
      * @param string $ingredient_name Ingredient name in Turkish
      * @return string Formatted prompt in English
      */
-    private function buildImagePrompt($ingredient_name) {
-        $english_name = $this->translateToEnglish($ingredient_name);
+    private function buildDallEPrompt($ingredient_name) {
+        $english_name = $this->getEnglishName($ingredient_name);
+        $category = $this->getIngredientCategory($ingredient_name);
+        $template = $this->getIngredientPromptTemplate($category);
         
-        return "Professional food photography of fresh {$english_name}. " .
-               "Clean pure white background, no shadows on background. " .
-               "Soft diffused studio lighting from upper left at 45 degrees. " .
-               "Single ingredient only, no props, no plates, no decorations. " .
-               "High-end cookbook style, appetizing and vibrant colors. " .
-               "Photorealistic, sharp focus, centered composition. " .
-               "Suitable for baby food nutrition guide website.";
+        // Replace {INGREDIENT} placeholder with actual ingredient name
+        $prompt = str_replace('{INGREDIENT}', $english_name, $template);
+        
+        return $prompt;
     }
     
     /**
-     * Translate Turkish ingredient name to English
+     * Build Stable Diffusion prompt for ingredient image
+     * 
+     * @param string $ingredient_name Ingredient name in Turkish
+     * @return string Formatted prompt in English
+     */
+    private function buildStabilityPrompt($ingredient_name) {
+        // Use same prompt template as DALL-E
+        return $this->buildDallEPrompt($ingredient_name);
+    }
+    
+    /**
+     * Get negative prompt for Stable Diffusion
+     * Excludes unwanted elements like cooked food, kitchen items, equipment
+     * 
+     * @return string Negative prompt
+     */
+    private function getStabilityNegativePrompt() {
+        return 'cooked, cooking, meal, dish, recipe, plate, bowl, puree, mashed, soup, stew, sauce, prepared food, baby food, processed, ' .
+               'pan, pot, spoon, fork, knife, cutting board, kitchen, stove, oven, microwave, blender, mixer, ' .
+               'camera, spotlight, tripod, studio equipment, lighting equipment, hands, fingers, person, human, face, body parts, ' .
+               'text, watermark, logo, signature, label, tag, price tag, table, tablecloth, napkin, decoration, flowers, vase, ' .
+               'blurry, low quality, pixelated, grainy, noisy, artifacts, distorted, deformed, ugly, bad anatomy, wrong proportions, ' .
+               'oversaturated, undersaturated, overexposed, underexposed, busy background, cluttered, messy, complex background, ' .
+               'colored background, patterned background, textured background, gradient background, dark background, black background';
+    }
+    
+    /**
+     * Get prompt template based on ingredient category
+     * 
+     * @param string $category Category (fruits, vegetables, proteins, grains, dairy)
+     * @return string Prompt template with {INGREDIENT} placeholder
+     */
+    private function getIngredientPromptTemplate($category) {
+        $templates = [
+            'fruits' => 'A single fresh {INGREDIENT}, raw and uncut, whole fruit, ' .
+                       'isolated on pure white seamless background, ' .
+                       'professional product photography, commercial food photography style, ' .
+                       'soft diffused natural lighting from left side, ' .
+                       'subtle natural shadow beneath the fruit, ' .
+                       'vibrant natural colors, highly detailed texture of skin, ' .
+                       'sharp focus, centered composition, negative space around subject, ' .
+                       'no other objects, no decorations, no props, ' .
+                       'clean minimalist style, stock photo quality',
+            
+            'vegetables' => 'Fresh raw {INGREDIENT}, whole and unprocessed vegetable, ' .
+                           'isolated on pure white seamless studio background, ' .
+                           'professional product photography for grocery store, ' .
+                           'soft box lighting from upper left at 45 degrees, ' .
+                           'gentle natural shadow on white surface, ' .
+                           'vivid fresh colors showing ripeness and quality, ' .
+                           'detailed texture visible, water droplets for freshness look, ' .
+                           'sharp focus throughout, centered in frame, ' .
+                           'no cutting board, no knife, no kitchen items, ' .
+                           'clean commercial photography style',
+            
+            'proteins' => 'Raw fresh {INGREDIENT}, uncooked protein ingredient, ' .
+                         'placed on pure white background, ' .
+                         'professional butcher shop or fishmonger display style photography, ' .
+                         'clean soft lighting, no harsh shadows, ' .
+                         'showing fresh quality and natural color, ' .
+                         'high detail, sharp focus, ' .
+                         'no seasoning, no marinade, no cooking preparation, ' .
+                         'isolated single item, no other ingredients, ' .
+                         'commercial food photography',
+            
+            'grains' => 'Dry uncooked {INGREDIENT}, raw grain or cereal ingredient, ' .
+                       'small pile or scattered arrangement on pure white background, ' .
+                       'macro food photography showing individual grain texture, ' .
+                       'soft even lighting, no harsh shadows, ' .
+                       'natural earthy colors, sharp detail, ' .
+                       'no bowl, no container, no scoop, ' .
+                       'clean product photography style',
+            
+            'dairy' => 'Fresh {INGREDIENT}, unprocessed dairy product, ' .
+                      'presented on pure white background, ' .
+                      'professional product photography, ' .
+                      'clean soft lighting, minimal shadows, ' .
+                      'showing freshness and quality, ' .
+                      'sharp focus, centered composition, ' .
+                      'no decorations, no garnish, ' .
+                      'commercial photography style'
+        ];
+        
+        return $templates[$category] ?? $templates['vegetables'];
+    }
+    
+    /**
+     * Determine ingredient category from Turkish name
+     * 
+     * @param string $name Turkish ingredient name
+     * @return string Category (fruits, vegetables, proteins, grains, dairy)
+     */
+    private function getIngredientCategory($name) {
+        $lower = mb_strtolower($name, 'UTF-8');
+        
+        $fruits = ['elma', 'muz', 'armut', 'şeftali', 'kayısı', 'erik', 'kiraz', 'çilek', 'üzüm', 'karpuz', 'kavun', 
+                   'portakal', 'mandalina', 'kivi', 'hurma', 'incir', 'nar', 'avokado', 'mango', 'ananas', 'papaya',
+                   'böğürtlen', 'ahududu', 'yaban mersini', 'vişne', 'limon', 'greyfurt', 'ayva'];
+        
+        $vegetables = ['havuç', 'patates', 'brokoli', 'tatlı patates', 'kabak', 'balkabağı', 'karnabahar', 'ıspanak',
+                      'pırasa', 'bezelye', 'fasulye', 'domates', 'salatalık', 'biber', 'patlıcan', 'lahana', 'soğan',
+                      'sarımsak', 'kereviz', 'pancar', 'marul', 'roka', 'turp', 'bamya', 'enginar'];
+        
+        $proteins = ['tavuk göğsü', 'tavuk', 'hindi', 'somon', 'levrek', 'çipura', 'ton balığı', 'yumurta', 'dana eti',
+                    'kuzu eti', 'kırmızı et', 'balık'];
+        
+        $grains = ['pirinç', 'yulaf', 'mercimek', 'nohut', 'bulgur', 'kinoa', 'arpa', 'buğday', 'mısır', 'kuskus'];
+        
+        $dairy = ['yoğurt', 'süt', 'peynir', 'lor peyniri', 'beyaz peynir', 'kaşar peyniri'];
+        
+        if (in_array($lower, $fruits)) {
+            return 'fruits';
+        } else if (in_array($lower, $vegetables)) {
+            return 'vegetables';
+        } else if (in_array($lower, $proteins)) {
+            return 'proteins';
+        } else if (in_array($lower, $grains)) {
+            return 'grains';
+        } else if (in_array($lower, $dairy)) {
+            return 'dairy';
+        }
+        
+        return 'vegetables'; // Default to vegetables
+    }
+    
+    /**
+     * Translate Turkish ingredient name to English with descriptive terms
+     * Expanded to 100+ ingredients
+     * 
+     * @param string $name Turkish ingredient name
+     * @return string English ingredient name with descriptive terms
+     */
+    private function getEnglishName($name) {
+        $translations = [
+            // Fruits
+            'elma' => 'whole red apple',
+            'muz' => 'whole ripe yellow banana',
+            'armut' => 'whole fresh pear',
+            'şeftali' => 'whole fresh peach',
+            'kayısı' => 'whole fresh apricots',
+            'erik' => 'whole fresh plums',
+            'kiraz' => 'fresh cherries with stems',
+            'çilek' => 'fresh whole strawberries',
+            'üzüm' => 'fresh grape cluster',
+            'karpuz' => 'whole watermelon',
+            'kavun' => 'whole fresh cantaloupe melon',
+            'portakal' => 'whole fresh oranges',
+            'mandalina' => 'whole fresh mandarins',
+            'kivi' => 'whole kiwi fruit',
+            'hurma' => 'whole fresh persimmon',
+            'incir' => 'whole fresh figs',
+            'nar' => 'whole fresh pomegranate',
+            'avokado' => 'whole ripe avocado',
+            'mango' => 'whole ripe mango',
+            'ananas' => 'whole fresh pineapple',
+            'papaya' => 'whole fresh papaya',
+            'böğürtlen' => 'fresh blackberries',
+            'ahududu' => 'fresh raspberries',
+            'yaban mersini' => 'fresh blueberries',
+            'vişne' => 'fresh sour cherries',
+            'limon' => 'whole fresh lemons',
+            'greyfurt' => 'whole fresh grapefruit',
+            'ayva' => 'whole fresh quince',
+            
+            // Vegetables
+            'havuç' => 'fresh orange carrots with green tops',
+            'patates' => 'whole raw potatoes',
+            'brokoli' => 'fresh broccoli head',
+            'tatlı patates' => 'whole sweet potatoes',
+            'kabak' => 'fresh zucchini squash',
+            'balkabağı' => 'whole orange pumpkin',
+            'karnabahar' => 'fresh cauliflower head',
+            'ıspanak' => 'fresh spinach leaves bunch',
+            'pırasa' => 'fresh leeks',
+            'bezelye' => 'fresh green peas in pods',
+            'fasulye' => 'fresh green beans',
+            'domates' => 'fresh red tomatoes',
+            'salatalık' => 'fresh cucumber',
+            'biber' => 'fresh bell peppers',
+            'patlıcan' => 'whole purple eggplant',
+            'lahana' => 'whole fresh cabbage',
+            'soğan' => 'whole yellow onions',
+            'sarımsak' => 'whole garlic bulb',
+            'kereviz' => 'fresh celery stalks',
+            'pancar' => 'whole fresh beetroot',
+            'marul' => 'fresh lettuce head',
+            'roka' => 'fresh arugula leaves',
+            'turp' => 'fresh radishes',
+            'bamya' => 'fresh okra pods',
+            'enginar' => 'whole fresh artichoke',
+            'kırmızı biber' => 'fresh red bell peppers',
+            'yeşil biber' => 'fresh green bell peppers',
+            'kornişon' => 'fresh gherkin cucumbers',
+            'kuşkonmaz' => 'fresh asparagus spears',
+            
+            // Proteins
+            'tavuk göğsü' => 'raw chicken breast fillet',
+            'tavuk' => 'raw whole chicken',
+            'hindi' => 'raw turkey breast',
+            'somon' => 'raw salmon fillet',
+            'levrek' => 'raw sea bass fillet',
+            'çipura' => 'raw sea bream fish',
+            'ton balığı' => 'raw tuna steak',
+            'yumurta' => 'fresh brown eggs',
+            'dana eti' => 'raw veal meat',
+            'kuzu eti' => 'raw lamb meat',
+            'kırmızı et' => 'raw beef steak',
+            'balık' => 'raw whole fish',
+            'hamsi' => 'fresh anchovies',
+            'palamut' => 'raw bonito fish',
+            'uskumru' => 'whole fresh mackerel',
+            
+            // Grains & Legumes
+            'pirinç' => 'raw white rice grains',
+            'yulaf' => 'dry rolled oats',
+            'mercimek' => 'raw red lentils',
+            'nohut' => 'dried chickpeas',
+            'bulgur' => 'dry bulgur wheat',
+            'kinoa' => 'raw quinoa grains',
+            'arpa' => 'raw barley grains',
+            'buğday' => 'raw wheat grains',
+            'mısır' => 'fresh corn kernels',
+            'kuskus' => 'dry couscous grains',
+            'kırmızı mercimek' => 'raw red lentils',
+            'yeşil mercimek' => 'raw green lentils',
+            'barbunya' => 'dried pinto beans',
+            'fasulye' => 'dried white beans',
+            
+            // Dairy
+            'yoğurt' => 'plain white yogurt in glass bowl',
+            'süt' => 'glass of whole milk',
+            'peynir' => 'block of cheese',
+            'lor peyniri' => 'fresh cottage cheese',
+            'beyaz peynir' => 'white feta cheese block',
+            'kaşar peyniri' => 'yellow kashkaval cheese',
+            'labne' => 'fresh labneh yogurt cheese',
+            'tereyağı' => 'block of butter',
+            
+            // Nuts & Seeds
+            'badem' => 'whole raw almonds',
+            'ceviz' => 'whole walnuts',
+            'fındık' => 'whole hazelnuts',
+            'fıstık' => 'raw peanuts',
+            'antep fıstığı' => 'raw pistachios',
+            'susam' => 'sesame seeds',
+            'ayçiçeği çekirdeği' => 'sunflower seeds',
+            'kabak çekirdeği' => 'pumpkin seeds',
+            'çam fıstığı' => 'pine nuts',
+            'kaju' => 'raw cashew nuts',
+            
+            // Herbs & Spices (fresh)
+            'maydanoz' => 'fresh parsley bunch',
+            'dereotu' => 'fresh dill bunch',
+            'nane' => 'fresh mint leaves',
+            'fesleğen' => 'fresh basil leaves',
+            'kekik' => 'fresh thyme sprigs',
+            'biberiye' => 'fresh rosemary sprigs',
+            'tarhun' => 'fresh tarragon',
+            
+            // Other
+            'zeytinyağı' => 'bottle of olive oil',
+            'bal' => 'jar of honey',
+            'zeytin' => 'whole black olives',
+            'hurma' => 'dried dates',
+            'üzüm' => 'dried raisins',
+            'kuru kayısı' => 'dried apricots',
+            'kuru incir' => 'dried figs'
+        ];
+        
+        $lower = mb_strtolower($name, 'UTF-8');
+        return $translations[$lower] ?? $name;
+    }
+    
+    /**
+     * Legacy method name for backward compatibility
      * 
      * @param string $name Turkish ingredient name
      * @return string English ingredient name
      */
     private function translateToEnglish($name) {
-        $translations = [
-            'elma' => 'red apple', 
-            'muz' => 'ripe banana', 
-            'armut' => 'pear',
-            'havuç' => 'fresh carrots with green tops', 
-            'patates' => 'potatoes',
-            'avokado' => 'avocado halved', 
-            'brokoli' => 'broccoli florets',
-            'yumurta' => 'brown eggs', 
-            'tavuk göğsü' => 'raw chicken breast',
-            'somon' => 'fresh salmon fillet', 
-            'yoğurt' => 'plain yogurt in bowl',
-            'pirinç' => 'white rice grains', 
-            'yulaf' => 'oat flakes',
-            'şeftali' => 'fresh peach',
-            'kayısı' => 'fresh apricots',
-            'erik' => 'fresh plums',
-            'kiraz' => 'fresh cherries',
-            'çilek' => 'fresh strawberries',
-            'üzüm' => 'fresh grapes',
-            'karpuz' => 'fresh watermelon slice',
-            'kavun' => 'fresh cantaloupe',
-            'portakal' => 'fresh oranges',
-            'mandalina' => 'fresh mandarins',
-            'kivi' => 'fresh kiwi fruit',
-            'hurma' => 'fresh persimmon',
-            'incir' => 'fresh figs',
-            'nar' => 'fresh pomegranate',
-            'tatlı patates' => 'sweet potatoes',
-            'kabak' => 'zucchini squash',
-            'balkabağı' => 'pumpkin',
-            'karnabahar' => 'cauliflower',
-            'ıspanak' => 'fresh spinach leaves',
-            'pırasa' => 'fresh leeks',
-            'bezelye' => 'fresh green peas',
-            'fasulye' => 'green beans',
-            'mercimek' => 'red lentils',
-            'domates' => 'fresh tomatoes',
-            'salatalık' => 'fresh cucumber',
-            'biber' => 'bell peppers',
-            'patlıcan' => 'eggplant'
-        ];
-        
-        $lower = mb_strtolower($name, 'UTF-8');
-        return $translations[$lower] ?? $name;
+        return $this->getEnglishName($name);
     }
     
     /**
