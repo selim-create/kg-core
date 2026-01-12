@@ -373,8 +373,8 @@ class AIEnrichButton {
             return;
         }
         
-        // Generate filename
-        $filename = sanitize_title($data['title']);
+        // Use actual post title for consistency
+        $filename = sanitize_title(get_the_title($post_id));
         
         // Download to media library
         $attachment_id = $image_service->downloadToMediaLibrary($image_data['url'], $filename);

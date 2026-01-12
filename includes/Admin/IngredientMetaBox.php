@@ -6,6 +6,27 @@ class IngredientMetaBox {
     public function __construct() {
         add_action( 'add_meta_boxes', [ $this, 'add_custom_meta_boxes' ] );
         add_action( 'save_post', [ $this, 'save_custom_meta_data' ] );
+        add_action( 'admin_notices', [ $this, 'show_validation_notices' ] );
+    }
+    
+    /**
+     * Show validation error notices
+     */
+    public function show_validation_notices() {
+        global $post;
+        
+        if ( ! $post || get_post_type( $post ) !== 'ingredient' ) {
+            return;
+        }
+        
+        $errors = get_transient( 'kg_ingredient_validation_errors_' . $post->ID );
+        
+        if ( $errors && is_array( $errors ) ) {
+            foreach ( $errors as $error ) {
+                echo '<div class="notice notice-error is-dismissible"><p><strong>Malzeme Hatası:</strong> ' . esc_html( $error ) . '</p></div>';
+            }
+            delete_transient( 'kg_ingredient_validation_errors_' . $post->ID );
+        }
     }
 
     public function add_custom_meta_boxes() {
@@ -333,10 +354,12 @@ class IngredientMetaBox {
             if ( json_last_error() === JSON_ERROR_NONE && is_array($faq) ) {
                 update_post_meta( $post_id, '_kg_faq', $faq );
             } else {
-                // Log JSON parsing error
+                // Log and notify user of JSON error
+                $error_msg = 'FAQ JSON formatı geçersiz: ' . json_last_error_msg();
                 if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                    error_log( 'KG Core: Invalid JSON in FAQ for ingredient ' . $post_id . ': ' . json_last_error_msg() );
+                    error_log( 'KG Core: ' . $error_msg . ' for ingredient ' . $post_id );
                 }
+                $this->add_validation_error( $post_id, $error_msg );
                 update_post_meta( $post_id, '_kg_faq', [] );
             }
         }
@@ -348,9 +371,11 @@ class IngredientMetaBox {
             if ( json_last_error() === JSON_ERROR_NONE && is_array($prep_by_age) ) {
                 update_post_meta( $post_id, '_kg_prep_by_age', $prep_by_age );
             } else {
+                $error_msg = 'Yaşa Göre Hazırlama JSON formatı geçersiz: ' . json_last_error_msg();
                 if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                    error_log( 'KG Core: Invalid JSON in prep_by_age for ingredient ' . $post_id . ': ' . json_last_error_msg() );
+                    error_log( 'KG Core: ' . $error_msg . ' for ingredient ' . $post_id );
                 }
+                $this->add_validation_error( $post_id, $error_msg );
                 update_post_meta( $post_id, '_kg_prep_by_age', [] );
             }
         }
@@ -362,11 +387,30 @@ class IngredientMetaBox {
             if ( json_last_error() === JSON_ERROR_NONE && is_array($pairings) ) {
                 update_post_meta( $post_id, '_kg_pairings', $pairings );
             } else {
+                $error_msg = 'Uyumlu İkililer JSON formatı geçersiz: ' . json_last_error_msg();
                 if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                    error_log( 'KG Core: Invalid JSON in pairings for ingredient ' . $post_id . ': ' . json_last_error_msg() );
+                    error_log( 'KG Core: ' . $error_msg . ' for ingredient ' . $post_id );
                 }
+                $this->add_validation_error( $post_id, $error_msg );
                 update_post_meta( $post_id, '_kg_pairings', [] );
             }
         }
+    }
+    
+    /**
+     * Add validation error to be displayed
+     * 
+     * @param int $post_id Post ID
+     * @param string $message Error message
+     */
+    private function add_validation_error( $post_id, $message ) {
+        $errors = get_transient( 'kg_ingredient_validation_errors_' . $post_id );
+        
+        if ( ! is_array( $errors ) ) {
+            $errors = [];
+        }
+        
+        $errors[] = $message;
+        set_transient( 'kg_ingredient_validation_errors_' . $post_id, $errors, 60 );
     }
 }

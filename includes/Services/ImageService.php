@@ -316,9 +316,10 @@ class ImageService {
         // Sanitize filename and ensure proper extension
         $filename = sanitize_file_name($filename);
         
-        // If no extension, add .png for DALL-E or .jpg for others
+        // Add appropriate extension if not present
         if (!preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $filename)) {
-            $filename .= '.png'; // Default to PNG for AI-generated images
+            // Default to PNG (common for AI-generated and high-quality images)
+            $filename .= '.png';
         }
         
         // Prepare file array
