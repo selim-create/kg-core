@@ -8,7 +8,7 @@ class AIService {
     
     public function __construct() {
         $this->provider = get_option('kg_ai_provider', 'openai');
-        $this->api_key = get_option('kg_ai_api_key', '');
+        $this->api_key = get_option('kg_openai_api_key', '') ?: get_option('kg_ai_api_key', '');
         $this->model = get_option('kg_ai_model', 'gpt-4o-mini');
     }
     
@@ -63,44 +63,77 @@ class AIService {
         $prompt .= "Aşağıdaki malzeme hakkında Türkçe olarak detaylı ve bilimsel bilgi ver.\n\n";
         $prompt .= "Malzeme: {$name}\n\n";
         $prompt .= "Lütfen yanıtını SADECE aşağıdaki JSON formatında ver (başka açıklama ekleme):\n\n";
-        $prompt .= json_encode([
+        
+        $json_template = [
             'title' => 'Malzeme Adı (Türkçe)',
-            'excerpt' => '100 karakter kısa açıklama',
+            'excerpt' => 'SEO için 150-160 karakter meta açıklama',
             'content' => '3-4 paragraf detaylı açıklama (HTML <p> etiketleri ile)',
             'category' => 'Meyveler|Sebzeler|Proteinler|Tahıllar|Süt Ürünleri',
             'start_age' => 6,
             'benefits' => 'Sağlık faydaları detaylı açıklama (HTML formatında)',
-            'allergy_risk' => 'Düşük/Orta/Yüksek',
+            'allergy_risk' => 'Düşük|Orta|Yüksek',
             'allergens' => ['varsa alerjen listesi'],
-            'season' => 'İlkbahar/Yaz/Sonbahar/Kış/Tüm Yıl',
+            'season' => 'İlkbahar|Yaz|Sonbahar|Kış|Tüm Yıl',
             'storage_tips' => 'Saklama koşulları',
-            'selection_tips' => 'Taze malzeme nasıl seçilir ipuçları',
-            'pro_tips' => 'Bebekler için özel püf noktaları',
+            'selection_tips' => 'Nasıl seçilir? Olgunluk belirtileri',
+            'pro_tips' => 'Püf noktası ve önemli ipuçları',
             'preparation_tips' => 'Bebekler için hazırlama ipuçları',
             'prep_methods' => ['Püre', 'Haşlama', 'Buhar', 'Ezme'],
             'prep_by_age' => [
-                ['age' => '6-9 Ay', 'method' => 'Püre', 'text' => 'Detaylı hazırlama talimatı...'],
-                ['age' => '9+ Ay (BLW)', 'method' => 'Parmak Yiyecek', 'text' => 'BLW için talimat...']
+                [
+                    'age' => '6-9 Ay',
+                    'method' => 'Püre',
+                    'text' => 'Bu yaş grubu için detaylı hazırlama talimatı'
+                ],
+                [
+                    'age' => '9+ Ay (BLW)',
+                    'method' => 'Parmak Yiyecek',
+                    'text' => 'BLW için detaylı hazırlama talimatı'
+                ]
             ],
+            
+            // YENİ: Uyumlu İkililer (ZORUNLU DOLDURULMALI)
             'pairings' => [
-                ['emoji' => '🍌', 'name' => 'Uyumlu malzeme adı'],
-                ['emoji' => '🥚', 'name' => 'Başka uyumlu malzeme']
+                ['emoji' => '🍌', 'name' => 'Muz'],
+                ['emoji' => '🥚', 'name' => 'Yumurta'],
+                ['emoji' => '🍠', 'name' => 'Tatlı Patates'],
+                ['emoji' => '🥛', 'name' => 'Yoğurt']
             ],
+            
             'nutrition' => [
-                'calories' => '100g için kalori değeri (sadece sayı)',
-                'protein' => 'gram (sadece sayı)',
-                'carbs' => 'gram (sadece sayı)',
-                'fat' => 'gram (sadece sayı)',
-                'fiber' => 'gram (sadece sayı)',
-                'vitamins' => 'A, C, D, E, K gibi vitamin listesi'
+                'calories' => '100g için kalori değeri',
+                'protein' => 'gram cinsinden protein',
+                'carbs' => 'gram cinsinden karbonhidrat',
+                'fat' => 'gram cinsinden yağ',
+                'fiber' => 'gram cinsinden lif',
+                'vitamins' => 'A, C, D, E, K vb.'
             ],
+            
             'faq' => [
-                ['question' => 'Bebeklere ne zaman verilir?', 'answer' => 'Cevap'],
-                ['question' => 'Nasıl hazırlanır?', 'answer' => 'Cevap'],
-                ['question' => 'Alerji riski var mı?', 'answer' => 'Cevap']
+                ['question' => 'Bebeklere ne zaman verilebilir?', 'answer' => 'Detaylı cevap'],
+                ['question' => 'Alerji riski var mı?', 'answer' => 'Detaylı cevap'],
+                ['question' => 'Nasıl saklanmalı?', 'answer' => 'Detaylı cevap']
             ],
+            
+            // YENİ: SEO Meta (RankMath için)
+            'seo' => [
+                'title' => 'SEO başlığı - Bebeklere [Malzeme] Ne Zaman Verilir? | KidsGourmet',
+                'description' => '150-160 karakter SEO açıklaması',
+                'focus_keyword' => 'bebeklere [malzeme]',
+                'keywords' => ['bebek beslenmesi', 'ek gıda', '[malzeme]', 'bebeklere [malzeme]']
+            ],
+            
             'image_search_query' => 'İngilizce görsel arama terimi (örn: "fresh carrots baby food")'
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        ];
+        
+        $prompt .= json_encode($json_template, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        
+        $prompt .= "\n\nÖNEMLİ KURALLAR:\n";
+        $prompt .= "1. 'pairings' alanını MUTLAKA 4-6 uyumlu malzeme ile doldur. Gerçekten bu malzeme ile iyi giden besinleri yaz.\n";
+        $prompt .= "2. 'seo' alanındaki 'focus_keyword' malzeme adını içermeli.\n";
+        $prompt .= "3. 'prep_by_age' alanında her yaş grubu için spesifik ve pratik tavsiyeler ver.\n";
+        $prompt .= "4. Tüm içerik Türkçe olmalı, sadece emoji'ler evrensel.\n";
+        $prompt .= "5. Bilimsel ve güvenilir bilgiler ver, abartılı ifadelerden kaçın.\n";
         
         return $prompt;
     }

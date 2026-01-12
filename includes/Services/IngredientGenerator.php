@@ -177,6 +177,49 @@ class IngredientGenerator {
             }
             update_post_meta($post_id, '_kg_faq', $sanitized_faq);
         }
+        
+        // SEO Meta (RankMath and Yoast)
+        if (!empty($data['seo'])) {
+            $this->saveSeoMeta($post_id, $data['seo']);
+        }
+    }
+    
+    /**
+     * Save SEO meta fields for RankMath and Yoast
+     * 
+     * @param int $post_id Post ID
+     * @param array $seo_data SEO data from AI
+     */
+    private function saveSeoMeta($post_id, $seo_data) {
+        if (empty($seo_data)) {
+            return;
+        }
+        
+        // RankMath SEO meta
+        if (!empty($seo_data['title'])) {
+            update_post_meta($post_id, 'rank_math_title', sanitize_text_field($seo_data['title']));
+        }
+        
+        if (!empty($seo_data['description'])) {
+            update_post_meta($post_id, 'rank_math_description', sanitize_text_field($seo_data['description']));
+        }
+        
+        if (!empty($seo_data['focus_keyword'])) {
+            update_post_meta($post_id, 'rank_math_focus_keyword', sanitize_text_field($seo_data['focus_keyword']));
+        }
+        
+        // Yoast SEO meta (as fallback/alternative)
+        if (!empty($seo_data['title'])) {
+            update_post_meta($post_id, '_yoast_wpseo_title', sanitize_text_field($seo_data['title']));
+        }
+        
+        if (!empty($seo_data['description'])) {
+            update_post_meta($post_id, '_yoast_wpseo_metadesc', sanitize_text_field($seo_data['description']));
+        }
+        
+        if (!empty($seo_data['focus_keyword'])) {
+            update_post_meta($post_id, '_yoast_wpseo_focuskw', sanitize_text_field($seo_data['focus_keyword']));
+        }
     }
     
     /**

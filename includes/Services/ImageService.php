@@ -4,27 +4,25 @@ namespace KG_Core\Services;
 
 class ImageService {
 
-    private $unsplash_key;
-    private $pexels_key;
-    private $preferred_api;
-    private $openai_api_key;
-    private $image_provider;
+    private $image_source;
+    private $dalle_api_key;
     private $stability_api_key;
+    private $unsplash_api_key;
+    private $pexels_api_key;
 
     // ---- Prompt system constants (internal only) ----
     private const KG_BG_COLOR = '#F7F7F5';
 
     public function __construct() {
-        $this->unsplash_key     = get_option('kg_unsplash_api_key', '');
-        $this->pexels_key       = get_option('kg_pexels_api_key', '');
-        $this->preferred_api    = get_option('kg_preferred_image_api', 'unsplash');
-        $this->openai_api_key   = get_option('kg_ai_api_key', '');
-        $this->image_provider   = get_option('kg_image_provider', 'dalle');
+        $this->image_source      = get_option('kg_image_source', 'dalle');
+        $this->dalle_api_key     = get_option('kg_dalle_api_key', '') ?: get_option('kg_ai_api_key', '');
         $this->stability_api_key = get_option('kg_stability_api_key', '');
+        $this->unsplash_api_key  = get_option('kg_unsplash_api_key', '');
+        $this->pexels_api_key    = get_option('kg_pexels_api_key', '');
     }
 
     /**
-     * Generate image using configured provider (DALL-E or Stable Diffusion)
+     * Generate or fetch image using configured provider
      *
      * @param string $ingredient_name Name of ingredient in Turkish
      * @return array|null Image data with URL and source or null on failure
@@ -36,14 +34,23 @@ class ImageService {
             return null;
         }
 
-        if ($this->image_provider === 'stability' && !empty($this->stability_api_key)) {
-            return $this->generateWithStableDiffusion($ingredient_name);
-        } else if (!empty($this->openai_api_key)) {
-            return $this->generateWithDallE($ingredient_name);
+        switch ($this->image_source) {
+            case 'dalle':
+                return $this->generateWithDallE($ingredient_name);
+            
+            case 'stability':
+                return $this->generateWithStableDiffusion($ingredient_name);
+            
+            case 'unsplash':
+                return $this->searchUnsplash($ingredient_name);
+            
+            case 'pexels':
+                return $this->searchPexels($ingredient_name);
+            
+            default:
+                error_log('KG Core: Unknown image source: ' . $this->image_source);
+                return null;
         }
-
-        error_log('KG Core: No image generation API key configured');
-        return null;
     }
 
     /**
@@ -53,8 +60,8 @@ class ImageService {
      * @return array|null Image data with URL and source or null on failure
      */
     private function generateWithDallE($ingredient_name) {
-        if (empty($this->openai_api_key)) {
-            error_log('KG Core: OpenAI API key not configured for DALL-E');
+        if (empty($this->dalle_api_key)) {
+            error_log('KG Core: DALL-E API key not configured');
             return null;
         }
 
@@ -62,7 +69,7 @@ class ImageService {
 
         $response = wp_remote_post('https://api.openai.com/v1/images/generations', [
             'headers' => [
-                'Authorization' => 'Bearer ' . $this->openai_api_key,
+                'Authorization' => 'Bearer ' . $this->dalle_api_key,
                 'Content-Type'  => 'application/json',
             ],
             'body' => json_encode([
@@ -559,6 +566,44 @@ class ImageService {
         }
 
         return null;
+    }
+
+    /**
+     * Search for image on Unsplash
+     *
+     * @param string $ingredient_name Name of ingredient in Turkish
+     * @return array|null Image data with URL and source or null on failure
+     */
+    private function searchUnsplash($ingredient_name) {
+        if (empty($this->unsplash_api_key)) {
+            error_log('KG Core: Unsplash API key not configured');
+            return null;
+        }
+
+        // Translate to English for better search results
+        $english_name = $this->getEnglishName($ingredient_name);
+        $query = $english_name . ' food ingredient';
+
+        return $this->fetchFromUnsplash($query);
+    }
+
+    /**
+     * Search for image on Pexels
+     *
+     * @param string $ingredient_name Name of ingredient in Turkish
+     * @return array|null Image data with URL and source or null on failure
+     */
+    private function searchPexels($ingredient_name) {
+        if (empty($this->pexels_api_key)) {
+            error_log('KG Core: Pexels API key not configured');
+            return null;
+        }
+
+        // Translate to English for better search results
+        $english_name = $this->getEnglishName($ingredient_name);
+        $query = $english_name . ' food ingredient';
+
+        return $this->fetchFromPexels($query);
     }
 
     /**

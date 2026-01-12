@@ -27,14 +27,14 @@ class SettingsPage {
      * Register settings
      */
     public function register_settings() {
-        // AI Provider Settings
+        // === İÇERİK ÜRETİMİ AYARLARI ===
         register_setting('kg_ai_settings', 'kg_ai_provider', [
             'type' => 'string',
             'sanitize_callback' => 'sanitize_text_field',
             'default' => 'openai'
         ]);
         
-        register_setting('kg_ai_settings', 'kg_ai_api_key', [
+        register_setting('kg_ai_settings', 'kg_openai_api_key', [
             'type' => 'string',
             'sanitize_callback' => 'sanitize_text_field',
             'default' => ''
@@ -46,7 +46,26 @@ class SettingsPage {
             'default' => 'gpt-4o-mini'
         ]);
         
-        // Image API Settings
+        // === GÖRSEL KAYNAĞI AYARLARI (TEK SEÇENEK) ===
+        register_setting('kg_ai_settings', 'kg_image_source', [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => 'dalle'
+        ]);
+        
+        // === API KEYS (Her servis için ayrı) ===
+        register_setting('kg_ai_settings', 'kg_dalle_api_key', [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ]);
+        
+        register_setting('kg_ai_settings', 'kg_stability_api_key', [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ]);
+        
         register_setting('kg_ai_settings', 'kg_unsplash_api_key', [
             'type' => 'string',
             'sanitize_callback' => 'sanitize_text_field',
@@ -59,31 +78,73 @@ class SettingsPage {
             'default' => ''
         ]);
         
+        // === OTOMASYON ===
+        register_setting('kg_ai_settings', 'kg_auto_generate_on_missing', [
+            'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
+            'default' => false
+        ]);
+        
+        // Backward compatibility - keep old settings registered
+        register_setting('kg_ai_settings', 'kg_ai_api_key', [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ]);
+        
         register_setting('kg_ai_settings', 'kg_preferred_image_api', [
             'type' => 'string',
             'sanitize_callback' => 'sanitize_text_field',
             'default' => 'unsplash'
         ]);
         
-        // Image Generation Provider Settings (NEW)
         register_setting('kg_ai_settings', 'kg_image_provider', [
             'type' => 'string',
             'sanitize_callback' => 'sanitize_text_field',
             'default' => 'dalle'
         ]);
         
-        register_setting('kg_ai_settings', 'kg_stability_api_key', [
-            'type' => 'string',
-            'sanitize_callback' => 'sanitize_text_field',
-            'default' => ''
-        ]);
+        // Migrate old settings to new settings
+        $this->migrate_old_settings();
+    }
+    
+    /**
+     * Migrate old settings to new unified structure
+     */
+    private function migrate_old_settings() {
+        // Eski kg_ai_api_key varsa ve yeni yoksa, migrate et
+        $old_api_key = get_option('kg_ai_api_key', '');
+        $new_openai_key = get_option('kg_openai_api_key', '');
+        $new_dalle_key = get_option('kg_dalle_api_key', '');
         
-        // Auto-generation Setting
-        register_setting('kg_ai_settings', 'kg_auto_generate_on_missing', [
-            'type' => 'boolean',
-            'sanitize_callback' => 'rest_sanitize_boolean',
-            'default' => false
-        ]);
+        if (!empty($old_api_key) && empty($new_openai_key)) {
+            update_option('kg_openai_api_key', $old_api_key);
+        }
+        
+        if (!empty($old_api_key) && empty($new_dalle_key)) {
+            update_option('kg_dalle_api_key', $old_api_key);
+        }
+        
+        // Eski kg_preferred_image_api'yi kg_image_source'a migrate et
+        $old_preferred = get_option('kg_preferred_image_api', '');
+        $new_source = get_option('kg_image_source', '');
+        
+        if (!empty($old_preferred) && empty($new_source)) {
+            // Map old values to new values
+            $mapping = [
+                'dall-e' => 'dalle',
+                'unsplash' => 'unsplash',
+                'pexels' => 'pexels'
+            ];
+            $mapped_value = isset($mapping[$old_preferred]) ? $mapping[$old_preferred] : $old_preferred;
+            update_option('kg_image_source', $mapped_value);
+        }
+        
+        // Eski kg_image_provider'ı kontrol et (stability için)
+        $old_provider = get_option('kg_image_provider', '');
+        if ($old_provider === 'stability' && empty($new_source)) {
+            update_option('kg_image_source', 'stability');
+        }
     }
     
     /**
@@ -97,311 +158,239 @@ class SettingsPage {
         
         // Get current settings
         $ai_provider = get_option('kg_ai_provider', 'openai');
-        $ai_api_key = get_option('kg_ai_api_key', '');
+        $openai_api_key = get_option('kg_openai_api_key', '') ?: get_option('kg_ai_api_key', '');
         $ai_model = get_option('kg_ai_model', 'gpt-4o-mini');
-        $unsplash_key = get_option('kg_unsplash_api_key', '');
-        $pexels_key = get_option('kg_pexels_api_key', '');
-        $preferred_image_api = get_option('kg_preferred_image_api', 'unsplash');
-        $image_provider = get_option('kg_image_provider', 'dalle');
+        
+        $image_source = get_option('kg_image_source', 'dalle');
+        $dalle_api_key = get_option('kg_dalle_api_key', '') ?: get_option('kg_ai_api_key', '');
         $stability_api_key = get_option('kg_stability_api_key', '');
+        $unsplash_api_key = get_option('kg_unsplash_api_key', '');
+        $pexels_api_key = get_option('kg_pexels_api_key', '');
+        
         $auto_generate = get_option('kg_auto_generate_on_missing', false);
         
         ?>
         <div class="wrap">
-            <h1>⚙️ AI Ayarları</h1>
-            <p>Malzeme oluşturma için AI ve görsel API ayarlarını yapılandırın.</p>
+            <h1>🤖 KidsGourmet AI Ayarları</h1>
             
             <form method="post" action="options.php">
-                <?php
-                settings_fields('kg_ai_settings');
-                do_settings_sections('kg_ai_settings');
-                ?>
+                <?php settings_fields('kg_ai_settings'); ?>
                 
-                <table class="form-table">
-                    <!-- AI Provider Settings -->
-                    <tr>
-                        <th colspan="2">
-                            <h2>🤖 AI Sağlayıcı Ayarları</h2>
-                        </th>
-                    </tr>
+                <!-- İÇERİK ÜRETİMİ -->
+                <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h2 style="margin-top: 0; border-bottom: 2px solid #4CAF50; padding-bottom: 10px;">
+                        📝 İçerik Üretimi (AI Text)
+                    </h2>
                     
-                    <tr>
-                        <th scope="row">
-                            <label for="kg_ai_provider">AI Sağlayıcı</label>
-                        </th>
-                        <td>
-                            <select name="kg_ai_provider" id="kg_ai_provider" class="regular-text">
-                                <option value="openai" <?php selected($ai_provider, 'openai'); ?>>OpenAI (GPT-4)</option>
-                                <option value="anthropic" <?php selected($ai_provider, 'anthropic'); ?>>Anthropic (Claude)</option>
-                                <option value="gemini" <?php selected($ai_provider, 'gemini'); ?>>Google Gemini</option>
-                            </select>
-                            <p class="description">Kullanılacak AI sağlayıcısını seçin.</p>
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <th scope="row">
-                            <label for="kg_ai_api_key">API Key</label>
-                        </th>
-                        <td>
-                            <input type="password" name="kg_ai_api_key" id="kg_ai_api_key" 
-                                   value="<?php echo esc_attr($ai_api_key); ?>" class="regular-text" 
-                                   placeholder="sk-...">
-                            <p class="description">AI sağlayıcınızın API anahtarını girin.</p>
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <th scope="row">
-                            <label for="kg_ai_model">Model</label>
-                        </th>
-                        <td>
-                            <select name="kg_ai_model" id="kg_ai_model" class="regular-text">
-                                <optgroup label="OpenAI">
-                                    <option value="gpt-4o" <?php selected($ai_model, 'gpt-4o'); ?>>GPT-4o</option>
-                                    <option value="gpt-4o-mini" <?php selected($ai_model, 'gpt-4o-mini'); ?>>GPT-4o Mini</option>
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">AI Sağlayıcı</th>
+                            <td>
+                                <select name="kg_ai_provider" id="kg_ai_provider">
+                                    <option value="openai" <?php selected($ai_provider, 'openai'); ?>>OpenAI (GPT-4)</option>
+                                    <option value="anthropic" <?php selected($ai_provider, 'anthropic'); ?>>Anthropic (Claude)</option>
+                                    <option value="gemini" <?php selected($ai_provider, 'gemini'); ?>>Google (Gemini)</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">OpenAI API Key</th>
+                            <td>
+                                <input type="password" name="kg_openai_api_key" value="<?php echo esc_attr($openai_api_key); ?>" class="regular-text" placeholder="sk-...">
+                                <p class="description">İçerik üretimi için OpenAI API anahtarı. <a href="https://platform.openai.com/api-keys" target="_blank">API Key Al</a></p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Model</th>
+                            <td>
+                                <select name="kg_ai_model">
+                                    <option value="gpt-4o" <?php selected($ai_model, 'gpt-4o'); ?>>GPT-4o (En İyi Kalite)</option>
+                                    <option value="gpt-4o-mini" <?php selected($ai_model, 'gpt-4o-mini'); ?>>GPT-4o Mini (Hızlı & Ekonomik)</option>
                                     <option value="gpt-4-turbo" <?php selected($ai_model, 'gpt-4-turbo'); ?>>GPT-4 Turbo</option>
-                                </optgroup>
-                                <optgroup label="Anthropic">
-                                    <option value="claude-3-5-sonnet-20241022" <?php selected($ai_model, 'claude-3-5-sonnet-20241022'); ?>>Claude 3.5 Sonnet</option>
-                                    <option value="claude-3-opus-20240229" <?php selected($ai_model, 'claude-3-opus-20240229'); ?>>Claude 3 Opus</option>
-                                    <option value="claude-3-sonnet-20240229" <?php selected($ai_model, 'claude-3-sonnet-20240229'); ?>>Claude 3 Sonnet</option>
-                                </optgroup>
-                                <optgroup label="Google Gemini">
-                                    <option value="gemini-1.5-pro" <?php selected($ai_model, 'gemini-1.5-pro'); ?>>Gemini 1.5 Pro</option>
-                                    <option value="gemini-1.5-flash" <?php selected($ai_model, 'gemini-1.5-flash'); ?>>Gemini 1.5 Flash</option>
-                                </optgroup>
-                            </select>
-                            <p class="description">Kullanılacak AI modelini seçin.</p>
-                        </td>
-                    </tr>
-                    
-                    <!-- Image Generation Settings -->
-                    <tr>
-                        <th colspan="2">
-                            <h2 style="margin-top: 30px;">🎨 Görsel Oluşturma Ayarları</h2>
-                        </th>
-                    </tr>
-                    
-                    <tr>
-                        <th scope="row">
-                            <label for="kg_image_provider">Görsel Sağlayıcı</label>
-                        </th>
-                        <td>
-                            <select name="kg_image_provider" id="kg_image_provider" class="regular-text">
-                                <option value="dalle" <?php selected($image_provider, 'dalle'); ?>>DALL-E 3 (OpenAI)</option>
-                                <option value="stability" <?php selected($image_provider, 'stability'); ?>>Stable Diffusion (Stability AI)</option>
-                            </select>
-                            <p class="description">AI görsel oluşturma sağlayıcısını seçin. Her ikisi de ham malzeme görselleri için optimize edilmiştir.</p>
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <th scope="row">
-                            <label for="kg_stability_api_key">Stability AI API Key</label>
-                        </th>
-                        <td>
-                            <input type="password" name="kg_stability_api_key" id="kg_stability_api_key" 
-                                   value="<?php echo esc_attr($stability_api_key); ?>" class="regular-text"
-                                   placeholder="sk-...">
-                            <p class="description">Stability AI API anahtarınızı girin (<a href="https://platform.stability.ai/" target="_blank">Buradan alın</a>). Stable Diffusion sağlayıcısı için gerekli.</p>
-                        </td>
-                    </tr>
-                    
-                    <!-- Image API Settings -->
-                    <tr>
-                        <th colspan="2">
-                            <h2 style="margin-top: 30px;">🖼️ Görsel API Ayarları (Yedek)</h2>
-                        </th>
-                    </tr>
-                    
-                    <tr>
-                        <th scope="row">
-                            <label for="kg_unsplash_api_key">Unsplash API Key</label>
-                        </th>
-                        <td>
-                            <input type="password" name="kg_unsplash_api_key" id="kg_unsplash_api_key" 
-                                   value="<?php echo esc_attr($unsplash_key); ?>" class="regular-text">
-                            <p class="description">Unsplash API anahtarınızı girin (<a href="https://unsplash.com/developers" target="_blank">Buradan alın</a>).</p>
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <th scope="row">
-                            <label for="kg_pexels_api_key">Pexels API Key</label>
-                        </th>
-                        <td>
-                            <input type="password" name="kg_pexels_api_key" id="kg_pexels_api_key" 
-                                   value="<?php echo esc_attr($pexels_key); ?>" class="regular-text">
-                            <p class="description">Pexels API anahtarınızı girin (<a href="https://www.pexels.com/api/" target="_blank">Buradan alın</a>).</p>
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <th scope="row">
-                            <label for="kg_preferred_image_api">Tercih Edilen API</label>
-                        </th>
-                        <td>
-                            <select name="kg_preferred_image_api" id="kg_preferred_image_api" class="regular-text">
-                                <option value="dall-e" <?php selected($preferred_image_api, 'dall-e'); ?>>DALL-E 3 (AI Oluşturulmuş)</option>
-                                <option value="unsplash" <?php selected($preferred_image_api, 'unsplash'); ?>>Unsplash Öncelikli</option>
-                                <option value="pexels" <?php selected($preferred_image_api, 'pexels'); ?>>Pexels Öncelikli</option>
-                            </select>
-                            <p class="description">Önce hangi API'nin kullanılacağını seçin. DALL-E 3 profesyonel, tutarlı görseller üretir (~$0.04/görsel).</p>
-                        </td>
-                    </tr>
-                    
-                    <!-- Auto-generation Settings -->
-                    <tr>
-                        <th colspan="2">
-                            <h2 style="margin-top: 30px;">⚡ Otomatik Oluşturma Ayarları</h2>
-                        </th>
-                    </tr>
-                    
-                    <tr>
-                        <th scope="row">
-                            <label for="kg_auto_generate_on_missing">Otomatik Oluştur</label>
-                        </th>
-                        <td>
-                            <label>
-                                <input type="checkbox" name="kg_auto_generate_on_missing" id="kg_auto_generate_on_missing" 
-                                       value="1" <?php checked($auto_generate, true); ?>>
-                                Tarif kaydedilirken eksik malzemeleri otomatik oluştur
-                            </label>
-                            <p class="description">Aktif edilirse, tarif kaydederken henüz sayfası olmayan malzemeler arka planda AI ile oluşturulur.</p>
-                        </td>
-                    </tr>
-                </table>
+                                </select>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
                 
-                <?php submit_button('Ayarları Kaydet', 'primary', 'kg_ai_settings_submit'); ?>
+                <!-- GÖRSEL KAYNAĞI -->
+                <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h2 style="margin-top: 0; border-bottom: 2px solid #2196F3; padding-bottom: 10px;">
+                        🖼️ Görsel Kaynağı
+                    </h2>
+                    
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">Tercih Edilen Kaynak</th>
+                            <td>
+                                <fieldset>
+                                    <label style="display: block; margin-bottom: 12px; padding: 12px; background: <?php echo $image_source === 'dalle' ? '#E8F5E9' : '#f5f5f5'; ?>; border-radius: 8px; cursor: pointer;">
+                                        <input type="radio" name="kg_image_source" value="dalle" <?php checked($image_source, 'dalle'); ?>>
+                                        <strong>🎨 DALL-E 3</strong> (OpenAI) 
+                                        <span style="color: #666; font-size: 12px;">~$0.04/görsel - En iyi kalite, tutarlı stil</span>
+                                    </label>
+                                    
+                                    <label style="display: block; margin-bottom: 12px; padding: 12px; background: <?php echo $image_source === 'stability' ? '#E3F2FD' : '#f5f5f5'; ?>; border-radius: 8px; cursor: pointer;">
+                                        <input type="radio" name="kg_image_source" value="stability" <?php checked($image_source, 'stability'); ?>>
+                                        <strong>🌀 Stable Diffusion XL</strong> (Stability AI) 
+                                        <span style="color: #666; font-size: 12px;">~$0.01/görsel - Ekonomik, negatif prompt desteği</span>
+                                    </label>
+                                    
+                                    <label style="display: block; margin-bottom: 12px; padding: 12px; background: <?php echo $image_source === 'unsplash' ? '#FFF3E0' : '#f5f5f5'; ?>; border-radius: 8px; cursor: pointer;">
+                                        <input type="radio" name="kg_image_source" value="unsplash" <?php checked($image_source, 'unsplash'); ?>>
+                                        <strong>📷 Unsplash</strong> 
+                                        <span style="color: #666; font-size: 12px;">Ücretsiz stok fotoğraflar</span>
+                                    </label>
+                                    
+                                    <label style="display: block; padding: 12px; background: <?php echo $image_source === 'pexels' ? '#FCE4EC' : '#f5f5f5'; ?>; border-radius: 8px; cursor: pointer;">
+                                        <input type="radio" name="kg_image_source" value="pexels" <?php checked($image_source, 'pexels'); ?>>
+                                        <strong>📸 Pexels</strong> 
+                                        <span style="color: #666; font-size: 12px;">Ücretsiz stok fotoğraflar</span>
+                                    </label>
+                                </fieldset>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+                    
+                    <h3>🔑 API Anahtarları</h3>
+                    <p class="description" style="margin-bottom: 15px;">Sadece yukarıda seçtiğiniz kaynağın API anahtarını girmeniz yeterli.</p>
+                    
+                    <table class="form-table">
+                        <tr id="dalle-key-row" style="<?php echo $image_source !== 'dalle' ? 'opacity: 0.5;' : ''; ?>">
+                            <th scope="row">🎨 DALL-E 3 API Key</th>
+                            <td>
+                                <input type="password" name="kg_dalle_api_key" value="<?php echo esc_attr($dalle_api_key); ?>" class="regular-text" placeholder="sk-...">
+                                <p class="description">OpenAI API Key (İçerik üretimi ile aynı key kullanılabilir)</p>
+                            </td>
+                        </tr>
+                        <tr id="stability-key-row" style="<?php echo $image_source !== 'stability' ? 'opacity: 0.5;' : ''; ?>">
+                            <th scope="row">🌀 Stability AI API Key</th>
+                            <td>
+                                <input type="password" name="kg_stability_api_key" value="<?php echo esc_attr($stability_api_key); ?>" class="regular-text" placeholder="sk-...">
+                                <p class="description"><a href="https://platform.stability.ai/account/keys" target="_blank">Stability AI'dan API Key Al</a></p>
+                            </td>
+                        </tr>
+                        <tr id="unsplash-key-row" style="<?php echo $image_source !== 'unsplash' ? 'opacity: 0.5;' : ''; ?>">
+                            <th scope="row">📷 Unsplash API Key</th>
+                            <td>
+                                <input type="password" name="kg_unsplash_api_key" value="<?php echo esc_attr($unsplash_api_key); ?>" class="regular-text">
+                                <p class="description"><a href="https://unsplash.com/developers" target="_blank">Unsplash Developer</a></p>
+                            </td>
+                        </tr>
+                        <tr id="pexels-key-row" style="<?php echo $image_source !== 'pexels' ? 'opacity: 0.5;' : ''; ?>">
+                            <th scope="row">📸 Pexels API Key</th>
+                            <td>
+                                <input type="password" name="kg_pexels_api_key" value="<?php echo esc_attr($pexels_api_key); ?>" class="regular-text">
+                                <p class="description"><a href="https://www.pexels.com/api/" target="_blank">Pexels API</a></p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <!-- OTOMASYON -->
+                <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h2 style="margin-top: 0; border-bottom: 2px solid #FF9800; padding-bottom: 10px;">
+                        ⚡ Otomasyon
+                    </h2>
+                    
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">Eksik Malzeme Oluşturma</th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="kg_auto_generate_on_missing" value="1" <?php checked($auto_generate, true); ?>>
+                                    Tarif eklenirken eksik malzemeyi otomatik oluştur
+                                </label>
+                                <p class="description">Bu seçenek aktifken, tarif malzeme listesine yazılan bir malzeme sistemde yoksa AI ile otomatik oluşturulur.</p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <?php submit_button('💾 Ayarları Kaydet'); ?>
             </form>
             
-            <!-- Image Generation Test Tool -->
-            <div style="margin-top: 40px; padding: 20px; background: #f0f0f1; border-left: 4px solid #2271b1;">
-                <h3>🧪 Görsel Oluşturma Test Aracı</h3>
-                <p>Malzeme adı girerek AI görsel oluşturmayı test edin.</p>
+            <!-- GÖRSEL TEST -->
+            <div style="background: white; padding: 20px; border-radius: 12px; margin-top: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h2 style="margin-top: 0; border-bottom: 2px solid #9C27B0; padding-bottom: 10px;">
+                    🧪 Görsel Üretim Testi
+                </h2>
                 
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">
-                            <label for="kg_test_ingredient">Malzeme Adı</label>
-                        </th>
-                        <td>
-                            <input type="text" id="kg_test_ingredient" class="regular-text" 
-                                   placeholder="Örn: muz, havuç, elma">
-                            <button type="button" id="kg_test_generate_btn" class="button button-secondary">
-                                🎨 Test Et
-                            </button>
-                            <span id="kg_test_loading" style="display:none; margin-left: 10px;">
-                                ⏳ Görsel oluşturuluyor...
-                            </span>
-                        </td>
-                    </tr>
-                </table>
+                <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 20px;">
+                    <div>
+                        <label><strong>Malzeme Adı:</strong></label><br>
+                        <input type="text" id="kg_test_ingredient" placeholder="Örn: Havuç" style="width: 200px; padding: 8px;">
+                    </div>
+                    <button type="button" class="button button-primary" onclick="kgTestImage()">🖼️ Test Et</button>
+                </div>
                 
-                <div id="kg_test_result" style="margin-top: 20px;"></div>
-            </div>
-            
-            <!-- Status Information -->
-            <div style="margin-top: 20px; padding: 20px; background: #f0f0f1; border-left: 4px solid #2271b1;">
-                <h3>📊 Durum</h3>
-                <ul style="list-style: none; padding: 0;">
-                    <li>🤖 AI: <?php echo !empty($ai_api_key) ? '<strong style="color: green;">✓ Yapılandırıldı</strong>' : '<strong style="color: red;">✗ Yapılandırılmadı</strong>'; ?></li>
-                    <li>🎨 DALL-E 3: <?php echo !empty($ai_api_key) ? '<strong style="color: green;">✓ Kullanılabilir</strong>' : '<strong style="color: red;">✗ API Key Gerekli</strong>'; ?></li>
-                    <li>🎨 Stable Diffusion: <?php echo !empty($stability_api_key) ? '<strong style="color: green;">✓ Yapılandırıldı</strong>' : '<strong style="color: red;">✗ Yapılandırılmadı</strong>'; ?></li>
-                    <li>🖼️ Unsplash: <?php echo !empty($unsplash_key) ? '<strong style="color: green;">✓ Yapılandırıldı</strong>' : '<strong style="color: red;">✗ Yapılandırılmadı</strong>'; ?></li>
-                    <li>🖼️ Pexels: <?php echo !empty($pexels_key) ? '<strong style="color: green;">✓ Yapılandırıldı</strong>' : '<strong style="color: red;">✗ Yapılandırılmadı</strong>'; ?></li>
-                </ul>
+                <div id="kg_test_result" style="display: none; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                    <div id="kg_test_loading" style="text-align: center; display: none;">
+                        <span class="spinner is-active" style="float: none;"></span>
+                        <p>Görsel üretiliyor... (30-60 saniye sürebilir)</p>
+                    </div>
+                    <div id="kg_test_output"></div>
+                </div>
             </div>
         </div>
         
-        <style>
-            .form-table th {
-                width: 200px;
-            }
-            .form-table h2 {
-                margin: 0;
-                padding: 10px 0;
-                border-bottom: 2px solid #2271b1;
-            }
-            #kg_test_result img {
-                max-width: 512px;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                margin-top: 10px;
-            }
-            .kg-prompt-display {
-                background: #fff;
-                padding: 15px;
-                border-left: 3px solid #2271b1;
-                margin-top: 10px;
-                font-family: monospace;
-                font-size: 12px;
-                white-space: pre-wrap;
-            }
-        </style>
-        
         <script>
-        jQuery(document).ready(function($) {
-            $('#kg_test_generate_btn').on('click', function() {
-                var ingredient = $('#kg_test_ingredient').val().trim();
+        document.querySelectorAll('input[name="kg_image_source"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                // Tüm satırları soluklaştır
+                document.getElementById('dalle-key-row').style.opacity = '0.5';
+                document.getElementById('stability-key-row').style.opacity = '0.5';
+                document.getElementById('unsplash-key-row').style.opacity = '0.5';
+                document.getElementById('pexels-key-row').style.opacity = '0.5';
                 
-                if (!ingredient) {
-                    alert('Lütfen bir malzeme adı girin.');
-                    return;
-                }
-                
-                $('#kg_test_loading').show();
-                $('#kg_test_generate_btn').prop('disabled', true);
-                $('#kg_test_result').html('');
-                
-                $.ajax({
-                    url: ajaxurl,
-                    method: 'POST',
-                    data: {
-                        action: 'kg_test_image_generation',
-                        ingredient: ingredient,
-                        nonce: '<?php echo wp_create_nonce('kg_test_image_nonce'); ?>'
-                    },
-                    success: function(response) {
-                        $('#kg_test_loading').hide();
-                        $('#kg_test_generate_btn').prop('disabled', false);
-                        
-                        if (response.success) {
-                            var html = '<h4>✅ Görsel Başarıyla Oluşturuldu</h4>';
-                            html += '<p><strong>Kaynak:</strong> ' + response.data.source + '</p>';
-                            html += '<img src="' + response.data.url + '" alt="' + ingredient + '">';
-                            
-                            if (response.data.prompt) {
-                                html += '<h4 style="margin-top: 20px;">📝 Kullanılan Prompt:</h4>';
-                                html += '<div class="kg-prompt-display">' + response.data.prompt + '</div>';
-                            }
-                            
-                            if (response.data.negative_prompt) {
-                                html += '<h4 style="margin-top: 20px;">⛔ Negatif Prompt:</h4>';
-                                html += '<div class="kg-prompt-display">' + response.data.negative_prompt + '</div>';
-                            }
-                            
-                            $('#kg_test_result').html(html);
-                        } else {
-                            var errorMsg = response.data && response.data.message ? response.data.message : 'Bilinmeyen hata';
-                            
-                            // Handle nonce verification failure by suggesting page refresh
-                            if (errorMsg.includes('Güvenlik kontrolü')) {
-                                errorMsg += ' Lütfen sayfayı yenileyin ve tekrar deneyin.';
-                            }
-                            
-                            $('#kg_test_result').html('<p style="color: red;">❌ Hata: ' + errorMsg + '</p>');
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        $('#kg_test_loading').hide();
-                        $('#kg_test_generate_btn').prop('disabled', false);
-                        $('#kg_test_result').html('<p style="color: red;">❌ AJAX Hatası: ' + error + '</p>');
-                    }
-                });
+                // Seçileni vurgula
+                document.getElementById(this.value + '-key-row').style.opacity = '1';
             });
         });
+        
+        function kgTestImage() {
+            var ingredient = document.getElementById('kg_test_ingredient').value;
+            if (!ingredient) {
+                alert('Lütfen bir malzeme adı girin');
+                return;
+            }
+            
+            document.getElementById('kg_test_result').style.display = 'block';
+            document.getElementById('kg_test_loading').style.display = 'block';
+            document.getElementById('kg_test_output').innerHTML = '';
+            
+            jQuery.ajax({
+                url: ajaxurl,
+                method: 'POST',
+                data: {
+                    action: 'kg_test_image_generation',
+                    ingredient: ingredient,
+                    nonce: '<?php echo wp_create_nonce('kg_test_image'); ?>'
+                },
+                success: function(response) {
+                    document.getElementById('kg_test_loading').style.display = 'none';
+                    if (response.success) {
+                        var html = '<div style="text-align: center;">';
+                        html += '<img src="' + response.data.url + '" style="max-width: 400px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">';
+                        html += '<p style="margin-top: 15px;"><strong>Kaynak:</strong> ' + response.data.source + '</p>';
+                        if (response.data.prompt) {
+                            html += '<details style="text-align: left; margin-top: 10px;"><summary>Kullanılan Prompt</summary>';
+                            html += '<pre style="white-space: pre-wrap; font-size: 11px; background: #fff; padding: 10px; border-radius: 4px; max-height: 200px; overflow: auto;">' + response.data.prompt + '</pre></details>';
+                        }
+                        html += '</div>';
+                        document.getElementById('kg_test_output').innerHTML = html;
+                    } else {
+                        document.getElementById('kg_test_output').innerHTML = '<p style="color: red;">❌ Hata: ' + response.data + '</p>';
+                    }
+                },
+                error: function() {
+                    document.getElementById('kg_test_loading').style.display = 'none';
+                    document.getElementById('kg_test_output').innerHTML = '<p style="color: red;">❌ Bağlantı hatası</p>';
+                }
+            });
+        }
         </script>
         <?php
     }
@@ -411,14 +400,14 @@ class SettingsPage {
      */
     public function handle_test_image_generation() {
         // Verify nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'kg_test_image_nonce')) {
-            wp_send_json_error(['message' => 'Güvenlik kontrolü başarısız.']);
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'kg_test_image')) {
+            wp_send_json_error('Güvenlik kontrolü başarısız.');
             return;
         }
         
         // Check user capabilities
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => 'Yetkiniz yok.']);
+            wp_send_json_error('Yetkiniz yok.');
             return;
         }
         
@@ -426,19 +415,25 @@ class SettingsPage {
         $ingredient = isset($_POST['ingredient']) ? sanitize_text_field($_POST['ingredient']) : '';
         
         if (empty($ingredient)) {
-            wp_send_json_error(['message' => 'Malzeme adı boş olamaz.']);
+            wp_send_json_error('Malzeme adı boş olamaz.');
             return;
         }
         
-        // Generate image
-        $image_service = new \KG_Core\Services\ImageService();
-        $result = $image_service->generateImage($ingredient);
-        
-        if ($result === null) {
-            wp_send_json_error(['message' => 'Görsel oluşturulamadı. Lütfen API ayarlarınızı kontrol edin.']);
-            return;
+        try {
+            $image_service = new \KG_Core\Services\ImageService();
+            $result = $image_service->generateImage($ingredient);
+            
+            if ($result && !empty($result['url'])) {
+                wp_send_json_success([
+                    'url' => $result['url'],
+                    'source' => $result['source'] ?? 'unknown',
+                    'prompt' => $result['prompt'] ?? ''
+                ]);
+            } else {
+                wp_send_json_error('Görsel oluşturulamadı. API ayarlarını kontrol edin.');
+            }
+        } catch (\Exception $e) {
+            wp_send_json_error($e->getMessage());
         }
-        
-        wp_send_json_success($result);
     }
 }
