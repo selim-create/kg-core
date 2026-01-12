@@ -157,6 +157,11 @@ class UserController {
             return new \WP_Error( 'invalid_email', 'Invalid email address', [ 'status' => 400 ] );
         }
 
+        // Password strength validation
+        if ( strlen( $password ) < 8 ) {
+            return new \WP_Error( 'weak_password', 'Password must be at least 8 characters long', [ 'status' => 400 ] );
+        }
+
         if ( email_exists( $email ) ) {
             return new \WP_Error( 'email_exists', 'Email already registered', [ 'status' => 409 ] );
         }

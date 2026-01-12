@@ -139,6 +139,9 @@ class RecipeMetaBox {
         // Autosave kontrolü
         if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
         
+        // Post type validation
+        if ( get_post_type( $post_id ) !== 'recipe' ) return;
+        
         // Nonce kontrolü
         if ( ! isset( $_POST['kg_recipe_nonce'] ) || ! wp_verify_nonce( $_POST['kg_recipe_nonce'], 'kg_recipe_save' ) ) return;
         

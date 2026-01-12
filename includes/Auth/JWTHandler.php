@@ -160,7 +160,21 @@ class JWTHandler {
      * Extract token from request headers
      */
     public static function get_token_from_request() {
-        $headers = getallheaders();
+        // Try WordPress function first
+        if ( function_exists( 'apache_request_headers' ) ) {
+            $headers = apache_request_headers();
+        } elseif ( function_exists( 'getallheaders' ) ) {
+            $headers = getallheaders();
+        } else {
+            // Manual extraction from $_SERVER
+            $headers = [];
+            foreach ( $_SERVER as $key => $value ) {
+                if ( substr( $key, 0, 5 ) === 'HTTP_' ) {
+                    $header_key = str_replace( ' ', '-', ucwords( strtolower( str_replace( '_', ' ', substr( $key, 5 ) ) ) ) );
+                    $headers[$header_key] = $value;
+                }
+            }
+        }
         
         if ( isset( $headers['Authorization'] ) ) {
             $auth_header = $headers['Authorization'];

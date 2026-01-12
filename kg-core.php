@@ -99,6 +99,14 @@ add_action( 'rest_api_init', function() {
     // CORS headers ekle
     remove_filter( 'rest_pre_serve_request', 'rest_send_cors_headers' );
     add_filter( 'rest_pre_serve_request', function( $value ) {
+        // PRODUCTION NOTE: For production, replace * with specific origin(s)
+        // Example: header( 'Access-Control-Allow-Origin: https://kidsgourmet.com' );
+        // For development with multiple frontends, you can use:
+        // $allowed_origins = ['https://kidsgourmet.com', 'http://localhost:3000'];
+        // $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        // if ( in_array( $origin, $allowed_origins ) ) {
+        //     header( 'Access-Control-Allow-Origin: ' . $origin );
+        // }
         header( 'Access-Control-Allow-Origin: *' );
         header( 'Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS' );
         header( 'Access-Control-Allow-Credentials: true' );

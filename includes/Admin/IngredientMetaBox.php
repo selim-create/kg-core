@@ -103,6 +103,9 @@ class IngredientMetaBox {
         // Autosave kontrolü
         if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
         
+        // Post type validation
+        if ( get_post_type( $post_id ) !== 'ingredient' ) return;
+        
         // Nonce kontrolü
         if ( ! isset( $_POST['kg_ingredient_nonce'] ) || ! wp_verify_nonce( $_POST['kg_ingredient_nonce'], 'kg_ingredient_save' ) ) return;
         
