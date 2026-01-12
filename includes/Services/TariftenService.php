@@ -23,7 +23,7 @@ class TariftenService {
         // Check HTTP status code
         $status_code = wp_remote_retrieve_response_code($response);
         if ($status_code < 200 || $status_code >= 300) {
-            return ['success' => false, 'message' => 'API hatası: HTTP ' . $status_code];
+            return ['success' => false, 'message' => 'API hatası: HTTP durum kodu ' . $status_code];
         }
         
         $body = json_decode(wp_remote_retrieve_body($response), true);

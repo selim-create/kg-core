@@ -23,7 +23,7 @@ jQuery(document).ready(function($) {
         var $button = $(this);
         
         if (!ingredient) {
-            $container.html('<p style="color: #d63638; background: #fcf0f1; padding: 10px; border-left: 4px solid #d63638;">⚠️ Lütfen bir malzeme seçin</p>');
+            $container.html('<p class="kg-cross-sell-error">⚠️ Lütfen bir malzeme seçin</p>');
             return;
         }
         
@@ -54,7 +54,7 @@ jQuery(document).ready(function($) {
                         var imageSrc = recipeImage || 'https://placehold.co/100x80';
                         
                         html += '<div class="kg-suggestion-item" data-id="' + recipeId + '" data-url="' + recipeUrl + '" data-title="' + recipeTitle + '" data-image="' + recipeImage + '">';
-                        html += '<img src="' + imageSrc + '" alt="" style="width:80px;height:60px;object-fit:cover;border-radius:4px;">';
+                        html += '<img src="' + imageSrc + '" alt="" class="kg-suggestion-image">';
                         html += '<div class="kg-suggestion-info">';
                         html += '<strong>' + recipeTitle + '</strong><br>';
                         html += '<small>' + prepTime + ' • ' + difficulty + '</small>';
