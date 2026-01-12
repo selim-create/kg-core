@@ -1,0 +1,208 @@
+<?php
+namespace KG_Core\Services;
+
+class IngredientGenerator {
+    private $ai_service;
+    private $image_service;
+    
+    public function __construct() {
+        $this->ai_service = new AIService();
+        $this->image_service = new ImageService();
+    }
+    
+    /**
+     * Create an ingredient post with AI-generated content
+     * 
+     * @param string $ingredient_name Name of the ingredient
+     * @return int|WP_Error Post ID or error
+     */
+    public function create($ingredient_name) {
+        // Check if ingredient already exists
+        $existing = get_page_by_title($ingredient_name, OBJECT, 'ingredient');
+        if ($existing) {
+            return new \WP_Error('already_exists', 'Malzeme zaten mevcut: ' . $ingredient_name);
+        }
+        
+        // Generate content with AI
+        $ai_data = $this->ai_service->generateIngredientContent($ingredient_name);
+        
+        if (is_wp_error($ai_data)) {
+            return $ai_data;
+        }
+        
+        // Create post
+        $post_data = [
+            'post_title' => $ai_data['title'],
+            'post_content' => $ai_data['content'],
+            'post_excerpt' => $ai_data['excerpt'],
+            'post_type' => 'ingredient',
+            'post_status' => 'draft', // Draft for manual review
+            'post_author' => get_current_user_id()
+        ];
+        
+        $post_id = wp_insert_post($post_data);
+        
+        if (is_wp_error($post_id)) {
+            return $post_id;
+        }
+        
+        // Save meta fields
+        $this->saveMetaFields($post_id, $ai_data);
+        
+        // Attach image
+        if (!empty($ai_data['image_search_query'])) {
+            $this->attachImage($post_id, $ai_data);
+        }
+        
+        // Assign allergens
+        if (!empty($ai_data['allergens']) && is_array($ai_data['allergens'])) {
+            $this->assignAllergens($post_id, $ai_data['allergens']);
+        }
+        
+        return $post_id;
+    }
+    
+    /**
+     * Save meta fields for ingredient
+     * 
+     * @param int $post_id Post ID
+     * @param array $data AI-generated data
+     */
+    private function saveMetaFields($post_id, $data) {
+        // Basic info
+        if (isset($data['start_age'])) {
+            update_post_meta($post_id, '_kg_start_age', intval($data['start_age']));
+        }
+        
+        if (isset($data['benefits'])) {
+            update_post_meta($post_id, '_kg_benefits', wp_kses_post($data['benefits']));
+        }
+        
+        if (isset($data['allergy_risk'])) {
+            update_post_meta($post_id, '_kg_allergy_risk', sanitize_text_field($data['allergy_risk']));
+        }
+        
+        if (isset($data['season'])) {
+            update_post_meta($post_id, '_kg_season', sanitize_text_field($data['season']));
+        }
+        
+        if (isset($data['storage_tips'])) {
+            update_post_meta($post_id, '_kg_storage_tips', sanitize_textarea_field($data['storage_tips']));
+        }
+        
+        if (isset($data['preparation_tips'])) {
+            update_post_meta($post_id, '_kg_preparation_tips', sanitize_textarea_field($data['preparation_tips']));
+        }
+        
+        // Preparation methods
+        if (isset($data['prep_methods']) && is_array($data['prep_methods'])) {
+            update_post_meta($post_id, '_kg_prep_methods', array_map('sanitize_text_field', $data['prep_methods']));
+        }
+        
+        // Nutrition
+        if (isset($data['nutrition']) && is_array($data['nutrition'])) {
+            $nutrition = $data['nutrition'];
+            
+            if (isset($nutrition['calories'])) {
+                update_post_meta($post_id, '_kg_calories', sanitize_text_field($nutrition['calories']));
+            }
+            if (isset($nutrition['protein'])) {
+                update_post_meta($post_id, '_kg_protein', sanitize_text_field($nutrition['protein']));
+            }
+            if (isset($nutrition['carbs'])) {
+                update_post_meta($post_id, '_kg_carbs', sanitize_text_field($nutrition['carbs']));
+            }
+            if (isset($nutrition['fat'])) {
+                update_post_meta($post_id, '_kg_fat', sanitize_text_field($nutrition['fat']));
+            }
+            if (isset($nutrition['fiber'])) {
+                update_post_meta($post_id, '_kg_fiber', sanitize_text_field($nutrition['fiber']));
+            }
+            if (isset($nutrition['vitamins'])) {
+                update_post_meta($post_id, '_kg_vitamins', sanitize_text_field($nutrition['vitamins']));
+            }
+        }
+        
+        // FAQ
+        if (isset($data['faq']) && is_array($data['faq'])) {
+            $sanitized_faq = [];
+            foreach ($data['faq'] as $item) {
+                if (isset($item['question']) && isset($item['answer'])) {
+                    $sanitized_faq[] = [
+                        'question' => sanitize_text_field($item['question']),
+                        'answer' => sanitize_textarea_field($item['answer'])
+                    ];
+                }
+            }
+            update_post_meta($post_id, '_kg_faq', $sanitized_faq);
+        }
+    }
+    
+    /**
+     * Attach featured image to ingredient post
+     * 
+     * @param int $post_id Post ID
+     * @param array $data AI-generated data
+     */
+    private function attachImage($post_id, $data) {
+        $query = $data['image_search_query'];
+        
+        // Fetch image from API
+        $image_data = $this->image_service->fetchImage($query);
+        
+        if ($image_data === null) {
+            error_log("KG Core: No image found for query: {$query}");
+            return;
+        }
+        
+        // Generate filename
+        $filename = sanitize_title($data['title']) . '.jpg';
+        
+        // Download to media library
+        $attachment_id = $this->image_service->downloadToMediaLibrary($image_data['url'], $filename);
+        
+        if (is_wp_error($attachment_id)) {
+            error_log('KG Core Image Download Error: ' . $attachment_id->get_error_message());
+            return;
+        }
+        
+        // Set as featured image
+        set_post_thumbnail($post_id, $attachment_id);
+        
+        // Save credit information as post meta
+        update_post_meta($post_id, '_kg_image_credit', $image_data['credit']);
+        update_post_meta($post_id, '_kg_image_credit_url', $image_data['credit_url']);
+        update_post_meta($post_id, '_kg_image_source', $image_data['source']);
+    }
+    
+    /**
+     * Assign allergen taxonomies to ingredient
+     * 
+     * @param int $post_id Post ID
+     * @param array $allergens Array of allergen names
+     */
+    private function assignAllergens($post_id, $allergens) {
+        $term_ids = [];
+        
+        foreach ($allergens as $allergen_name) {
+            $allergen_name = sanitize_text_field($allergen_name);
+            
+            // Check if term exists
+            $term = get_term_by('name', $allergen_name, 'allergen');
+            
+            if (!$term) {
+                // Create new term if it doesn't exist
+                $result = wp_insert_term($allergen_name, 'allergen');
+                if (!is_wp_error($result)) {
+                    $term_ids[] = $result['term_id'];
+                }
+            } else {
+                $term_ids[] = $term->term_id;
+            }
+        }
+        
+        if (!empty($term_ids)) {
+            wp_set_post_terms($post_id, $term_ids, 'allergen');
+        }
+    }
+}
