@@ -139,6 +139,7 @@ function kg_core_enqueue_admin_assets( $hook ) {
         // Localize cross-sell script with nonce
         wp_localize_script( 'kg-cross-sell-js', 'kg_cross_sell', [
             'nonce' => wp_create_nonce( 'kg_cross_sell_nonce' ),
+            'ajaxurl' => admin_url( 'admin-ajax.php' ),
         ]);
     }
 }

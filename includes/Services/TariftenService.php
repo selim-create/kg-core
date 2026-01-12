@@ -20,7 +20,18 @@ class TariftenService {
             return ['success' => false, 'message' => $response->get_error_message()];
         }
         
+        // Check HTTP status code
+        $status_code = wp_remote_retrieve_response_code($response);
+        if ($status_code < 200 || $status_code >= 300) {
+            return ['success' => false, 'message' => 'API hatası: HTTP ' . $status_code];
+        }
+        
         $body = json_decode(wp_remote_retrieve_body($response), true);
+        
+        // Check for JSON decode errors
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return ['success' => false, 'message' => 'JSON ayrıştırma hatası'];
+        }
         
         if (empty($body) || !isset($body['recipes'])) {
             return ['success' => false, 'message' => 'Öneri bulunamadı'];
@@ -41,7 +52,18 @@ class TariftenService {
             return null;
         }
         
+        // Check HTTP status code
+        $status_code = wp_remote_retrieve_response_code($response);
+        if ($status_code < 200 || $status_code >= 300) {
+            return null;
+        }
+        
         $body = json_decode(wp_remote_retrieve_body($response), true);
+        
+        // Check for JSON decode errors
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return null;
+        }
         
         if (empty($body) || empty($body['data'])) {
             return null;

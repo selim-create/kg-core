@@ -434,6 +434,11 @@ class RecipeMetaBox {
         // Cross-sell - New JSON structure
         $cross_sell_mode = isset( $_POST['kg_cross_sell_mode'] ) ? sanitize_text_field( $_POST['kg_cross_sell_mode'] ) : 'manual';
         
+        // Validate mode value
+        if ( ! in_array( $cross_sell_mode, [ 'manual', 'auto' ], true ) ) {
+            $cross_sell_mode = 'manual';
+        }
+        
         $cross_sell_data = [
             'mode' => $cross_sell_mode
         ];

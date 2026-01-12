@@ -23,7 +23,7 @@ jQuery(document).ready(function($) {
         var $button = $(this);
         
         if (!ingredient) {
-            alert('Lütfen bir malzeme seçin');
+            $container.html('<p style="color: #d63638; background: #fcf0f1; padding: 10px; border-left: 4px solid #d63638;">⚠️ Lütfen bir malzeme seçin</p>');
             return;
         }
         
@@ -31,7 +31,7 @@ jQuery(document).ready(function($) {
         $container.html('<p>🔄 Tariften.com\'dan öneriler getiriliyor...</p>');
         
         $.ajax({
-            url: ajaxurl,
+            url: kg_cross_sell.ajaxurl,
             type: 'POST',
             data: {
                 action: 'kg_fetch_tariften_suggestions',
@@ -44,11 +44,20 @@ jQuery(document).ready(function($) {
                 if (response.success && response.data.length > 0) {
                     var html = '<div class="kg-suggestions-list">';
                     response.data.forEach(function(recipe) {
-                        html += '<div class="kg-suggestion-item" data-id="' + recipe.id + '" data-url="' + recipe.url + '" data-title="' + recipe.title + '" data-image="' + (recipe.image || '') + '">';
-                        html += '<img src="' + (recipe.image || 'https://placehold.co/100x80') + '" alt="" style="width:80px;height:60px;object-fit:cover;border-radius:4px;">';
+                        // Escape data to prevent XSS
+                        var recipeId = $('<div>').text(recipe.id).html();
+                        var recipeUrl = $('<div>').text(recipe.url).html();
+                        var recipeTitle = $('<div>').text(recipe.title).html();
+                        var recipeImage = $('<div>').text(recipe.image || '').html();
+                        var prepTime = $('<div>').text(recipe.prep_time || '').html();
+                        var difficulty = $('<div>').text(recipe.difficulty || '').html();
+                        var imageSrc = recipeImage || 'https://placehold.co/100x80';
+                        
+                        html += '<div class="kg-suggestion-item" data-id="' + recipeId + '" data-url="' + recipeUrl + '" data-title="' + recipeTitle + '" data-image="' + recipeImage + '">';
+                        html += '<img src="' + imageSrc + '" alt="" style="width:80px;height:60px;object-fit:cover;border-radius:4px;">';
                         html += '<div class="kg-suggestion-info">';
-                        html += '<strong>' + recipe.title + '</strong><br>';
-                        html += '<small>' + (recipe.prep_time || '') + ' • ' + (recipe.difficulty || '') + '</small>';
+                        html += '<strong>' + recipeTitle + '</strong><br>';
+                        html += '<small>' + prepTime + ' • ' + difficulty + '</small>';
                         html += '</div>';
                         html += '<button type="button" class="button kg-select-suggestion">✓ Seç</button>';
                         html += '</div>';
