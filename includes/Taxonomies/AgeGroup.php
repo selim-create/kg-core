@@ -288,20 +288,56 @@ class AgeGroup {
     }
 
     public function save_term_meta( $term_id ) {
-        $meta_fields = [
-            'kg_min_month',
-            'kg_max_month',
-            'kg_daily_meal_count',
-            'kg_max_salt_limit',
-            'kg_texture_guide',
-            'kg_forbidden_list',
-            'kg_color_code',
-            'kg_warning_message',
-        ];
+        // Validate and sanitize numeric fields
+        if ( isset( $_POST['kg_min_month'] ) ) {
+            $min_month = absint( $_POST['kg_min_month'] );
+            update_term_meta( $term_id, '_kg_min_month', $min_month );
+        }
 
-        foreach ( $meta_fields as $field ) {
-            if ( isset( $_POST[ $field ] ) ) {
-                update_term_meta( $term_id, '_' . $field, sanitize_text_field( $_POST[ $field ] ) );
+        if ( isset( $_POST['kg_max_month'] ) ) {
+            $max_month = absint( $_POST['kg_max_month'] );
+            // Validate that max_month >= min_month
+            $min_month = get_term_meta( $term_id, '_kg_min_month', true );
+            if ( $min_month && $max_month < $min_month ) {
+                $max_month = $min_month;
+            }
+            update_term_meta( $term_id, '_kg_max_month', $max_month );
+        }
+
+        if ( isset( $_POST['kg_daily_meal_count'] ) ) {
+            $daily_meal_count = absint( $_POST['kg_daily_meal_count'] );
+            update_term_meta( $term_id, '_kg_daily_meal_count', $daily_meal_count );
+        }
+
+        // Sanitize text fields
+        if ( isset( $_POST['kg_max_salt_limit'] ) ) {
+            update_term_meta( $term_id, '_kg_max_salt_limit', sanitize_text_field( $_POST['kg_max_salt_limit'] ) );
+        }
+
+        if ( isset( $_POST['kg_color_code'] ) ) {
+            update_term_meta( $term_id, '_kg_color_code', sanitize_text_field( $_POST['kg_color_code'] ) );
+        }
+
+        // Sanitize textarea fields
+        if ( isset( $_POST['kg_texture_guide'] ) ) {
+            update_term_meta( $term_id, '_kg_texture_guide', sanitize_textarea_field( $_POST['kg_texture_guide'] ) );
+        }
+
+        if ( isset( $_POST['kg_warning_message'] ) ) {
+            update_term_meta( $term_id, '_kg_warning_message', sanitize_textarea_field( $_POST['kg_warning_message'] ) );
+        }
+
+        // Validate and sanitize JSON field
+        if ( isset( $_POST['kg_forbidden_list'] ) ) {
+            $forbidden_list = stripslashes( $_POST['kg_forbidden_list'] );
+            // Validate JSON
+            json_decode( $forbidden_list );
+            if ( json_last_error() === JSON_ERROR_NONE ) {
+                update_term_meta( $term_id, '_kg_forbidden_list', $forbidden_list );
+            } else {
+                // Log error and save empty array as fallback
+                error_log( 'KG Core: Invalid JSON in forbidden_list for term ' . $term_id . ': ' . json_last_error_msg() );
+                update_term_meta( $term_id, '_kg_forbidden_list', json_encode( [] ) );
             }
         }
     }
@@ -309,13 +345,22 @@ class AgeGroup {
     public function register_rest_fields() {
         register_rest_field( 'age-group', 'age_group_meta', [
             'get_callback' => function( $term ) {
+                $forbidden_list_json = get_term_meta( $term['id'], '_kg_forbidden_list', true );
+                $forbidden_list = [];
+                if ( $forbidden_list_json ) {
+                    $decoded = json_decode( $forbidden_list_json, true );
+                    if ( json_last_error() === JSON_ERROR_NONE && is_array( $decoded ) ) {
+                        $forbidden_list = $decoded;
+                    }
+                }
+
                 return [
                     'min_month' => (int) get_term_meta( $term['id'], '_kg_min_month', true ),
                     'max_month' => (int) get_term_meta( $term['id'], '_kg_max_month', true ),
                     'daily_meal_count' => (int) get_term_meta( $term['id'], '_kg_daily_meal_count', true ),
                     'max_salt_limit' => get_term_meta( $term['id'], '_kg_max_salt_limit', true ),
                     'texture_guide' => get_term_meta( $term['id'], '_kg_texture_guide', true ),
-                    'forbidden_list' => json_decode( get_term_meta( $term['id'], '_kg_forbidden_list', true ), true ) ?: [],
+                    'forbidden_list' => $forbidden_list,
                     'color_code' => get_term_meta( $term['id'], '_kg_color_code', true ),
                     'warning_message' => get_term_meta( $term['id'], '_kg_warning_message', true ),
                 ];

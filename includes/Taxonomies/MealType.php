@@ -187,15 +187,25 @@ class MealType {
     }
 
     public function save_term_meta( $term_id ) {
-        $meta_fields = [
-            'kg_icon',
-            'kg_time_range',
-            'kg_color_code',
-        ];
+        // Sanitize text fields
+        if ( isset( $_POST['kg_icon'] ) ) {
+            update_term_meta( $term_id, '_kg_icon', sanitize_text_field( $_POST['kg_icon'] ) );
+        }
 
-        foreach ( $meta_fields as $field ) {
-            if ( isset( $_POST[ $field ] ) ) {
-                update_term_meta( $term_id, '_' . $field, sanitize_text_field( $_POST[ $field ] ) );
+        if ( isset( $_POST['kg_time_range'] ) ) {
+            update_term_meta( $term_id, '_kg_time_range', sanitize_text_field( $_POST['kg_time_range'] ) );
+        }
+
+        // Validate and sanitize HEX color code
+        if ( isset( $_POST['kg_color_code'] ) ) {
+            $color_code = sanitize_text_field( $_POST['kg_color_code'] );
+            // Validate HEX color format
+            if ( preg_match( '/^#[0-9A-Fa-f]{6}$/', $color_code ) ) {
+                update_term_meta( $term_id, '_kg_color_code', $color_code );
+            } else {
+                // Log error and use default color
+                error_log( 'KG Core: Invalid HEX color code for meal-type term ' . $term_id . ': ' . $color_code );
+                update_term_meta( $term_id, '_kg_color_code', '#FFFFFF' );
             }
         }
     }
