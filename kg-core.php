@@ -103,7 +103,9 @@ add_action( 'rest_api_init', function() {
         $allowed_origins = apply_filters( 'kg_core_allowed_origins', [
             'http://localhost:3000',
             'http://localhost:3001',
-            // Add production domains here or via filter
+            'https://kidsgourmet.com.tr',
+            'https://www.kidsgourmet.com.tr',
+            // Add more production domains via filter
         ]);
         
         $origin = isset( $_SERVER['HTTP_ORIGIN'] ) ? $_SERVER['HTTP_ORIGIN'] : '';
