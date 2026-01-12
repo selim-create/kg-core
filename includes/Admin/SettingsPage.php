@@ -195,10 +195,11 @@ class SettingsPage {
                         </th>
                         <td>
                             <select name="kg_preferred_image_api" id="kg_preferred_image_api" class="regular-text">
+                                <option value="dall-e" <?php selected($preferred_image_api, 'dall-e'); ?>>DALL-E 3 (AI Oluşturulmuş)</option>
                                 <option value="unsplash" <?php selected($preferred_image_api, 'unsplash'); ?>>Unsplash Öncelikli</option>
                                 <option value="pexels" <?php selected($preferred_image_api, 'pexels'); ?>>Pexels Öncelikli</option>
                             </select>
-                            <p class="description">Önce hangi API'nin deneneceğini seçin. Bulunamazsa diğeri kullanılır.</p>
+                            <p class="description">Önce hangi API'nin kullanılacağını seçin. DALL-E 3 profesyonel, tutarlı görseller üretir (~$0.04/görsel).</p>
                         </td>
                     </tr>
                     

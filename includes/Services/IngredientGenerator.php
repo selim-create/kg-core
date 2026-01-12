@@ -74,6 +74,10 @@ class IngredientGenerator {
             update_post_meta($post_id, '_kg_start_age', intval($data['start_age']));
         }
         
+        if (isset($data['category'])) {
+            update_post_meta($post_id, '_kg_category', sanitize_text_field($data['category']));
+        }
+        
         if (isset($data['benefits'])) {
             update_post_meta($post_id, '_kg_benefits', wp_kses_post($data['benefits']));
         }
@@ -90,6 +94,14 @@ class IngredientGenerator {
             update_post_meta($post_id, '_kg_storage_tips', sanitize_textarea_field($data['storage_tips']));
         }
         
+        if (isset($data['selection_tips'])) {
+            update_post_meta($post_id, '_kg_selection_tips', sanitize_textarea_field($data['selection_tips']));
+        }
+        
+        if (isset($data['pro_tips'])) {
+            update_post_meta($post_id, '_kg_pro_tips', sanitize_textarea_field($data['pro_tips']));
+        }
+        
         if (isset($data['preparation_tips'])) {
             update_post_meta($post_id, '_kg_preparation_tips', sanitize_textarea_field($data['preparation_tips']));
         }
@@ -97,6 +109,35 @@ class IngredientGenerator {
         // Preparation methods
         if (isset($data['prep_methods']) && is_array($data['prep_methods'])) {
             update_post_meta($post_id, '_kg_prep_methods', array_map('sanitize_text_field', $data['prep_methods']));
+        }
+        
+        // Preparation by age (JSON array)
+        if (isset($data['prep_by_age']) && is_array($data['prep_by_age'])) {
+            $sanitized_prep_by_age = [];
+            foreach ($data['prep_by_age'] as $item) {
+                if (isset($item['age']) && isset($item['method']) && isset($item['text'])) {
+                    $sanitized_prep_by_age[] = [
+                        'age' => sanitize_text_field($item['age']),
+                        'method' => sanitize_text_field($item['method']),
+                        'text' => sanitize_textarea_field($item['text'])
+                    ];
+                }
+            }
+            update_post_meta($post_id, '_kg_prep_by_age', $sanitized_prep_by_age);
+        }
+        
+        // Pairings (JSON array)
+        if (isset($data['pairings']) && is_array($data['pairings'])) {
+            $sanitized_pairings = [];
+            foreach ($data['pairings'] as $pairing) {
+                if (isset($pairing['emoji']) && isset($pairing['name'])) {
+                    $sanitized_pairings[] = [
+                        'emoji' => sanitize_text_field($pairing['emoji']),
+                        'name' => sanitize_text_field($pairing['name'])
+                    ];
+                }
+            }
+            update_post_meta($post_id, '_kg_pairings', $sanitized_pairings);
         }
         
         // Nutrition

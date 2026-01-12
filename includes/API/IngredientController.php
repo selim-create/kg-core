@@ -130,6 +130,7 @@ class IngredientController {
             'description' => get_the_excerpt( $post_id ),
             'image'       => get_the_post_thumbnail_url( $post_id, 'large' ),
             'start_age'   => get_post_meta( $post_id, '_kg_start_age', true ),
+            'category'    => get_post_meta( $post_id, '_kg_category', true ),
         ];
 
         if ( $full_detail ) {
@@ -139,12 +140,50 @@ class IngredientController {
             $prep_methods_raw = get_post_meta( $post_id, '_kg_prep_methods', true );
             $data['prep_methods'] = !empty($prep_methods_raw) ? maybe_unserialize($prep_methods_raw) : [];
             
+            // New fields
+            $prep_by_age_raw = get_post_meta( $post_id, '_kg_prep_by_age', true );
+            $data['prep_by_age'] = !empty($prep_by_age_raw) ? maybe_unserialize($prep_by_age_raw) : [];
+            
+            $pairings_raw = get_post_meta( $post_id, '_kg_pairings', true );
+            $data['pairings'] = !empty($pairings_raw) ? maybe_unserialize($pairings_raw) : [];
+            
+            $data['selection_tips'] = get_post_meta( $post_id, '_kg_selection_tips', true );
+            $data['pro_tips'] = get_post_meta( $post_id, '_kg_pro_tips', true );
+            $data['preparation_tips'] = get_post_meta( $post_id, '_kg_preparation_tips', true );
+            
             $data['allergy_risk'] = get_post_meta( $post_id, '_kg_allergy_risk', true );
             $data['season'] = get_post_meta( $post_id, '_kg_season', true );
             $data['storage_tips'] = get_post_meta( $post_id, '_kg_storage_tips', true );
             
+            // Nutrition data
+            $data['nutrition'] = [
+                'calories' => get_post_meta( $post_id, '_kg_calories', true ),
+                'protein' => get_post_meta( $post_id, '_kg_protein', true ),
+                'carbs' => get_post_meta( $post_id, '_kg_carbs', true ),
+                'fat' => get_post_meta( $post_id, '_kg_fat', true ),
+                'fiber' => get_post_meta( $post_id, '_kg_fiber', true ),
+                'vitamins' => get_post_meta( $post_id, '_kg_vitamins', true ),
+            ];
+            
             $faq_raw = get_post_meta( $post_id, '_kg_faq', true );
             $data['faq'] = !empty($faq_raw) ? maybe_unserialize($faq_raw) : [];
+            
+            // Allergens taxonomy
+            $allergen_terms = wp_get_post_terms( $post_id, 'allergen' );
+            $data['allergens'] = [];
+            if ( !is_wp_error($allergen_terms) && !empty($allergen_terms) ) {
+                foreach ( $allergen_terms as $term ) {
+                    $data['allergens'][] = $term->name;
+                }
+            }
+            
+            // Image metadata
+            $thumbnail_id = get_post_thumbnail_id( $post_id );
+            if ( $thumbnail_id ) {
+                $data['image_credit'] = get_post_meta( $post_id, '_kg_image_credit', true );
+                $data['image_source'] = get_post_meta( $post_id, '_kg_image_source', true );
+                $data['ai_generated'] = get_post_meta( $thumbnail_id, '_kg_ai_generated', true ) ? true : false;
+            }
             
             $data['related_recipes'] = $this->get_recipes_by_ingredient( $post_id );
         }

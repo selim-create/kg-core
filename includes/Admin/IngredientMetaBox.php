@@ -6,6 +6,27 @@ class IngredientMetaBox {
     public function __construct() {
         add_action( 'add_meta_boxes', [ $this, 'add_custom_meta_boxes' ] );
         add_action( 'save_post', [ $this, 'save_custom_meta_data' ] );
+        add_action( 'admin_notices', [ $this, 'show_validation_notices' ] );
+    }
+    
+    /**
+     * Show validation error notices
+     */
+    public function show_validation_notices() {
+        global $post;
+        
+        if ( ! $post || get_post_type( $post ) !== 'ingredient' ) {
+            return;
+        }
+        
+        $errors = get_transient( 'kg_ingredient_validation_errors_' . $post->ID );
+        
+        if ( $errors && is_array( $errors ) ) {
+            foreach ( $errors as $error ) {
+                echo '<div class="notice notice-error is-dismissible"><p><strong>Malzeme Hatası:</strong> ' . esc_html( $error ) . '</p></div>';
+            }
+            delete_transient( 'kg_ingredient_validation_errors_' . $post->ID );
+        }
     }
 
     public function add_custom_meta_boxes() {
@@ -32,10 +53,13 @@ class IngredientMetaBox {
             }
         }
         
+        $category = get_post_meta( $post->ID, '_kg_category', true );
         $benefits = get_post_meta( $post->ID, '_kg_benefits', true );
         $allergy_risk = get_post_meta( $post->ID, '_kg_allergy_risk', true );
         $season = get_post_meta( $post->ID, '_kg_season', true );
         $storage_tips = get_post_meta( $post->ID, '_kg_storage_tips', true );
+        $selection_tips = get_post_meta( $post->ID, '_kg_selection_tips', true );
+        $pro_tips = get_post_meta( $post->ID, '_kg_pro_tips', true );
         $preparation_tips = get_post_meta( $post->ID, '_kg_preparation_tips', true );
         
         // Nutrition values
@@ -60,6 +84,19 @@ class IngredientMetaBox {
         ?>
         <div class="kg-meta-box">
             <h3>Temel Bilgiler</h3>
+            
+            <p>
+                <label for="kg_category"><strong>Kategori:</strong></label><br>
+                <select id="kg_category" name="kg_category" style="width:100%;">
+                    <option value="">Seçiniz</option>
+                    <option value="Meyveler" <?php selected( $category, 'Meyveler' ); ?>>🍎 Meyveler</option>
+                    <option value="Sebzeler" <?php selected( $category, 'Sebzeler' ); ?>>🥦 Sebzeler</option>
+                    <option value="Proteinler" <?php selected( $category, 'Proteinler' ); ?>>🍗 Proteinler</option>
+                    <option value="Tahıllar" <?php selected( $category, 'Tahıllar' ); ?>>🌾 Tahıllar</option>
+                    <option value="Süt Ürünleri" <?php selected( $category, 'Süt Ürünleri' ); ?>>🥛 Süt Ürünleri</option>
+                </select>
+            </p>
+            
             <p>
                 <label for="kg_start_age"><strong>Başlangıç Yaşı (Ay):</strong></label><br>
                 <select id="kg_start_age" name="kg_start_age" style="width:100%;">
@@ -157,6 +194,42 @@ class IngredientMetaBox {
                 <textarea id="kg_preparation_tips" name="kg_preparation_tips" rows="3" style="width:100%;"><?php echo esc_textarea( $preparation_tips ); ?></textarea>
                 <small>Malzemeyi bebeklere hazırlarken dikkat edilmesi gerekenler</small>
             </p>
+            
+            <p>
+                <label for="kg_selection_tips"><strong>Seçim İpuçları:</strong></label><br>
+                <textarea id="kg_selection_tips" name="kg_selection_tips" rows="3" style="width:100%;"><?php echo esc_textarea( $selection_tips ); ?></textarea>
+                <small>Taze ve kaliteli malzeme nasıl seçilir</small>
+            </p>
+            
+            <p>
+                <label for="kg_pro_tips"><strong>Püf Noktaları:</strong></label><br>
+                <textarea id="kg_pro_tips" name="kg_pro_tips" rows="3" style="width:100%;"><?php echo esc_textarea( $pro_tips ); ?></textarea>
+                <small>Bebekler için özel ipuçları ve püf noktaları</small>
+            </p>
+            
+            <h3>Yaşa Göre Hazırlama</h3>
+            <p>
+                <label for="kg_prep_by_age"><strong>Yaş Gruplarına Göre Hazırlama (JSON Format):</strong></label><br>
+                <textarea id="kg_prep_by_age" name="kg_prep_by_age" rows="6" style="width:100%; font-family: monospace;"><?php 
+                    $prep_by_age = get_post_meta( $post->ID, '_kg_prep_by_age', true );
+                    if ( is_array($prep_by_age) ) {
+                        echo esc_textarea( json_encode($prep_by_age, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) );
+                    }
+                ?></textarea>
+                <small>Örnek: [{"age":"6-9 Ay","method":"Püre","text":"Haşlayıp püre yapın"}]</small>
+            </p>
+            
+            <h3>Uyumlu İkililer</h3>
+            <p>
+                <label for="kg_pairings"><strong>Bu Malzeme İle Uyumlu İkililer (JSON Format):</strong></label><br>
+                <textarea id="kg_pairings" name="kg_pairings" rows="4" style="width:100%; font-family: monospace;"><?php 
+                    $pairings = get_post_meta( $post->ID, '_kg_pairings', true );
+                    if ( is_array($pairings) ) {
+                        echo esc_textarea( json_encode($pairings, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) );
+                    }
+                ?></textarea>
+                <small>Örnek: [{"emoji":"🍌","name":"Muz"},{"emoji":"🥚","name":"Yumurta"}]</small>
+            </p>
 
             <h3>Mevsim ve Saklama</h3>
             <p>
@@ -202,6 +275,10 @@ class IngredientMetaBox {
         // Save basic info
         if ( isset( $_POST['kg_start_age'] ) ) {
             update_post_meta( $post_id, '_kg_start_age', sanitize_text_field( $_POST['kg_start_age'] ) );
+        }
+        
+        if ( isset( $_POST['kg_category'] ) ) {
+            update_post_meta( $post_id, '_kg_category', sanitize_text_field( $_POST['kg_category'] ) );
         }
 
         if ( isset( $_POST['kg_allergy_risk'] ) ) {
@@ -252,6 +329,14 @@ class IngredientMetaBox {
         if ( isset( $_POST['kg_preparation_tips'] ) ) {
             update_post_meta( $post_id, '_kg_preparation_tips', sanitize_textarea_field( $_POST['kg_preparation_tips'] ) );
         }
+        
+        if ( isset( $_POST['kg_selection_tips'] ) ) {
+            update_post_meta( $post_id, '_kg_selection_tips', sanitize_textarea_field( $_POST['kg_selection_tips'] ) );
+        }
+        
+        if ( isset( $_POST['kg_pro_tips'] ) ) {
+            update_post_meta( $post_id, '_kg_pro_tips', sanitize_textarea_field( $_POST['kg_pro_tips'] ) );
+        }
 
         // Save season and storage
         if ( isset( $_POST['kg_season'] ) ) {
@@ -269,12 +354,63 @@ class IngredientMetaBox {
             if ( json_last_error() === JSON_ERROR_NONE && is_array($faq) ) {
                 update_post_meta( $post_id, '_kg_faq', $faq );
             } else {
-                // Log JSON parsing error
+                // Log and notify user of JSON error
+                $error_msg = 'FAQ JSON formatı geçersiz: ' . json_last_error_msg();
                 if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                    error_log( 'KG Core: Invalid JSON in FAQ for ingredient ' . $post_id . ': ' . json_last_error_msg() );
+                    error_log( 'KG Core: ' . $error_msg . ' for ingredient ' . $post_id );
                 }
+                $this->add_validation_error( $post_id, $error_msg );
                 update_post_meta( $post_id, '_kg_faq', [] );
             }
         }
+        
+        // Save prep_by_age as JSON
+        if ( isset( $_POST['kg_prep_by_age'] ) ) {
+            $prep_by_age_json = stripslashes( $_POST['kg_prep_by_age'] );
+            $prep_by_age = json_decode( $prep_by_age_json, true );
+            if ( json_last_error() === JSON_ERROR_NONE && is_array($prep_by_age) ) {
+                update_post_meta( $post_id, '_kg_prep_by_age', $prep_by_age );
+            } else {
+                $error_msg = 'Yaşa Göre Hazırlama JSON formatı geçersiz: ' . json_last_error_msg();
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                    error_log( 'KG Core: ' . $error_msg . ' for ingredient ' . $post_id );
+                }
+                $this->add_validation_error( $post_id, $error_msg );
+                update_post_meta( $post_id, '_kg_prep_by_age', [] );
+            }
+        }
+        
+        // Save pairings as JSON
+        if ( isset( $_POST['kg_pairings'] ) ) {
+            $pairings_json = stripslashes( $_POST['kg_pairings'] );
+            $pairings = json_decode( $pairings_json, true );
+            if ( json_last_error() === JSON_ERROR_NONE && is_array($pairings) ) {
+                update_post_meta( $post_id, '_kg_pairings', $pairings );
+            } else {
+                $error_msg = 'Uyumlu İkililer JSON formatı geçersiz: ' . json_last_error_msg();
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                    error_log( 'KG Core: ' . $error_msg . ' for ingredient ' . $post_id );
+                }
+                $this->add_validation_error( $post_id, $error_msg );
+                update_post_meta( $post_id, '_kg_pairings', [] );
+            }
+        }
+    }
+    
+    /**
+     * Add validation error to be displayed
+     * 
+     * @param int $post_id Post ID
+     * @param string $message Error message
+     */
+    private function add_validation_error( $post_id, $message ) {
+        $errors = get_transient( 'kg_ingredient_validation_errors_' . $post_id );
+        
+        if ( ! is_array( $errors ) ) {
+            $errors = [];
+        }
+        
+        $errors[] = $message;
+        set_transient( 'kg_ingredient_validation_errors_' . $post_id, $errors, 60 );
     }
 }

@@ -61,6 +61,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientMetaBox.php' ) ) requ
 // 5.5. AI ADMIN SAYFALARI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/SettingsPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/SettingsPage.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php';
 
 // 6. API KONTROL CİHAZLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/API/RecipeController.php' ) ) require_once KG_CORE_PATH . 'includes/API/RecipeController.php';
@@ -104,6 +105,9 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\BulkIngredientSeeder' ) ) {
         new \KG_Core\Admin\BulkIngredientSeeder();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\AIEnrichButton' ) ) {
+        new \KG_Core\Admin\AIEnrichButton();
     }
 
     // API Controllers
