@@ -464,6 +464,40 @@ class RecipeMetaBox {
         // Backward compatibility - also save old meta keys
         update_post_meta( $post_id, '_kg_cross_sell_url', $cross_sell_data['url'] );
         update_post_meta( $post_id, '_kg_cross_sell_title', $cross_sell_data['title'] );
+        
+        // Auto-generate missing ingredients if enabled
+        if ( get_option( 'kg_auto_generate_on_missing' ) ) {
+            $this->autoGenerateMissingIngredients( $post_id );
+        }
+    }
+    
+    /**
+     * Auto-generate missing ingredients with AI
+     * 
+     * @param int $post_id Recipe post ID
+     */
+    private function autoGenerateMissingIngredients( $post_id ) {
+        $ingredients = get_post_meta( $post_id, '_kg_ingredients', true );
+        
+        if ( ! is_array( $ingredients ) || empty( $ingredients ) ) {
+            return;
+        }
+        
+        foreach ( $ingredients as $ingredient ) {
+            $name = isset( $ingredient['name'] ) ? $ingredient['name'] : '';
+            $ingredient_id = isset( $ingredient['ingredient_id'] ) ? $ingredient['ingredient_id'] : '';
+            
+            // ID yoksa ve isim varsa, malzeme sayfası yok demektir
+            if ( empty( $ingredient_id ) && ! empty( $name ) ) {
+                // Zaten var mı kontrol et (başlığa göre)
+                $existing = get_page_by_title( $name, OBJECT, 'ingredient' );
+                
+                if ( ! $existing ) {
+                    // Cron ile arka planda oluştur
+                    wp_schedule_single_event( time() + 5, 'kg_generate_ingredient', [ $name ] );
+                }
+            }
+        }
     }
 
     /**

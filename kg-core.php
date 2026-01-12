@@ -38,6 +38,11 @@ if ( file_exists( KG_CORE_PATH . 'includes/CORS/CORSHandler.php' ) ) {
 // 2.7. SERVİS SINIFLARI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Services/TariftenService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/TariftenService.php';
 
+// 2.8. AI SERVİSLERİ DAHİL ET
+if ( file_exists( KG_CORE_PATH . 'includes/Services/AIService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/AIService.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Services/ImageService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/ImageService.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Services/IngredientGenerator.php' ) ) require_once KG_CORE_PATH . 'includes/Services/IngredientGenerator.php';
+
 // 3. POST TYPE SINIFLARINI DAHİL ET (CPT)
 // Dosyalar mevcutsa dahil et
 if ( file_exists( KG_CORE_PATH . 'includes/PostTypes/Recipe.php' ) ) require_once KG_CORE_PATH . 'includes/PostTypes/Recipe.php';
@@ -53,12 +58,19 @@ if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/DietType.php' ) ) require_
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/RecipeMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/RecipeMetaBox.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/IngredientMetaBox.php';
 
+// 5.5. AI ADMIN SAYFALARI DAHİL ET
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/SettingsPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/SettingsPage.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php';
+
 // 6. API KONTROL CİHAZLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/API/RecipeController.php' ) ) require_once KG_CORE_PATH . 'includes/API/RecipeController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/IngredientController.php' ) ) require_once KG_CORE_PATH . 'includes/API/IngredientController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/UserController.php' ) ) require_once KG_CORE_PATH . 'includes/API/UserController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/SearchController.php' ) ) require_once KG_CORE_PATH . 'includes/API/SearchController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/CrossSellController.php' ) ) require_once KG_CORE_PATH . 'includes/API/CrossSellController.php';
+
+// 6.5. AI API CONTROLLER DAHİL ET
+if ( file_exists( KG_CORE_PATH . 'includes/API/AIController.php' ) ) require_once KG_CORE_PATH . 'includes/API/AIController.php';
 
 // 7. SINIFLARI BAŞLAT (INIT HOOK)
 function kg_core_init() {
@@ -85,6 +97,14 @@ function kg_core_init() {
     if ( is_admin() && class_exists( '\KG_Core\Admin\IngredientMetaBox' ) ) {
         new \KG_Core\Admin\IngredientMetaBox();
     }
+    
+    // AI Admin Pages (Sadece Admin panelinde çalışsın)
+    if ( is_admin() && class_exists( '\KG_Core\Admin\SettingsPage' ) ) {
+        new \KG_Core\Admin\SettingsPage();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\BulkIngredientSeeder' ) ) {
+        new \KG_Core\Admin\BulkIngredientSeeder();
+    }
 
     // API Controllers
     if ( class_exists( '\KG_Core\API\RecipeController' ) ) new \KG_Core\API\RecipeController();
@@ -92,6 +112,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\UserController' ) ) new \KG_Core\API\UserController();
     if ( class_exists( '\KG_Core\API\SearchController' ) ) new \KG_Core\API\SearchController();
     if ( class_exists( '\KG_Core\API\CrossSellController' ) ) new \KG_Core\API\CrossSellController();
+    if ( class_exists( '\KG_Core\API\AIController' ) ) new \KG_Core\API\AIController();
 }
 add_action( 'plugins_loaded', 'kg_core_init' );
 
@@ -154,3 +175,17 @@ add_filter('acf/settings/load_json', function( $paths ) {
     $paths[] = KG_CORE_PATH . 'includes/Fields/acf-json';
     return $paths;
 });
+
+// 9. CRON HOOK - AI ile malzeme oluşturma
+add_action( 'kg_generate_ingredient', function( $ingredient_name ) {
+    if ( class_exists( '\KG_Core\Services\IngredientGenerator' ) ) {
+        $generator = new \KG_Core\Services\IngredientGenerator();
+        $result = $generator->create( $ingredient_name );
+        
+        if ( is_wp_error( $result ) ) {
+            error_log( 'KG Core: Ingredient generation failed for ' . $ingredient_name . ': ' . $result->get_error_message() );
+        } else {
+            error_log( 'KG Core: Ingredient generated successfully - ' . $ingredient_name . ' (ID: ' . $result . ')' );
+        }
+    }
+} );
