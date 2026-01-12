@@ -105,7 +105,7 @@ class ContentParser {
             $endPos = strlen($content);
             
             // Check for expert note section
-            if (preg_match('/[A-ZÇĞİÖŞÜ][a-zçğıöşü\.\s]+[\'`']+(nın|nin|nun|nün|ın|in|un|ün)\s+(notu|Notu)/u', $content, $endMatches, PREG_OFFSET_CAPTURE, $startPos)) {
+            if (preg_match('/[A-ZÇĞİÖŞÜ][a-zçğıöşü\.\s]+[\'\`]+(nın|nin|nun|nün|ın|in|un|ün)\s+(notu|Notu)/u', $content, $endMatches, PREG_OFFSET_CAPTURE, $startPos)) {
                 $endPos = $endMatches[0][1];
             }
             
@@ -153,7 +153,7 @@ class ContentParser {
         
         // Pattern to match expert note header with Turkish characters
         // Examples: "Doç.Dr. Enver Mahir Gülcan'ın notu", "Dyt. Figen Fişekçi Üvez'in notu:"
-        $pattern = '/([A-ZÇĞİÖŞÜ][a-zçğıöşü\.\s]+[A-ZÇĞİÖŞÜ][a-zçğıöşü\.\s]+)[\'`']+(nın|nin|nun|nün|ın|in|un|ün)\s+(notu|Notu):?\s*(<\/h[1-6]>|<\/p>|<br\s*\/?>)?/u';
+        $pattern = '/([A-ZÇĞİÖŞÜ][a-zçğıöşü\.\s]+[A-ZÇĞİÖŞÜ][a-zçğıöşü\.\s]+)[\'\`]+(nın|nin|nun|nün|ın|in|un|ün)\s+(notu|Notu):?\s*(<\/h[1-6]>|<\/p>|<br\s*\/?>)?/u';
         
         if (preg_match($pattern, $content, $matches, PREG_OFFSET_CAPTURE)) {
             $fullName = trim($matches[1][0]);
