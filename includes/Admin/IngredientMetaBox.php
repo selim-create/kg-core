@@ -22,6 +22,16 @@ class IngredientMetaBox {
     public function render_meta_box( $post ) {
         // Mevcut değerleri çek
         $start_age = get_post_meta( $post->ID, '_kg_start_age', true );
+        
+        // Convert old string format to numeric for backward compatibility
+        if ( ! empty( $start_age ) && ! is_numeric( $start_age ) ) {
+            // Extract number from old format like "6 ay"
+            preg_match( '/(\d+)/', $start_age, $matches );
+            if ( ! empty( $matches[1] ) ) {
+                $start_age = $matches[1];
+            }
+        }
+        
         $benefits = get_post_meta( $post->ID, '_kg_benefits', true );
         $allergy_risk = get_post_meta( $post->ID, '_kg_allergy_risk', true );
         $season = get_post_meta( $post->ID, '_kg_season', true );

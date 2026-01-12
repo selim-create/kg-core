@@ -25,6 +25,7 @@
 
         const $items = $container.find('.kg-repeater-items');
         const $addBtn = $container.find('.kg-add-item');
+        let itemCounter = $items.find('.kg-repeater-item').length;
 
         // Make sortable
         $items.sortable({
@@ -38,7 +39,7 @@
         // Add new item
         $addBtn.on('click', function(e) {
             e.preventDefault();
-            const index = Date.now();
+            const index = 'new_' + Date.now() + '_' + (++itemCounter);
             const template = getIngredientTemplate(index);
             $items.append(template);
             initIngredientAutocomplete();
@@ -62,6 +63,7 @@
 
         const $items = $container.find('.kg-repeater-items');
         const $addBtn = $container.find('.kg-add-item');
+        let itemCounter = $items.find('.kg-repeater-item').length;
 
         // Make sortable
         $items.sortable({
@@ -78,7 +80,7 @@
         // Add new item
         $addBtn.on('click', function(e) {
             e.preventDefault();
-            const index = Date.now();
+            const index = 'new_' + Date.now() + '_' + (++itemCounter);
             const stepNumber = $items.find('.kg-repeater-item').length + 1;
             const template = getInstructionTemplate(index, stepNumber);
             $items.append(template);
@@ -107,6 +109,7 @@
 
         const $items = $container.find('.kg-repeater-items');
         const $addBtn = $container.find('.kg-add-item');
+        let itemCounter = $items.find('.kg-repeater-item').length;
 
         // Make sortable
         $items.sortable({
@@ -120,7 +123,7 @@
         // Add new item
         $addBtn.on('click', function(e) {
             e.preventDefault();
-            const index = Date.now();
+            const index = 'new_' + Date.now() + '_' + (++itemCounter);
             const template = getSubstituteTemplate(index);
             $items.append(template);
         });
@@ -167,7 +170,7 @@
 
                 searchTimeout = setTimeout(function() {
                     searchIngredients(query, $results, $input);
-                }, 300);
+                }, 200);
             });
 
             // Handle keyboard navigation
