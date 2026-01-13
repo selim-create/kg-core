@@ -59,7 +59,7 @@ class IngredientCategory {
 
         foreach ($default_categories as $name => $description) {
             if (!term_exists($name, 'ingredient-category')) {
-                wp_insert_term(
+                $result = wp_insert_term(
                     $name,
                     'ingredient-category',
                     [
@@ -67,6 +67,11 @@ class IngredientCategory {
                         'slug'        => sanitize_title($name)
                     ]
                 );
+                
+                // Log error if term creation fails
+                if (is_wp_error($result)) {
+                    error_log('KG Core: Failed to create ingredient category ' . $name . ': ' . $result->get_error_message());
+                }
             }
         }
     }

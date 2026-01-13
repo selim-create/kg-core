@@ -52,6 +52,9 @@ class IngredientGenerator {
         // Assign ingredient category
         if (!empty($ai_data['category'])) {
             $this->assignCategory($post_id, $ai_data['category']);
+        } else {
+            // Fallback: assign to 'Özel Ürünler' if no category from AI
+            $this->assignCategory($post_id, 'Özel Ürünler');
         }
         
         // Attach image (always try to attach if configured)

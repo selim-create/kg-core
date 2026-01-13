@@ -618,13 +618,13 @@ Sadece JSON döndür, başka açıklama ekleme.
         // Fallback: Try regex extraction
         $cleanContent = wp_strip_all_tags($content);
         
-        // Pattern 1: "XX dakika" or "XX dk"
-        if (preg_match('/(\d+)\s*(dakika|dk)/i', $cleanContent, $matches)) {
+        // Pattern 1: "XX dakika" or "XX dk" - with word boundaries
+        if (preg_match('/\b(\d+)\s*(dakika|dk)\b/i', $cleanContent, $matches)) {
             return $matches[1] . ' dakika';
         }
         
-        // Pattern 2: "XX saat"
-        if (preg_match('/(\d+)\s*saat/i', $cleanContent, $matches)) {
+        // Pattern 2: "XX saat" - with word boundaries
+        if (preg_match('/\b(\d+)\s*saat\b/i', $cleanContent, $matches)) {
             $hours = (int) $matches[1];
             return ($hours * 60) . ' dakika'; // Convert to minutes
         }
@@ -690,32 +690,37 @@ Sadece JSON döndür, başka açıklama ekleme.
      */
     private function guessRecipeType($title, $content) {
         $titleLower = mb_strtolower($title, 'UTF-8');
-        $contentLower = mb_strtolower($content, 'UTF-8');
-        $combined = $titleLower . ' ' . $contentLower;
         
-        // Soup detection
-        if (preg_match('/(çorba|soup)/i', $combined)) {
+        // Check title first for efficiency
+        if (preg_match('/(çorba|soup)/i', $titleLower)) {
             return 'soup';
         }
         
-        // Dessert detection
-        if (preg_match('/(tatlı|muhallebi|puding|kek|kurabiye|brownie|bisküvi)/i', $combined)) {
+        if (preg_match('/(tatlı|muhallebi|puding|kek|kurabiye|brownie|bisküvi)/i', $titleLower)) {
             return 'dessert';
         }
         
-        // Snack detection
-        if (preg_match('/(atıştırmalık|aperatif|kraker|çubuk)/i', $combined)) {
+        if (preg_match('/(atıştırmalık|aperatif|kraker|çubuk)/i', $titleLower)) {
             return 'snack';
         }
         
-        // Main dish detection
-        if (preg_match('/(pilav|makarna|köfte|börek|yemek)/i', $combined)) {
+        if (preg_match('/(pilav|makarna|köfte|börek|yemek)/i', $titleLower)) {
             return 'main';
         }
         
-        // Puree/baby food
-        if (preg_match('/(püre|püresi|ezme)/i', $combined)) {
+        if (preg_match('/(püre|püresi|ezme)/i', $titleLower)) {
             return 'puree';
+        }
+        
+        // Only check content if title didn't match
+        $contentLower = mb_strtolower($content, 'UTF-8');
+        
+        if (preg_match('/(çorba|soup)/i', $contentLower)) {
+            return 'soup';
+        }
+        
+        if (preg_match('/(tatlı|muhallebi|puding|kek)/i', $contentLower)) {
+            return 'dessert';
         }
         
         return 'main'; // Default
@@ -780,25 +785,38 @@ Sadece JSON döndür, başka açıklama ekleme.
         ]);
         
         $deleted = 0;
+        $errors = 0;
+        
         foreach ($testRecipes as $recipe) {
-            // Also clean up migration log
-            global $wpdb;
-            $wpdb->delete(
-                $wpdb->prefix . 'kg_migration_log',
-                ['recipe_post_id' => $recipe->ID],
-                ['%d']
-            );
+            // Delete the recipe post first
+            $result = wp_delete_post($recipe->ID, true);
             
-            // Delete the recipe post
-            wp_delete_post($recipe->ID, true);
-            $deleted++;
+            if ($result) {
+                // Only clean up migration log after successful deletion
+                global $wpdb;
+                $wpdb->delete(
+                    $wpdb->prefix . 'kg_migration_log',
+                    ['recipe_post_id' => $recipe->ID],
+                    ['%d']
+                );
+                $deleted++;
+            } else {
+                $errors++;
+                error_log("KG Core: Failed to delete test recipe {$recipe->ID}");
+            }
         }
         
-        $this->logger->log("Cleaned {$deleted} test migration recipes");
+        $message = "{$deleted} test recipes cleaned";
+        if ($errors > 0) {
+            $message .= " ({$errors} errors)";
+        }
+        
+        $this->logger->log($message);
         
         return [
             'deleted' => $deleted,
-            'message' => "{$deleted} test recipes cleaned"
+            'errors' => $errors,
+            'message' => $message
         ];
     }
 }
