@@ -25,7 +25,7 @@ class IngredientParser {
     public function parse($ingredientStr) {
         $result = [
             'quantity' => '',
-            'unit' => 'adet',  // Default unit, will be updated if specific unit found
+            'unit' => '',  // Will be set based on what we find
             'name' => '',
             'ingredient_id' => null,
             'preparation_note' => ''
@@ -69,7 +69,10 @@ class IngredientParser {
             }
         }
         
-        // If no unit found, keep the default 'adet' (already set in result initialization)
+        // If no unit found but we have a quantity, default to 'adet'
+        if (!$unitFound && !empty($result['quantity'])) {
+            $result['unit'] = 'adet';
+        }
         
         // 4. What remains should be ingredient name + optional preparation notes
         // Pattern: preparation notes can be at start or end
