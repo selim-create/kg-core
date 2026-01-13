@@ -68,7 +68,7 @@ class AIService {
             'title' => 'Malzeme Adı (Türkçe)',
             'excerpt' => 'SEO için 150-160 karakter meta açıklama',
             'content' => '3-4 paragraf detaylı açıklama (HTML <p> etiketleri ile)',
-            'category' => 'Meyveler|Sebzeler|Proteinler|Tahıllar|Süt Ürünleri',
+            'category' => 'Meyveler|Sebzeler|Proteinler|Tahıllar|Süt Ürünleri|Baklagiller|Yağlar|Sıvılar|Baharatlar|Özel Ürünler',
             'start_age' => 6,
             'benefits' => 'Sağlık faydaları detaylı açıklama (HTML formatında)',
             'allergy_risk' => 'Düşük|Orta|Yüksek',

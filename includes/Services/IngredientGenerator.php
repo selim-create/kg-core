@@ -49,6 +49,14 @@ class IngredientGenerator {
         // Save meta fields
         $this->saveMetaFields($post_id, $ai_data);
         
+        // Assign ingredient category
+        if (!empty($ai_data['category'])) {
+            $this->assignCategory($post_id, $ai_data['category']);
+        } else {
+            // Fallback: assign to 'Özel Ürünler' if no category from AI
+            $this->assignCategory($post_id, 'Özel Ürünler');
+        }
+        
         // Attach image (always try to attach if configured)
         $this->attachImage($post_id, $ai_data);
         
@@ -298,6 +306,36 @@ class IngredientGenerator {
         
         if (!empty($term_ids)) {
             wp_set_post_terms($post_id, $term_ids, 'allergen');
+        }
+    }
+    
+    /**
+     * Assign category to ingredient
+     * 
+     * @param int $post_id Post ID
+     * @param string $category Category name
+     */
+    private function assignCategory($post_id, $category) {
+        $category = sanitize_text_field($category);
+        
+        // Check if term exists
+        $term = get_term_by('name', $category, 'ingredient-category');
+        
+        if (!$term) {
+            // Try by slug
+            $term = get_term_by('slug', sanitize_title($category), 'ingredient-category');
+        }
+        
+        if ($term) {
+            $result = wp_set_post_terms($post_id, [$term->term_id], 'ingredient-category');
+            
+            // Log error if term assignment fails
+            if (is_wp_error($result)) {
+                $safe_error = sanitize_text_field($result->get_error_message());
+                error_log('KG Core: Failed to assign category ' . $category . ' to ingredient ' . (int) $post_id . ': ' . $safe_error);
+            }
+        } else {
+            error_log('KG Core: Category not found: ' . $category . ' for ingredient ' . (int) $post_id);
         }
     }
     

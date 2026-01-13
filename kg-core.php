@@ -54,6 +54,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/AgeGroup.php' ) ) require_
 if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/Allergen.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/Allergen.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/DietType.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/DietType.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/MealType.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/MealType.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/IngredientCategory.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/IngredientCategory.php';
 
 // 5. ADMIN PANELİ ÖZEL ALANLARI (ACF Alternatifi)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/RecipeMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/RecipeMetaBox.php';
@@ -103,6 +104,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\Taxonomies\Allergen' ) ) new \KG_Core\Taxonomies\Allergen();
     if ( class_exists( '\KG_Core\Taxonomies\DietType' ) ) new \KG_Core\Taxonomies\DietType();
     if ( class_exists( '\KG_Core\Taxonomies\MealType' ) ) new \KG_Core\Taxonomies\MealType();
+    if ( class_exists( '\KG_Core\Taxonomies\IngredientCategory' ) ) new \KG_Core\Taxonomies\IngredientCategory();
 
     // Admin Meta Boxes (Sadece Admin panelinde çalışsın)
     if ( is_admin() && class_exists( '\KG_Core\Admin\RecipeMetaBox' ) ) {
