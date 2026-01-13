@@ -36,6 +36,7 @@ class RecipeMetaBox {
         $expert_title = get_post_meta( $post->ID, '_kg_expert_title', true );
         $expert_note = get_post_meta( $post->ID, '_kg_expert_note', true );
         $expert_approved = get_post_meta( $post->ID, '_kg_expert_approved', true );
+        $special_notes = get_post_meta( $post->ID, '_kg_special_notes', true );
         $cross_sell_url = get_post_meta( $post->ID, '_kg_cross_sell_url', true );
         $cross_sell_title = get_post_meta( $post->ID, '_kg_cross_sell_title', true );
         
@@ -158,6 +159,13 @@ class RecipeMetaBox {
             <p>
                 <label for="kg_expert_approved"><strong>Uzman Onaylı:</strong></label>
                 <input type="checkbox" id="kg_expert_approved" name="kg_expert_approved" value="1" <?php checked( $expert_approved, 1 ); ?>>
+            </p>
+
+            <h3>Özel Notlar</h3>
+            <p>
+                <label for="kg_special_notes"><strong>Özel Notlar (Süt, Not, İpucu vb.):</strong></label><br>
+                <textarea id="kg_special_notes" name="kg_special_notes" rows="4" style="width:100%;"><?php echo esc_textarea( $special_notes ); ?></textarea>
+                <small>Süt bilgisi, uyarılar ve ek ipuçları (Süt:, Not:, İpucu: vb.)</small>
             </p>
 
             <h3>Medya</h3>
@@ -434,6 +442,11 @@ class RecipeMetaBox {
         }
         $expert_approved = isset( $_POST['kg_expert_approved'] ) ? '1' : '0';
         update_post_meta( $post_id, '_kg_expert_approved', $expert_approved );
+
+        // Special notes
+        if ( isset( $_POST['kg_special_notes'] ) ) {
+            update_post_meta( $post_id, '_kg_special_notes', sanitize_textarea_field( $_POST['kg_special_notes'] ) );
+        }
 
         // Media
         if ( isset( $_POST['kg_video_url'] ) ) {
