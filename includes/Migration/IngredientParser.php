@@ -25,7 +25,7 @@ class IngredientParser {
     public function parse($ingredientStr) {
         $result = [
             'quantity' => '',
-            'unit' => '',
+            'unit' => 'adet',  // Default unit, will be updated if specific unit found
             'name' => '',
             'ingredient_id' => null,
             'preparation_note' => ''
@@ -59,7 +59,8 @@ class IngredientParser {
         
         $unitFound = false;
         foreach ($sortedUnits as $unit) {
-            $unitPattern = '/^' . preg_quote($unit, '/') . '\s+/iu';
+            // Match unit followed by whitespace, punctuation, or end of string
+            $unitPattern = '/^' . preg_quote($unit, '/') . '(?:\s+|$)/iu';
             if (preg_match($unitPattern, $ingredientStr, $unitMatch)) {
                 $result['unit'] = $unit;
                 $ingredientStr = trim(substr($ingredientStr, strlen($unitMatch[0])));
@@ -68,10 +69,7 @@ class IngredientParser {
             }
         }
         
-        // If no unit found but we have a quantity, default to 'adet'
-        if (!$unitFound && !empty($result['quantity'])) {
-            $result['unit'] = 'adet';
-        }
+        // If no unit found, keep the default 'adet' (already set in result initialization)
         
         // 4. What remains should be ingredient name + optional preparation notes
         // Pattern: preparation notes can be at start or end

@@ -211,14 +211,16 @@ class ContentParser {
         
         // Pattern to match expert note header with Turkish characters
         // Examples: "Doç.Dr. Enver Mahir Gülcan'ın notu", "Dyt. Figen Fişekçi Üvez'in notu:"
+        
         // Pattern 1: Title + Name + possessive + notu
-        $patterns = [
-            // Pattern with title (Doç.Dr., Prof.Dr., Dr., Dyt., Uzm.)
-            '/((Doç\.?\s*Dr\.?|Prof\.?\s*Dr\.?|Dr\.?|Dyt\.?|Uzm\.?)\s+([A-ZÇĞİÖŞÜa-zçğıöşü\s\.]+?))[\'\'`´]+\s*(nın|nin|nun|nün|ın|in|un|ün)\s+[Nn]otu:?\s*/u',
-            
-            // Pattern without title (just name)
-            '/([A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+)?)[\'\'`´]+\s*(nın|nin|nun|nün|ın|in|un|ün)\s+[Nn]otu:?\s*/u',
-        ];
+        // Matches: (Title) (Full Name)'s note
+        $titlePattern = '/((Doç\.?\s*Dr\.?|Prof\.?\s*Dr\.?|Dr\.?|Dyt\.?|Uzm\.?)\s+([A-ZÇĞİÖŞÜa-zçğıöşü\s\.]+?))[\'\'`´]+\s*(nın|nin|nun|nün|ın|in|un|ün)\s+[Nn]otu:?\s*/u';
+        
+        // Pattern 2: Just name without title
+        // Matches: (Full Name)'s note
+        $namePattern = '/([A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+)?)[\'\'`´]+\s*(nın|nin|nun|nün|ın|in|un|ün)\s+[Nn]otu:?\s*/u';
+        
+        $patterns = [$titlePattern, $namePattern];
         
         foreach ($patterns as $pattern) {
             if (preg_match($pattern, $content, $matches, PREG_OFFSET_CAPTURE)) {
@@ -226,7 +228,7 @@ class ContentParser {
                 $title = '';
                 $name = $fullMatch;
                 
-                // Check if we have a title in group 2
+                // Check if we have a title in group 2 (only in titlePattern)
                 if (isset($matches[2]) && !empty($matches[2][0])) {
                     $title = trim($matches[2][0]);
                     // Name is in group 3
@@ -234,7 +236,7 @@ class ContentParser {
                         $name = trim($matches[3][0]);
                     }
                 } else {
-                    // Try to extract title from fullMatch
+                    // Fallback: Try to extract title from fullMatch
                     if (preg_match('/^(Doç\.?\s*Dr\.?|Prof\.?\s*Dr\.?|Dr\.?|Dyt\.?|Uzm\.?)\s+(.+)$/iu', $fullMatch, $titleMatch)) {
                         $title = trim($titleMatch[1]);
                         $name = trim($titleMatch[2]);
@@ -318,11 +320,15 @@ class ContentParser {
     private function extractSpecialNotes($content) {
         $notes = [];
         
-        // Look for "Not:" or "Süt:" or similar patterns
-        preg_match_all('/(Not|Süt|İpucu|Uyarı|Dikkat):\s*([^\n<]+)/iu', $content, $matches);
+        // Look for special note patterns: "Not:", "Süt:", "İpucu:", etc.
+        // Pattern captures the label (group 1) and the content (group 2)
+        $pattern = '/(Not|Süt|İpucu|Uyarı|Dikkat):\s*([^\n<]+)/iu';
         
-        if (!empty($matches[0])) {
-            $notes = $matches[0];
+        if (preg_match_all($pattern, $content, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                // Use full match (label + content)
+                $notes[] = $match[0];
+            }
         }
         
         return implode("\n", $notes);
