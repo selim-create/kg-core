@@ -1,4 +1,4 @@
-<? php
+<?php
 namespace KG_Core\Admin;
 
 class DiscussionAdmin {
@@ -235,7 +235,7 @@ class DiscussionAdmin {
         $script = "
         jQuery(document).ready(function($) {
             
-            $('. kg-approve').on('click', function() {
+            $('.kg-approve').on('click', function() {
                 var button = $(this);
                 var id = button.data('id');
                 
@@ -263,7 +263,7 @@ class DiscussionAdmin {
                 var button = $(this);
                 var id = button.data('id');
                 
-                button. prop('disabled', true);
+                button.prop('disabled', true);
                 
                 $.post(ajaxurl, {
                     action: 'kg_reject_discussion',
@@ -285,7 +285,7 @@ class DiscussionAdmin {
                 
                 button.prop('disabled', true);
                 
-                $. post(ajaxurl, {
+                $.post(ajaxurl, {
                     action: 'kg_feature_discussion',
                     post_id: id,
                     _wpnonce: '{$nonce}'

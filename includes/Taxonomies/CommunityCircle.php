@@ -1,4 +1,4 @@
-<? php
+<?php
 namespace KG_Core\Taxonomies;
 
 class CommunityCircle {
@@ -189,7 +189,7 @@ class CommunityCircle {
             <th scope="row"><label for="kg_circle_icon"><?php _e( 'İkon (Emoji)', 'kg-core' ); ?></label></th>
             <td>
                 <input type="text" name="kg_circle_icon" id="kg_circle_icon" value="<?php echo esc_attr( $icon ); ?>" placeholder="👶">
-                <p class="description"><? php _e( 'Çember için emoji ikon', 'kg-core' ); ?></p>
+                <p class="description"><?php _e( 'Çember için emoji ikon', 'kg-core' ); ?></p>
             </td>
         </tr>
 
@@ -205,7 +205,7 @@ class CommunityCircle {
             <th scope="row"><label for="kg_circle_order"><?php _e( 'Sıralama', 'kg-core' ); ?></label></th>
             <td>
                 <input type="number" name="kg_circle_order" id="kg_circle_order" value="<?php echo esc_attr( $order ?:  10 ); ?>" min="0" max="100">
-                <p class="description"><? php _e( 'Görüntüleme sırası', 'kg-core' ); ?></p>
+                <p class="description"><?php _e( 'Görüntüleme sırası', 'kg-core' ); ?></p>
             </td>
         </tr>
         <?php

@@ -163,6 +163,7 @@ class UserController {
         $email = sanitize_email( $request->get_param( 'email' ) );
         $password = $request->get_param( 'password' );
         $name = sanitize_text_field( $request->get_param( 'name' ) );
+        $baby_birth_date = sanitize_text_field( $request->get_param( 'baby_birth_date' ) );
 
         if ( empty( $email ) || empty( $password ) ) {
             return new \WP_Error( 'missing_fields', 'Email and password are required', [ 'status' => 400 ] );
@@ -205,6 +206,11 @@ class UserController {
                 'ID' => $user_id,
                 'display_name' => $name,
             ] );
+        }
+
+        // Register sonrası otomatik çember atama
+        if ( ! empty( $baby_birth_date ) ) {
+            $this->assign_default_circle( $user_id, $baby_birth_date );
         }
 
         $token = JWTHandler::generate_token( $user_id );
@@ -659,5 +665,53 @@ class UserController {
         update_user_meta( $user_id, '_kg_shopping_list', array_values( $shopping_list ) );
 
         return new \WP_REST_Response( [ 'message' => 'Item removed from shopping list' ], 200 );
+    }
+
+    /**
+     * Bebek yaşına göre uygun çember ID'sini bul
+     */
+    private function get_circle_by_baby_age( $birth_date ) {
+        if ( empty( $birth_date ) ) {
+            return null;
+        }
+        
+        $birth = new \DateTime( $birth_date );
+        $now = new \DateTime();
+        $diff = $now->diff( $birth );
+        $months = ( $diff->y * 12 ) + $diff->m;
+        
+        // Yaş aralıklarına göre çember slug'ları
+        $slug = null;
+        if ( $months >= 6 && $months < 9 ) {
+            $slug = '6-9-ay';
+        } elseif ( $months >= 9 && $months < 12 ) {
+            $slug = '9-12-ay';
+        } elseif ( $months >= 12 && $months < 24 ) {
+            $slug = '1-2-yas';
+        }
+        
+        if ( $slug ) {
+            $term = get_term_by( 'slug', $slug, 'community_circle' );
+            if ( $term && ! is_wp_error( $term ) ) {
+                return $term->term_id;
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * Register sonrası kullanıcıya otomatik çember ata
+     */
+    private function assign_default_circle( $user_id, $birth_date ) {
+        $circle_id = $this->get_circle_by_baby_age( $birth_date );
+        
+        if ( $circle_id ) {
+            $circles = get_user_meta( $user_id, '_kg_followed_circles', true ) ?: [];
+            if ( ! in_array( $circle_id, $circles ) ) {
+                $circles[] = $circle_id;
+                update_user_meta( $user_id, '_kg_followed_circles', $circles );
+            }
+        }
     }
 }
