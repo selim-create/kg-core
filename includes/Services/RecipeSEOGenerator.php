@@ -6,12 +6,19 @@ namespace KG_Core\Services;
  * Handles RankMath and Yoast SEO fields
  */
 class RecipeSEOGenerator {
-    private $api_key;
     private $model;
     
     public function __construct() {
-        $this->api_key = get_option('kg_openai_api_key', '') ?: get_option('kg_ai_api_key', '');
         $this->model = get_option('kg_ai_model', 'gpt-4o-mini');
+    }
+    
+    /**
+     * Get API key (retrieved only when needed)
+     * 
+     * @return string API key
+     */
+    private function getApiKey() {
+        return get_option('kg_openai_api_key', '') ?: get_option('kg_ai_api_key', '');
     }
     
     /**
@@ -22,7 +29,9 @@ class RecipeSEOGenerator {
      * @return array|WP_Error SEO data or error
      */
     public function generateSEO($recipeId, $recipeData = []) {
-        if (empty($this->api_key)) {
+        $apiKey = $this->getApiKey();
+        
+        if (empty($apiKey)) {
             return new \WP_Error('no_api_key', 'AI API anahtarı ayarlanmamış.');
         }
         
@@ -50,7 +59,7 @@ class RecipeSEOGenerator {
         $prompt = $this->buildPrompt($title, $content, $excerpt, $ageGroup, $mainIngredient, $recipeData);
         
         try {
-            $response = $this->callOpenAI($prompt);
+            $response = $this->callOpenAI($prompt, $apiKey);
             
             if (is_wp_error($response)) {
                 return $response;
@@ -140,14 +149,21 @@ class RecipeSEOGenerator {
         $prompt .= "\nLütfen yanıtını SADECE aşağıdaki JSON formatında ver (başka açıklama ekleme):\n\n";
         
         $json_template = [
-            'focus_keyword' => 'Ana anahtar kelime (örn: "brokoli çorbası tarifi", "bebeklere brokoli")',
-            'meta_title' => 'SEO başlığı - maksimum 60 karakter (örn: "Brokoli Çorbası Tarifi | Besleyici ve Sağlıklı")',
-            'meta_description' => 'SEO açıklaması - 150-160 karakter (örn: "Lif kaynağı yüksek lezzetli Brokoli Çorbası. Çocuklarınız ve bebekleriniz için ideal tarif. Keşfet!")'
+            'focus_keyword' => 'Ana anahtar kelime (tarif adını içermeli)',
+            'meta_title' => 'SEO başlığı (maksimum 60 karakter)',
+            'meta_description' => 'SEO açıklaması (150-160 karakter, çağrı içermeli)'
         ];
         
         $prompt .= json_encode($json_template, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
         
-        $prompt .= "\n\nÖNEMLİ KURALLAR:\n";
+        $prompt .= "\n\nÖRNEK ÇIKTI:\n";
+        $prompt .= "{\n";
+        $prompt .= "  \"focus_keyword\": \"bebekler için brokoli çorbası\",\n";
+        $prompt .= "  \"meta_title\": \"Brokoli Çorbası Tarifi | Besleyici ve Sağlıklı\",\n";
+        $prompt .= "  \"meta_description\": \"Lif kaynağı yüksek lezzetli Brokoli Çorbası. Çocuklarınız ve bebekleriniz için ideal tarif. Keşfet!\"\n";
+        $prompt .= "}\n";
+        
+        $prompt .= "\nÖNEMLİ KURALLAR:\n";
         $prompt .= "1. Focus keyword doğal ve aranabilir olmalı, tarif adını içermeli.\n";
         $prompt .= "2. Meta title çekici, bilgilendirici ve 60 karakteri geçmemeli.\n";
         $prompt .= "3. Meta description tarifi özetlemeli, çağrı içermeli, 150-160 karakter arası olmalı.\n";
@@ -161,9 +177,10 @@ class RecipeSEOGenerator {
      * Call OpenAI API
      * 
      * @param string $prompt The prompt to send
+     * @param string $apiKey API key
      * @return string|WP_Error API response or error
      */
-    private function callOpenAI($prompt) {
+    private function callOpenAI($prompt, $apiKey) {
         $url = 'https://api.openai.com/v1/chat/completions';
         
         $body = [
@@ -179,12 +196,12 @@ class RecipeSEOGenerator {
                 ]
             ],
             'temperature' => 0.7,
-            'max_tokens' => 500
+            'max_tokens' => 800
         ];
         
         $response = wp_remote_post($url, [
             'headers' => [
-                'Authorization' => 'Bearer ' . $this->api_key,
+                'Authorization' => 'Bearer ' . $apiKey,
                 'Content-Type' => 'application/json'
             ],
             'body' => json_encode($body),

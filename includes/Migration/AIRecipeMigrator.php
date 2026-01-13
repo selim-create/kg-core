@@ -504,11 +504,6 @@ Sadece JSON döndür, başka açıklama ekleme.
         // Return null to indicate ingredient will be created later
         // This prevents empty ingredient posts from being created
         return null;
-        if (!is_wp_error($ingredientId) && has_action('kg_generate_ingredient')) {
-            wp_schedule_single_event(time() + 10, 'kg_generate_ingredient', [$name]);
-        }
-        
-        return is_wp_error($ingredientId) ? null : $ingredientId;
     }
     
     /**
