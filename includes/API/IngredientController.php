@@ -291,7 +291,8 @@ class IngredientController {
         
         // Fallback to defaults if empty
         if ( empty( $seo_data['title'] ) ) {
-            $seo_data['title'] = get_the_title( $post_id ) . ' - KidsGourmet';
+            $site_name = get_option( 'blogname' ) ?: 'KidsGourmet';
+            $seo_data['title'] = get_the_title( $post_id ) . ' - ' . $site_name;
         }
         if ( empty( $seo_data['description'] ) ) {
             $seo_data['description'] = wp_trim_words( get_the_excerpt( $post_id ), 30 );

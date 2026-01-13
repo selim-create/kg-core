@@ -207,7 +207,7 @@ class IngredientMetaBox {
                 </p>
             </div>
 
-            <h3>Besin Değerleri (100g başına) - Mevcut Alanlar</h3>
+            <h3>Besin Değerleri (Genel - Mevcut Sistem)</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
                 <p>
                     <label for="kg_calories"><strong>Kalori (kcal):</strong></label><br>
@@ -271,7 +271,7 @@ class IngredientMetaBox {
             </p>
 
             <p>
-                <label for="kg_preparation_tips"><strong>Hazırlama İpuçları (Eski Alan):</strong></label><br>
+                <label for="kg_preparation_tips"><strong>Hazırlama İpuçları:</strong></label><br>
                 <textarea id="kg_preparation_tips" name="kg_preparation_tips" rows="3" style="width:100%;"><?php echo esc_textarea( $preparation_tips ); ?></textarea>
                 <small>Malzemeyi bebeklere hazırlarken dikkat edilmesi gerekenler</small>
             </p>
