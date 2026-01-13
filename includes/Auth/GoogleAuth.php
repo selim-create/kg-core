@@ -64,7 +64,7 @@ class GoogleAuth {
         
         return [
             'email' => $body['email'],
-            'email_verified' => $body['email_verified'] ?? false,
+            'email_verified' => ($body['email_verified'] ?? 'false') === 'true',
             'name' => $body['name'] ?? '',
             'picture' => $body['picture'] ?? '',
             'google_id' => $body['sub'],
