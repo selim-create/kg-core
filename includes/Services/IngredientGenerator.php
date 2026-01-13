@@ -327,7 +327,14 @@ class IngredientGenerator {
         }
         
         if ($term) {
-            wp_set_post_terms($post_id, [$term->term_id], 'ingredient-category');
+            $result = wp_set_post_terms($post_id, [$term->term_id], 'ingredient-category');
+            
+            // Log error if term assignment fails
+            if (is_wp_error($result)) {
+                error_log('KG Core: Failed to assign category ' . $category . ' to ingredient ' . (int) $post_id . ': ' . $result->get_error_message());
+            }
+        } else {
+            error_log('KG Core: Category not found: ' . $category . ' for ingredient ' . (int) $post_id);
         }
     }
     

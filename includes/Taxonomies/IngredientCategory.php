@@ -70,7 +70,9 @@ class IngredientCategory {
                 
                 // Log error if term creation fails
                 if (is_wp_error($result)) {
-                    error_log('KG Core: Failed to create ingredient category ' . $name . ': ' . $result->get_error_message());
+                    // Sanitize name to prevent log injection
+                    $safe_name = sanitize_text_field($name);
+                    error_log('KG Core: Failed to create ingredient category ' . $safe_name . ': ' . $result->get_error_message());
                 }
             }
         }

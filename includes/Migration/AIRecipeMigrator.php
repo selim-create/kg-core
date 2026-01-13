@@ -692,34 +692,35 @@ Sadece JSON döndür, başka açıklama ekleme.
         $titleLower = mb_strtolower($title, 'UTF-8');
         
         // Check title first for efficiency
-        if (preg_match('/(çorba|soup)/i', $titleLower)) {
+        // Patterns are case-insensitive since we already converted to lowercase
+        if (preg_match('/(çorba|soup)/', $titleLower)) {
             return 'soup';
         }
         
-        if (preg_match('/(tatlı|muhallebi|puding|kek|kurabiye|brownie|bisküvi)/i', $titleLower)) {
+        if (preg_match('/(tatlı|muhallebi|puding|kek|kurabiye|brownie|bisküvi)/', $titleLower)) {
             return 'dessert';
         }
         
-        if (preg_match('/(atıştırmalık|aperatif|kraker|çubuk)/i', $titleLower)) {
+        if (preg_match('/(atıştırmalık|aperatif|kraker|çubuk)/', $titleLower)) {
             return 'snack';
         }
         
-        if (preg_match('/(pilav|makarna|köfte|börek|yemek)/i', $titleLower)) {
+        if (preg_match('/(pilav|makarna|köfte|börek|yemek)/', $titleLower)) {
             return 'main';
         }
         
-        if (preg_match('/(püre|püresi|ezme)/i', $titleLower)) {
+        if (preg_match('/(püre|püresi|ezme)/', $titleLower)) {
             return 'puree';
         }
         
         // Only check content if title didn't match
         $contentLower = mb_strtolower($content, 'UTF-8');
         
-        if (preg_match('/(çorba|soup)/i', $contentLower)) {
+        if (preg_match('/(çorba|soup)/', $contentLower)) {
             return 'soup';
         }
         
-        if (preg_match('/(tatlı|muhallebi|puding|kek)/i', $contentLower)) {
+        if (preg_match('/(tatlı|muhallebi|puding|kek)/', $contentLower)) {
             return 'dessert';
         }
         
@@ -796,13 +797,13 @@ Sadece JSON döndür, başka açıklama ekleme.
                 global $wpdb;
                 $wpdb->delete(
                     $wpdb->prefix . 'kg_migration_log',
-                    ['recipe_post_id' => $recipe->ID],
+                    ['recipe_post_id' => (int) $recipe->ID], // Cast to int for safety
                     ['%d']
                 );
                 $deleted++;
             } else {
                 $errors++;
-                error_log("KG Core: Failed to delete test recipe {$recipe->ID}");
+                error_log('KG Core: Failed to delete test recipe ' . (int) $recipe->ID);
             }
         }
         
