@@ -24,6 +24,7 @@ class MigrationPage {
         add_action('wp_ajax_kg_migrate_batch', [$this, 'ajaxMigrateBatch']);
         add_action('wp_ajax_kg_migrate_all', [$this, 'ajaxMigrateAll']);
         add_action('wp_ajax_kg_migration_status', [$this, 'ajaxGetStatus']);
+        add_action('wp_ajax_kg_clean_test_migrations', [$this, 'ajaxCleanTestMigrations']);
     }
     
     /**
@@ -79,6 +80,10 @@ class MigrationPage {
         $recentMigrations = $this->logger->getRecentMigrations(10);
         $failedMigrations = $this->logger->getFailedMigrations(10);
         
+        // Exclude test migrations from success count
+        $testMigrationsCount = $this->getTestMigrationsCount();
+        $realSuccessCount = $status['success'] - $testMigrationsCount;
+        
         $pendingCount = $totalCount - $status['success'] - $status['failed'];
         
         ?>
@@ -100,8 +105,11 @@ class MigrationPage {
                 
                 <div class="kg-status-card kg-success">
                     <h3>Başarılı</h3>
-                    <div class="number"><?php echo $status['success']; ?></div>
+                    <div class="number"><?php echo $realSuccessCount; ?></div>
                     <p>Taşınan Tarif</p>
+                    <?php if ($testMigrationsCount > 0): ?>
+                        <small style="color: #999;">+ <?php echo $testMigrationsCount; ?> test</small>
+                    <?php endif; ?>
                 </div>
                 
                 <div class="kg-status-card kg-pending">
@@ -155,6 +163,16 @@ class MigrationPage {
                         ▶ Tümünü İşle (<?php echo $pendingCount; ?> tarif)
                     </button>
                 </div>
+                
+                <?php if ($testMigrationsCount > 0): ?>
+                <div class="kg-action-section">
+                    <h3>🧹 Test Verilerini Temizle</h3>
+                    <p>Test modunda oluşturulmuş <?php echo $testMigrationsCount; ?> tarif var.</p>
+                    <button type="button" id="kg-clean-test" class="button button-secondary">
+                        🗑️ Test Tariflerini Sil
+                    </button>
+                </div>
+                <?php endif; ?>
             </div>
             
             <!-- Progress/Result Area -->
@@ -336,5 +354,38 @@ class MigrationPage {
             'status' => $status,
             'total' => $totalCount
         ]);
+    }
+    
+    /**
+     * AJAX: Clean test migrations
+     */
+    public function ajaxCleanTestMigrations() {
+        check_ajax_referer('kg_migration_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Yetkiniz yok.');
+        }
+        
+        $result = $this->migrator->cleanTestMigrations();
+        
+        wp_send_json_success($result);
+    }
+    
+    /**
+     * Get count of test migrations
+     * 
+     * @return int Test migrations count
+     */
+    private function getTestMigrationsCount() {
+        $testRecipes = get_posts([
+            'post_type' => 'recipe',
+            'meta_key' => '_kg_migrated_test',
+            'meta_value' => '1',
+            'posts_per_page' => -1,
+            'post_status' => 'any',
+            'fields' => 'ids'
+        ]);
+        
+        return count($testRecipes);
     }
 }

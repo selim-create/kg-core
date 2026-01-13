@@ -49,6 +49,11 @@ class IngredientGenerator {
         // Save meta fields
         $this->saveMetaFields($post_id, $ai_data);
         
+        // Assign ingredient category
+        if (!empty($ai_data['category'])) {
+            $this->assignCategory($post_id, $ai_data['category']);
+        }
+        
         // Attach image (always try to attach if configured)
         $this->attachImage($post_id, $ai_data);
         
@@ -298,6 +303,28 @@ class IngredientGenerator {
         
         if (!empty($term_ids)) {
             wp_set_post_terms($post_id, $term_ids, 'allergen');
+        }
+    }
+    
+    /**
+     * Assign category to ingredient
+     * 
+     * @param int $post_id Post ID
+     * @param string $category Category name
+     */
+    private function assignCategory($post_id, $category) {
+        $category = sanitize_text_field($category);
+        
+        // Check if term exists
+        $term = get_term_by('name', $category, 'ingredient-category');
+        
+        if (!$term) {
+            // Try by slug
+            $term = get_term_by('slug', sanitize_title($category), 'ingredient-category');
+        }
+        
+        if ($term) {
+            wp_set_post_terms($post_id, [$term->term_id], 'ingredient-category');
         }
     }
     

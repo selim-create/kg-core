@@ -14,6 +14,7 @@
             $('#kg-migrate-single').on('click', this.migrateSingle.bind(this));
             $('#kg-migrate-batch').on('click', this.migrateBatch.bind(this));
             $('#kg-migrate-all').on('click', this.migrateAll.bind(this));
+            $('#kg-clean-test').on('click', this.cleanTestMigrations.bind(this));
         },
         
         /**
@@ -176,6 +177,48 @@
                         setTimeout(() => {
                             window.location.reload();
                         }, 3000);
+                    } else {
+                        this.showResult('error', '❌ Hata: ' + response.data);
+                    }
+                },
+                error: (xhr) => {
+                    this.setLoading($btn, false);
+                    this.showResult('error', '❌ AJAX hatası: ' + xhr.statusText);
+                }
+            });
+        },
+        
+        /**
+         * Clean test migrations
+         */
+        cleanTestMigrations: function(e) {
+            e.preventDefault();
+            
+            if (!confirm('Test modunda oluşturulmuş tüm tarifleri silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz!')) {
+                return;
+            }
+            
+            const $btn = $(e.currentTarget);
+            this.setLoading($btn, true);
+            this.showResult('info', '🧹 Test tarifleri temizleniyor...');
+            
+            $.ajax({
+                url: kgMigration.ajaxUrl,
+                method: 'POST',
+                data: {
+                    action: 'kg_clean_test_migrations',
+                    nonce: kgMigration.nonce
+                },
+                success: (response) => {
+                    this.setLoading($btn, false);
+                    
+                    if (response.success) {
+                        this.showResult('success', '✅ ' + response.data.message);
+                        
+                        // Reload page after 2 seconds
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
                     } else {
                         this.showResult('error', '❌ Hata: ' + response.data);
                     }

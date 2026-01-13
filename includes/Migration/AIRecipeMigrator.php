@@ -179,6 +179,9 @@ Aşağıdaki blog yazısını analiz et ve TÜM bilgileri JSON formatında çık
 5. Uzman notunu TAMAMEN al, hiç kesme
 6. \"Süt:\", \"Not:\", \"İpucu:\", \"Uyarı:\" ile başlayan TÜM bölümler \"special_notes\"a eklensin
 7. \"İlginizi çekebilecek\" veya reklam içeriklerini ATLA
+8. Beslenme değerlerini MUTLAKA doldur - tahmin ederek de olsa, boş bırakma
+9. Hazırlama süresini mutlaka bul veya tahmin et - boş bırakma
+10. İkame malzemeler için alerjenleri göz önünde bulundur
 
 📝 BLOG BAŞLIĞI:
 {$title}
@@ -231,6 +234,11 @@ Aşağıdaki blog yazısını analiz et ve TÜM bilgileri JSON formatında çık
       \"original\": \"İnek sütü\",
       \"substitute\": \"Formül mama\",
       \"note\": \"1 yaş altı bebekler için\"
+    },
+    {
+      \"original\": \"İnek sütü\",
+      \"substitute\": \"Badem sütü\",
+      \"note\": \"Laktozsuz diyet için\"
     }
   ],
   
@@ -243,9 +251,9 @@ Aşağıdaki blog yazısını analiz et ve TÜM bilgileri JSON formatında çık
   \"special_notes\": \"Süt: Çocuğunuzun inek sütü alerjisi yoksa... (TAM METİN)\\n\\nNot: İçine ev yapımı... (TAM METİN)\",
   
   \"nutrition\": {
-    \"calories\": \"tahmini kalori değeri\",
-    \"protein\": \"tahmini protein (g)\",
-    \"fiber\": \"tahmini lif (g)\",
+    \"calories\": \"150 kcal\",
+    \"protein\": \"5 g\",
+    \"fiber\": \"3 g\",
     \"vitamins\": \"A, C, K\"
   },
   
@@ -276,6 +284,24 @@ YAŞ GRUBU SEÇENEKLERİ:
 - 12-24-ay-gecis (1-2 yaş arası)
 - 2-yas-ve-uzeri (2 yaş ve üzeri)
 
+BESİN DEĞERLERİ KURALLARI:
+- Calories: \"XXX kcal\" formatında
+- Protein: \"XX g\" formatında
+- Fiber: \"XX g\" formatında
+- Vitamins: \"A, C, K\" gibi virgülle ayrılmış liste
+- Boş bırakma! Tahmin et, yaklaşık değer ver.
+
+HAZIRLIK SÜRESİ KURALLARI:
+- \"XX dakika\" veya \"XX saat\" formatında
+- Blog yazısında geçiyorsa onu kullan
+- Geçmiyorsa tarifin karmaşıklığına göre tahmin et
+- Boş bırakma!
+
+İKAME MALZEMELER KURALLARI:
+- Alerjenli malzemeler için mutlaka ikame öner
+- Süt, yumurta, glüten içeren malzemeler için alternatifleri ekle
+- Her ikame için hangi durumda kullanılacağını \"note\" alanında belirt
+
 Sadece JSON döndür, başka açıklama ekleme.
 ";
     }
@@ -304,7 +330,8 @@ Sadece JSON döndür, başka açıklama ekleme.
         }
         
         // Meta fields
-        update_post_meta($recipeId, '_kg_prep_time', $aiData['prep_time'] ?? '');
+        $prepTime = $this->extractPrepTime($aiData, $originalPost->post_content);
+        update_post_meta($recipeId, '_kg_prep_time', $prepTime);
         update_post_meta($recipeId, '_kg_is_featured', '0');
         
         // Ingredients
@@ -351,10 +378,11 @@ Sadece JSON döndür, başka açıklama ekleme.
         update_post_meta($recipeId, '_kg_substitutes', $substitutes);
         
         // Nutrition
-        update_post_meta($recipeId, '_kg_calories', $aiData['nutrition']['calories'] ?? '');
-        update_post_meta($recipeId, '_kg_protein', $aiData['nutrition']['protein'] ?? '');
-        update_post_meta($recipeId, '_kg_fiber', $aiData['nutrition']['fiber'] ?? '');
-        update_post_meta($recipeId, '_kg_vitamins', $aiData['nutrition']['vitamins'] ?? '');
+        $nutrition = $this->getNutritionWithFallback($aiData, $originalPost);
+        update_post_meta($recipeId, '_kg_calories', $nutrition['calories']);
+        update_post_meta($recipeId, '_kg_protein', $nutrition['protein']);
+        update_post_meta($recipeId, '_kg_fiber', $nutrition['fiber']);
+        update_post_meta($recipeId, '_kg_vitamins', $nutrition['vitamins']);
         
         // Expert
         $expertName = $aiData['expert']['name'] ?? '';
@@ -405,6 +433,12 @@ Sadece JSON döndür, başka açıklama ekleme.
         // Migration reference
         update_post_meta($recipeId, '_kg_migrated_from', $originalPost->ID);
         update_post_meta($originalPost->ID, '_kg_migrated_to', $recipeId);
+        
+        // Mark as test migration if in test mode (can be set via option)
+        $isTestMode = get_option('kg_migration_test_mode', false);
+        if ($isTestMode) {
+            update_post_meta($recipeId, '_kg_migrated_test', '1');
+        }
         
         // Copy featured image
         $thumbnailId = get_post_thumbnail_id($originalPost->ID);
@@ -566,5 +600,205 @@ Sadece JSON döndür, başka açıklama ekleme.
         $this->logger->log("Starting migration of all {$totalCount} recipes");
         
         return $this->migrateBatch($totalCount);
+    }
+    
+    /**
+     * Extract preparation time with fallback
+     * 
+     * @param array $aiData AI-parsed data
+     * @param string $content Blog post content
+     * @return string Preparation time
+     */
+    private function extractPrepTime($aiData, $content) {
+        // First, try AI data
+        if (!empty($aiData['prep_time'])) {
+            return $aiData['prep_time'];
+        }
+        
+        // Fallback: Try regex extraction
+        $cleanContent = wp_strip_all_tags($content);
+        
+        // Pattern 1: "XX dakika" or "XX dk"
+        if (preg_match('/(\d+)\s*(dakika|dk)/i', $cleanContent, $matches)) {
+            return $matches[1] . ' dakika';
+        }
+        
+        // Pattern 2: "XX saat"
+        if (preg_match('/(\d+)\s*saat/i', $cleanContent, $matches)) {
+            $hours = (int) $matches[1];
+            return ($hours * 60) . ' dakika'; // Convert to minutes
+        }
+        
+        // Pattern 3: "Hazırlama süresi: XX"
+        if (preg_match('/hazırlama\s+süresi[:\s]+(\d+)/i', $cleanContent, $matches)) {
+            return $matches[1] . ' dakika';
+        }
+        
+        // Default fallback based on recipe complexity (estimate)
+        return '20 dakika'; // Default assumption for baby food
+    }
+    
+    /**
+     * Get nutrition values with fallback
+     * 
+     * @param array $aiData AI-parsed data
+     * @param WP_Post $post Original post
+     * @return array Nutrition values
+     */
+    private function getNutritionWithFallback($aiData, $post) {
+        $nutrition = [
+            'calories' => '',
+            'protein' => '',
+            'fiber' => '',
+            'vitamins' => ''
+        ];
+        
+        // Try to get from AI data first
+        if (!empty($aiData['nutrition'])) {
+            $nutrition['calories'] = $aiData['nutrition']['calories'] ?? '';
+            $nutrition['protein'] = $aiData['nutrition']['protein'] ?? '';
+            $nutrition['fiber'] = $aiData['nutrition']['fiber'] ?? '';
+            $nutrition['vitamins'] = $aiData['nutrition']['vitamins'] ?? '';
+        }
+        
+        // Apply fallback for empty values based on recipe type
+        $recipeType = $this->guessRecipeType($post->post_title, $post->post_content);
+        $defaults = $this->getDefaultNutritionByType($recipeType);
+        
+        if (empty($nutrition['calories'])) {
+            $nutrition['calories'] = $defaults['calories'];
+        }
+        if (empty($nutrition['protein'])) {
+            $nutrition['protein'] = $defaults['protein'];
+        }
+        if (empty($nutrition['fiber'])) {
+            $nutrition['fiber'] = $defaults['fiber'];
+        }
+        if (empty($nutrition['vitamins'])) {
+            $nutrition['vitamins'] = $defaults['vitamins'];
+        }
+        
+        return $nutrition;
+    }
+    
+    /**
+     * Guess recipe type from title and content
+     * 
+     * @param string $title Recipe title
+     * @param string $content Recipe content
+     * @return string Recipe type (soup, dessert, main, snack)
+     */
+    private function guessRecipeType($title, $content) {
+        $titleLower = mb_strtolower($title, 'UTF-8');
+        $contentLower = mb_strtolower($content, 'UTF-8');
+        $combined = $titleLower . ' ' . $contentLower;
+        
+        // Soup detection
+        if (preg_match('/(çorba|soup)/i', $combined)) {
+            return 'soup';
+        }
+        
+        // Dessert detection
+        if (preg_match('/(tatlı|muhallebi|puding|kek|kurabiye|brownie|bisküvi)/i', $combined)) {
+            return 'dessert';
+        }
+        
+        // Snack detection
+        if (preg_match('/(atıştırmalık|aperatif|kraker|çubuk)/i', $combined)) {
+            return 'snack';
+        }
+        
+        // Main dish detection
+        if (preg_match('/(pilav|makarna|köfte|börek|yemek)/i', $combined)) {
+            return 'main';
+        }
+        
+        // Puree/baby food
+        if (preg_match('/(püre|püresi|ezme)/i', $combined)) {
+            return 'puree';
+        }
+        
+        return 'main'; // Default
+    }
+    
+    /**
+     * Get default nutrition values by recipe type
+     * 
+     * @param string $type Recipe type
+     * @return array Default nutrition values
+     */
+    private function getDefaultNutritionByType($type) {
+        $defaults = [
+            'soup' => [
+                'calories' => '100 kcal',
+                'protein' => '4 g',
+                'fiber' => '2 g',
+                'vitamins' => 'A, C'
+            ],
+            'dessert' => [
+                'calories' => '200 kcal',
+                'protein' => '3 g',
+                'fiber' => '1 g',
+                'vitamins' => 'B, D'
+            ],
+            'snack' => [
+                'calories' => '150 kcal',
+                'protein' => '5 g',
+                'fiber' => '3 g',
+                'vitamins' => 'E, B'
+            ],
+            'main' => [
+                'calories' => '180 kcal',
+                'protein' => '8 g',
+                'fiber' => '3 g',
+                'vitamins' => 'A, B, C'
+            ],
+            'puree' => [
+                'calories' => '80 kcal',
+                'protein' => '2 g',
+                'fiber' => '2 g',
+                'vitamins' => 'A, C'
+            ]
+        ];
+        
+        return isset($defaults[$type]) ? $defaults[$type] : $defaults['main'];
+    }
+    
+    /**
+     * Clean test migrations
+     * Removes recipes marked as test migrations
+     * 
+     * @return array Cleanup results
+     */
+    public function cleanTestMigrations() {
+        $testRecipes = get_posts([
+            'post_type' => 'recipe',
+            'meta_key' => '_kg_migrated_test',
+            'meta_value' => '1',
+            'posts_per_page' => -1,
+            'post_status' => 'any'
+        ]);
+        
+        $deleted = 0;
+        foreach ($testRecipes as $recipe) {
+            // Also clean up migration log
+            global $wpdb;
+            $wpdb->delete(
+                $wpdb->prefix . 'kg_migration_log',
+                ['recipe_post_id' => $recipe->ID],
+                ['%d']
+            );
+            
+            // Delete the recipe post
+            wp_delete_post($recipe->ID, true);
+            $deleted++;
+        }
+        
+        $this->logger->log("Cleaned {$deleted} test migration recipes");
+        
+        return [
+            'deleted' => $deleted,
+            'message' => "{$deleted} test recipes cleaned"
+        ];
     }
 }
