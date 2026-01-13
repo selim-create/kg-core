@@ -294,7 +294,7 @@ add_filter( 'rest_prepare_post', function( $response, $post, $request ) {
     
     // Decode HTML entities in title
     if ( isset( $data['title']['rendered'] ) ) {
-        $data['title']['rendered'] = html_entity_decode( $data['title']['rendered'], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+        $data['title']['rendered'] = \KG_Core\Utils\Helper::decode_html_entities( $data['title']['rendered'] );
     }
     
     $response->set_data( $data );

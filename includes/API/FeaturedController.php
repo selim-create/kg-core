@@ -292,13 +292,13 @@ class FeaturedController {
             $sponsor_logo = '';
             if ( $sponsor_logo_id ) {
                 $logo_url = wp_get_attachment_url( $sponsor_logo_id );
-                $sponsor_logo = $logo_url ? (string) $logo_url : '';
+                $sponsor_logo = $logo_url ? $logo_url : '';
             }
             
             $sponsor_light_logo = '';
             if ( $sponsor_light_logo_id ) {
                 $light_logo_url = wp_get_attachment_url( $sponsor_light_logo_id );
-                $sponsor_light_logo = $light_logo_url ? (string) $light_logo_url : '';
+                $sponsor_light_logo = $light_logo_url ? $light_logo_url : '';
             }
             
             // Get category
