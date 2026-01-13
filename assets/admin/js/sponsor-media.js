@@ -10,6 +10,9 @@ jQuery(document).ready(function($) {
         }
     });
 
+    // WordPress Media Uploader - Store instances by target ID
+    var mediaUploaderInstances = {};
+
     // Upload logo button click handler
     $('.kg-upload-logo').on('click', function(e) {
         e.preventDefault();
@@ -18,35 +21,37 @@ jQuery(document).ready(function($) {
         var targetId = button.data('target');
         var previewId = targetId + '_preview';
 
-        // Create a new media uploader instance for each button click
-        var mediaUploader = wp.media({
-            title: 'Logo Seçin',
-            button: {
-                text: 'Logo Kullan'
-            },
-            multiple: false,
-            library: {
-                type: 'image'
-            }
-        });
+        // Get or create media uploader instance for this target
+        if (!mediaUploaderInstances[targetId]) {
+            mediaUploaderInstances[targetId] = wp.media({
+                title: 'Logo Seçin',
+                button: {
+                    text: 'Logo Kullan'
+                },
+                multiple: false,
+                library: {
+                    type: 'image'
+                }
+            });
 
-        // When an image is selected
-        mediaUploader.on('select', function() {
-            var attachment = mediaUploader.state().get('selection').first().toJSON();
-            
-            // Set the attachment ID
-            $('#' + targetId).val(attachment.id);
-            
-            // Update preview
-            var imgHtml = '<img src="' + attachment.url + '" style="max-width: 200px; height: auto;">';
-            $('#' + previewId).html(imgHtml);
-            
-            // Show remove button
-            button.siblings('.kg-remove-logo').show();
-        });
+            // Configure selection handler for this instance
+            mediaUploaderInstances[targetId].on('select', function() {
+                var attachment = mediaUploaderInstances[targetId].state().get('selection').first().toJSON();
+                
+                // Set the attachment ID
+                $('#' + targetId).val(attachment.id);
+                
+                // Update preview
+                var imgHtml = '<img src="' + attachment.url + '" style="max-width: 200px; height: auto;">';
+                $('#' + previewId).html(imgHtml);
+                
+                // Show remove button
+                $('[data-target="' + targetId + '"].kg-remove-logo').show();
+            });
+        }
 
         // Open the media uploader
-        mediaUploader.open();
+        mediaUploaderInstances[targetId].open();
     });
 
     // Remove logo button click handler
