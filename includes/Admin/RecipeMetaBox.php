@@ -491,6 +491,11 @@ class RecipeMetaBox {
         if ( get_option( 'kg_auto_generate_on_missing' ) ) {
             $this->autoGenerateMissingIngredients( $post_id );
         }
+        
+        // Auto-generate SEO metadata if enabled and not already set
+        if ( get_option( 'kg_auto_generate_seo', true ) ) {
+            $this->autoGenerateSEO( $post_id );
+        }
     }
     
     /**
@@ -519,6 +524,26 @@ class RecipeMetaBox {
                     wp_schedule_single_event( time() + 5, 'kg_generate_ingredient', [ $name ] );
                 }
             }
+        }
+    }
+
+    /**
+     * Auto-generate SEO metadata for recipe
+     * 
+     * @param int $post_id Recipe post ID
+     */
+    private function autoGenerateSEO( $post_id ) {
+        // Check if SEO fields are already set
+        $existing_focus_keyword = get_post_meta( $post_id, 'rank_math_focus_keyword', true );
+        
+        // Only generate if focus keyword is not set
+        if ( ! empty( $existing_focus_keyword ) ) {
+            return;
+        }
+        
+        // Schedule SEO generation via CRON (non-blocking)
+        if ( ! wp_next_scheduled( 'kg_generate_recipe_seo', [ $post_id ] ) ) {
+            wp_schedule_single_event( time() + 10, 'kg_generate_recipe_seo', [ $post_id ] );
         }
     }
 
