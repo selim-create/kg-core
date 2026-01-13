@@ -182,7 +182,20 @@ $filesToCheck = [
 
 foreach ($filesToCheck as $file) {
     $fullPath = $baseDir . '/' . $file;
+    
+    // Security: Validate file path is within base directory
+    $realPath = realpath($fullPath);
+    $realBase = realpath($baseDir);
+    
+    if ($realPath === false || strpos($realPath, $realBase) !== 0) {
+        echo "   ✗ Invalid path: $file\n";
+        $failed++;
+        continue;
+    }
+    
     if (file_exists($fullPath)) {
+        $output = [];
+        $returnCode = 0;
         exec("php -l " . escapeshellarg($fullPath) . " 2>&1", $output, $returnCode);
         if ($returnCode === 0) {
             echo "   ✓ Valid syntax: $file\n";

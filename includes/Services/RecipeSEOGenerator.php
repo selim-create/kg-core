@@ -6,6 +6,11 @@ namespace KG_Core\Services;
  * Handles RankMath and Yoast SEO fields
  */
 class RecipeSEOGenerator {
+    /**
+     * Maximum tokens for AI response
+     */
+    const MAX_TOKENS = 800;
+    
     private $model;
     
     public function __construct() {
@@ -32,7 +37,7 @@ class RecipeSEOGenerator {
         $apiKey = $this->getApiKey();
         
         if (empty($apiKey)) {
-            return new \WP_Error('no_api_key', 'AI API anahtarı ayarlanmamış.');
+            return new \WP_Error('no_api_key', __('AI API anahtarı ayarlanmamış.', 'kg-core'));
         }
         
         // Get recipe information
@@ -196,7 +201,7 @@ class RecipeSEOGenerator {
                 ]
             ],
             'temperature' => 0.7,
-            'max_tokens' => 800
+            'max_tokens' => self::MAX_TOKENS
         ];
         
         $response = wp_remote_post($url, [

@@ -215,7 +215,7 @@ add_action( 'kg_generate_ingredient', function( $ingredient_name ) {
                 'post_title' => $ingredient_name,
                 'post_type' => 'ingredient',
                 'post_status' => 'draft',
-                'post_content' => 'Bu malzeme otomatik oluşturuldu ve AI ile zenginleştirilmesi bekleniyor.'
+                'post_content' => __('Bu malzeme otomatik oluşturuldu ve AI ile zenginleştirilmesi bekleniyor.', 'kg-core')
             ]);
             
             if ( ! is_wp_error( $fallback_id ) ) {
