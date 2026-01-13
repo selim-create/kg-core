@@ -310,7 +310,11 @@ class UserController {
         }
         
         // Email doğrulanmış mı kontrol et
-        if ( empty( $google_data['email_verified'] ) || $google_data['email_verified'] !== 'true' ) {
+        // Google API can return email_verified as boolean true or string "true"
+        $email_verified = $google_data['email_verified'];
+        $is_verified = ($email_verified === true || $email_verified === 'true');
+        
+        if ( ! $is_verified ) {
             return new \WP_Error(
                 'email_not_verified',
                 'Google hesabınızın e-posta adresi doğrulanmamış.',
