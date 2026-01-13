@@ -3,13 +3,30 @@
  * Test Script for Sponsored Content Support
  * 
  * This script tests the sponsor meta box functionality
- * Run this from WordPress CLI or as a test endpoint
+ * Run this from WordPress root using: wp eval-file test-sponsored-content.php
  */
 
-// Prevent direct access
+// Prevent direct access - must be run from WordPress environment
 if ( ! defined( 'ABSPATH' ) ) {
-    // For testing outside WordPress, define a simple bootstrap
-    require_once __DIR__ . '/../../../wp-load.php';
+    // Attempt to find WordPress bootstrap
+    $wp_load_locations = [
+        __DIR__ . '/../../../wp-load.php',  // Standard plugin location
+        __DIR__ . '/../../wp-load.php',     // Alternative location
+        __DIR__ . '/../wp-load.php',        // Another alternative
+    ];
+    
+    $wp_loaded = false;
+    foreach ( $wp_load_locations as $wp_load ) {
+        if ( file_exists( $wp_load ) ) {
+            require_once $wp_load;
+            $wp_loaded = true;
+            break;
+        }
+    }
+    
+    if ( ! $wp_loaded ) {
+        die( "Error: WordPress environment not found. Please run this script using WP-CLI:\n  wp eval-file test-sponsored-content.php\n" );
+    }
 }
 
 echo "=== Testing Sponsored Content Support ===\n\n";

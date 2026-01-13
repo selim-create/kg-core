@@ -10,9 +10,6 @@ jQuery(document).ready(function($) {
         }
     });
 
-    // WordPress Media Uploader
-    var mediaUploader;
-
     // Upload logo button click handler
     $('.kg-upload-logo').on('click', function(e) {
         e.preventDefault();
@@ -21,14 +18,8 @@ jQuery(document).ready(function($) {
         var targetId = button.data('target');
         var previewId = targetId + '_preview';
 
-        // If the media uploader instance exists, reopen it
-        if (mediaUploader) {
-            mediaUploader.open();
-            return;
-        }
-
-        // Create a new media uploader instance
-        mediaUploader = wp.media({
+        // Create a new media uploader instance for each button click
+        var mediaUploader = wp.media({
             title: 'Logo Seçin',
             button: {
                 text: 'Logo Kullan'

@@ -94,7 +94,7 @@ class PostMetaBox {
                         Evet (Link sponsor sitesine yönlendirir)
                     </label><br>
                     <label>
-                        <input type="radio" name="kg_direct_redirect" value="0" <?php checked( $direct_redirect, '0' ); ?> <?php if ( empty( $direct_redirect ) ) echo 'checked'; ?>>
+                        <input type="radio" name="kg_direct_redirect" value="0" <?php checked( $direct_redirect === '0' || empty( $direct_redirect ), true ); ?>>
                         Hayır (Link post detayına yönlendirir)
                     </label>
                 </p>
