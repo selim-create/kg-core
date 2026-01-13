@@ -675,26 +675,31 @@ class UserController {
             return null;
         }
         
-        $birth = new \DateTime( $birth_date );
-        $now = new \DateTime();
-        $diff = $now->diff( $birth );
-        $months = ( $diff->y * 12 ) + $diff->m;
-        
-        // Yaş aralıklarına göre çember slug'ları
-        $slug = null;
-        if ( $months >= 6 && $months < 9 ) {
-            $slug = '6-9-ay';
-        } elseif ( $months >= 9 && $months < 12 ) {
-            $slug = '9-12-ay';
-        } elseif ( $months >= 12 && $months < 24 ) {
-            $slug = '1-2-yas';
-        }
-        
-        if ( $slug ) {
-            $term = get_term_by( 'slug', $slug, 'community_circle' );
-            if ( $term && ! is_wp_error( $term ) ) {
-                return $term->term_id;
+        try {
+            $birth = new \DateTime( $birth_date );
+            $now = new \DateTime();
+            $diff = $now->diff( $birth );
+            $months = ( $diff->y * 12 ) + $diff->m;
+            
+            // Yaş aralıklarına göre çember slug'ları
+            $slug = null;
+            if ( $months >= 6 && $months < 9 ) {
+                $slug = '6-9-ay';
+            } elseif ( $months >= 9 && $months < 12 ) {
+                $slug = '9-12-ay';
+            } elseif ( $months >= 12 && $months < 24 ) {
+                $slug = '1-2-yas';
             }
+            
+            if ( $slug ) {
+                $term = get_term_by( 'slug', $slug, 'community_circle' );
+                if ( $term && ! is_wp_error( $term ) ) {
+                    return $term->term_id;
+                }
+            }
+        } catch ( \Exception $e ) {
+            // Invalid date format, return null
+            return null;
         }
         
         return null;
