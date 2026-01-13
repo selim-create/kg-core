@@ -31,13 +31,13 @@ class DiscussionController {
         ]);
 
         // Follow/Unfollow a single circle
-        register_rest_route( 'kg/v1', '/circles/(? P<id>\d+)/follow', [
+        register_rest_route( 'kg/v1', '/circles/(?P<id>\d+)/follow', [
             'methods'  => 'POST',
             'callback' => [ $this, 'follow_circle' ],
             'permission_callback' => [ $this, 'check_authentication' ],
         ]);
 
-        register_rest_route( 'kg/v1', '/circles/(? P<id>\d+)/unfollow', [
+        register_rest_route( 'kg/v1', '/circles/(?P<id>\d+)/unfollow', [
             'methods'  => 'POST',
             'callback' => [ $this, 'unfollow_circle' ],
             'permission_callback' => [ $this, 'check_authentication' ],

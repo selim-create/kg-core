@@ -50,6 +50,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/Services/RecipeSEOGenerator.php' ) ) 
 if ( file_exists( KG_CORE_PATH . 'includes/PostTypes/Recipe.php' ) ) require_once KG_CORE_PATH . 'includes/PostTypes/Recipe.php';
 if ( file_exists( KG_CORE_PATH . 'includes/PostTypes/Ingredient.php' ) ) require_once KG_CORE_PATH . 'includes/PostTypes/Ingredient.php';
 if ( file_exists( KG_CORE_PATH . 'includes/PostTypes/Tool.php' ) ) require_once KG_CORE_PATH . 'includes/PostTypes/Tool.php';
+// Discussion (Topluluk Soruları) Post Type
+if ( file_exists( KG_CORE_PATH . 'includes/PostTypes/Discussion.php' ) ) require_once KG_CORE_PATH . 'includes/PostTypes/Discussion.php';
 
 // 4. TAXONOMY SINIFLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/AgeGroup.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/AgeGroup.php';
@@ -57,6 +59,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/Allergen.php' ) ) require_
 if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/DietType.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/DietType.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/MealType.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/MealType.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/IngredientCategory.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/IngredientCategory.php';
+// Community Circle (Çemberler) Taxonomy
+if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/CommunityCircle.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/CommunityCircle.php';
 
 // 5. ADMIN PANELİ ÖZEL ALANLARI (ACF Alternatifi)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/RecipeMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/RecipeMetaBox.php';
@@ -68,6 +72,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/SettingsPage.php' ) ) require_o
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/MigrationPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/MigrationPage.php';
+// Discussion Admin (Moderasyon Sayfası)
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/DiscussionAdmin.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/DiscussionAdmin.php';
 
 // 5.6. MIGRATION SINIFLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/ContentParser.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/ContentParser.php';
@@ -88,6 +94,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/CrossSellController.php' ) ) requ
 
 // 6.5. AI API CONTROLLER DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/API/AIController.php' ) ) require_once KG_CORE_PATH . 'includes/API/AIController.php';
+// Discussion API Controller
+if ( file_exists( KG_CORE_PATH . 'includes/API/DiscussionController.php' ) ) require_once KG_CORE_PATH . 'includes/API/DiscussionController.php';
 
 // 7. SINIFLARI BAŞLAT (INIT HOOK)
 function kg_core_init() {
@@ -101,6 +109,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\PostTypes\Recipe' ) ) new \KG_Core\PostTypes\Recipe();
     if ( class_exists( '\KG_Core\PostTypes\Ingredient' ) ) new \KG_Core\PostTypes\Ingredient();
     if ( class_exists( '\KG_Core\PostTypes\Tool' ) ) new \KG_Core\PostTypes\Tool();
+    if ( class_exists( '\KG_Core\PostTypes\Discussion' ) ) new \KG_Core\PostTypes\Discussion();
 
     // Taxonomies
     if ( class_exists( '\KG_Core\Taxonomies\AgeGroup' ) ) new \KG_Core\Taxonomies\AgeGroup();
@@ -108,6 +117,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\Taxonomies\DietType' ) ) new \KG_Core\Taxonomies\DietType();
     if ( class_exists( '\KG_Core\Taxonomies\MealType' ) ) new \KG_Core\Taxonomies\MealType();
     if ( class_exists( '\KG_Core\Taxonomies\IngredientCategory' ) ) new \KG_Core\Taxonomies\IngredientCategory();
+    if ( class_exists( '\KG_Core\Taxonomies\CommunityCircle' ) ) new \KG_Core\Taxonomies\CommunityCircle();
 
     // Admin Meta Boxes (Sadece Admin panelinde çalışsın)
     if ( is_admin() && class_exists( '\KG_Core\Admin\RecipeMetaBox' ) ) {
@@ -133,6 +143,9 @@ function kg_core_init() {
     if ( is_admin() && class_exists( '\KG_Core\Admin\MigrationPage' ) ) {
         new \KG_Core\Admin\MigrationPage();
     }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\DiscussionAdmin' ) ) {
+        new \KG_Core\Admin\DiscussionAdmin();
+    }
 
     // API Controllers
     if ( class_exists( '\KG_Core\API\RecipeController' ) ) new \KG_Core\API\RecipeController();
@@ -141,6 +154,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\SearchController' ) ) new \KG_Core\API\SearchController();
     if ( class_exists( '\KG_Core\API\CrossSellController' ) ) new \KG_Core\API\CrossSellController();
     if ( class_exists( '\KG_Core\API\AIController' ) ) new \KG_Core\API\AIController();
+    if ( class_exists( '\KG_Core\API\DiscussionController' ) ) new \KG_Core\API\DiscussionController();
 }
 add_action( 'plugins_loaded', 'kg_core_init' );
 
