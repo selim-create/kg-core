@@ -200,7 +200,15 @@ class RecipeMigrator {
         update_post_meta($recipeId, '_kg_expert_name', isset($parsedData['expert_name']) ? $parsedData['expert_name'] : '');
         update_post_meta($recipeId, '_kg_expert_title', isset($parsedData['expert_title']) ? $parsedData['expert_title'] : '');
         update_post_meta($recipeId, '_kg_expert_note', isset($parsedData['expert_note']) ? $parsedData['expert_note'] : '');
-        update_post_meta($recipeId, '_kg_expert_approved', !empty($parsedData['expert_note']) ? '1' : '0');
+        
+        // Uzman notu varsa "Uzman Onaylı" checkbox'ını seç
+        $hasExpertNote = !empty($parsedData['expert_note']) && !empty($parsedData['expert_name']);
+        update_post_meta($recipeId, '_kg_expert_approved', $hasExpertNote ? '1' : '0');
+        
+        // Özel notları da kaydet (Süt:, Not: vb.)
+        if (!empty($parsedData['special_notes'])) {
+            update_post_meta($recipeId, '_kg_special_notes', $parsedData['special_notes']);
+        }
         
         // Cross-sell data
         if (!empty($aiData['main_ingredient'])) {

@@ -7,11 +7,13 @@ namespace KG_Core\Migration;
 class IngredientParser {
     
     private $units = [
-        'adet', 'çiçek', 'dal', 'yaprak', 'dilim',
-        'çay kaşığı', 'tatlı kaşığı', 'yemek kaşığı',
-        'çay bardağı', 'su bardağı', 'türk kahvesi fincanı',
-        'avuç', 'tutam', 'ölçek',
-        'gram', 'g', 'kg', 'ml', 'litre', 'lt'
+        'çiçek', 'dal', 'yaprak', 'dilim', 'diş', 'demet',
+        'çay kaşığı', 'tatlı kaşığı', 'yemek kaşığı', 'kaşık',
+        'çay bardağı', 'su bardağı', 'bardak', 'fincan', 'türk kahvesi fincanı',
+        'avuç', 'tutam', 'ölçek', 'porsiyon',
+        'gram', 'gr', 'g', 'kg', 'kilogram',
+        'ml', 'mililitre', 'litre', 'lt', 'l',
+        'adet', 'tane', 'parça', 'kase', 'kâse',
     ];
     
     /**
@@ -23,7 +25,7 @@ class IngredientParser {
     public function parse($ingredientStr) {
         $result = [
             'quantity' => '',
-            'unit' => 'adet',
+            'unit' => '',  // Will be set based on what we find
             'name' => '',
             'ingredient_id' => null,
             'preparation_note' => ''
@@ -33,7 +35,15 @@ class IngredientParser {
         $ingredientStr = trim($ingredientStr);
         $ingredientStr = preg_replace('/\s+/', ' ', $ingredientStr); // Normalize whitespace
         
-        // Extract quantity (numbers, fractions, ranges)
+        // 1. Extract parenthesis content as note
+        $parenNote = '';
+        if (preg_match('/\(([^)]+)\)/u', $ingredientStr, $parenMatch)) {
+            $parenNote = trim($parenMatch[1]);
+            // Remove parenthesis and content from main string
+            $ingredientStr = trim(str_replace($parenMatch[0], '', $ingredientStr));
+        }
+        
+        // 2. Extract quantity (numbers, fractions, ranges)
         // Patterns: "1", "1/2", "1,5", "1.5", "1-2", "bir", "yarım"
         $quantityPattern = '/^(bir|yarım|çeyrek|[\d\/\.,\-]+)\s*/iu';
         if (preg_match($quantityPattern, $ingredientStr, $matches)) {
@@ -41,56 +51,70 @@ class IngredientParser {
             $ingredientStr = trim(substr($ingredientStr, strlen($matches[0])));
         }
         
-        // Extract unit
-        $unitPattern = $this->buildUnitPattern();
-        if (preg_match($unitPattern, $ingredientStr, $matches)) {
-            $result['unit'] = $this->normalizeUnit($matches[0]);
-            $ingredientStr = trim(substr($ingredientStr, strlen($matches[0])));
-        }
-        
-        // What remains should be ingredient name + optional preparation notes
-        // Pattern: preparation notes can be at start or end (ince kıyılmış lahana OR lahana kıyılmış)
-        $preparationPattern = '/\b(ince|kalın|küçük|büyük|orta boy|orta|küp|dilim halinde|dilim|rendel\w+|doğran\w+|kıyıl\w+|soyul\w+|çekilmiş|püre|haşlan\w+|ez\w+|yıkan\w+|temizlen\w+|ayıklan\w+|kesilmiş|sıkıl\w+|ufalanmış)\b/iu';
-        
-        // Find all preparation terms
-        $allMatches = [];
-        preg_match_all($preparationPattern, $ingredientStr, $allMatches, PREG_OFFSET_CAPTURE);
-        
-        if (!empty($allMatches[0])) {
-            // Extract preparation notes
-            $prepTerms = [];
-            foreach ($allMatches[0] as $match) {
-                $prepTerms[] = $match[0];
-            }
-            $result['preparation_note'] = implode(' ', $prepTerms);
-            
-            // Remove preparation terms to get ingredient name
-            $nameStr = preg_replace($preparationPattern, '', $ingredientStr);
-            $result['name'] = trim(preg_replace('/\s+/', ' ', $nameStr));
-        } else {
-            $result['name'] = $ingredientStr;
-        }
-        
-        // Capitalize first letter of name
-        $result['name'] = $this->capitalizeFirstLetter($result['name']);
-        
-        return $result;
-    }
-    
-    /**
-     * Build regex pattern for units
-     * 
-     * @return string Regex pattern
-     */
-    private function buildUnitPattern() {
-        // Sort units by length descending to match longer units first
+        // 3. Extract unit - use sorted units (longest first)
         $sortedUnits = $this->units;
         usort($sortedUnits, function($a, $b) {
             return strlen($b) - strlen($a);
         });
         
-        $escapedUnits = array_map('preg_quote', $sortedUnits);
-        return '/^(' . implode('|', $escapedUnits) . ')\s*/iu';
+        $unitFound = false;
+        foreach ($sortedUnits as $unit) {
+            // Match unit followed by whitespace, punctuation, or end of string
+            $unitPattern = '/^' . preg_quote($unit, '/') . '(?:\s+|$)/iu';
+            if (preg_match($unitPattern, $ingredientStr, $unitMatch)) {
+                $result['unit'] = $unit;
+                $ingredientStr = trim(substr($ingredientStr, strlen($unitMatch[0])));
+                $unitFound = true;
+                break;
+            }
+        }
+        
+        // If no unit found but we have a quantity, default to 'adet'
+        if (!$unitFound && !empty($result['quantity'])) {
+            $result['unit'] = 'adet';
+        }
+        
+        // 4. What remains should be ingredient name + optional preparation notes
+        // Pattern: preparation notes can be at start or end
+        $preparationPattern = '/\b(ince|kalın|küçük|büyük|orta boy|orta|küp|dilim halinde|dilim|rendel\w+|doğran\w+|kıyıl\w+|soyul\w+|çekilmiş|püre|haşlan\w+|ez\w+|yıkan\w+|temizlen\w+|ayıklan\w+|kesilmiş|sıkıl\w+|ufalanmış)\b/iu';
+        
+        // Find all preparation terms
+        $prepTerms = [];
+        if (preg_match_all($preparationPattern, $ingredientStr, $allMatches)) {
+            foreach ($allMatches[0] as $match) {
+                $prepTerms[] = $match;
+            }
+            // Remove preparation terms to get ingredient name
+            $nameStr = preg_replace($preparationPattern, '', $ingredientStr);
+            $ingredientStr = trim(preg_replace('/\s+/', ' ', $nameStr));
+        }
+        
+        // 5. Clean up the name - remove trailing commas, periods
+        // Also check if there's a comma followed by alternative text (like ", 1 çay bardağı...")
+        // This should go into the note instead
+        $nameParts = explode(',', $ingredientStr, 2);
+        $result['name'] = trim($nameParts[0], ' ,.');
+        
+        // 6. Capitalize first letter of name
+        $result['name'] = $this->capitalizeFirstLetter($result['name']);
+        
+        // 7. Combine preparation notes
+        $allNotes = [];
+        if (!empty($prepTerms)) {
+            $allNotes[] = implode(' ', $prepTerms);
+        }
+        if (!empty($parenNote)) {
+            $allNotes[] = $parenNote;
+        }
+        // If there's text after comma, add it to the note
+        if (isset($nameParts[1]) && !empty(trim($nameParts[1]))) {
+            $alternativeText = trim($nameParts[1], ' ,.');
+            $allNotes[] = $alternativeText;
+        }
+        
+        $result['preparation_note'] = implode('. ', array_filter($allNotes));
+        
+        return $result;
     }
     
     /**
