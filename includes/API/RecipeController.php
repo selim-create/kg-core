@@ -42,6 +42,24 @@ class RecipeController {
             'callback' => [ $this, 'filter_recipes' ],
             'permission_callback' => '__return_true',
         ]);
+        
+        // POST /wp-json/kg/v1/recipes/{id}/rate
+        register_rest_route( 'kg/v1', '/recipes/(?P<id>\d+)/rate', [
+            'methods'  => 'POST',
+            'callback' => [ $this, 'rate_recipe' ],
+            'permission_callback' => function() {
+                return is_user_logged_in();
+            },
+            'args' => [
+                'rating' => [
+                    'required' => true,
+                    'validate_callback' => function( $value ) {
+                        return is_numeric( $value ) && $value >= 1 && $value <= 5;
+                    },
+                    'sanitize_callback' => 'floatval'
+                ]
+            ]
+        ]);
     }
 
     public function get_featured_recipes( $request ) {
@@ -375,5 +393,47 @@ class RecipeController {
         }
         
         return $seo_data;
+    }
+    
+    /**
+     * Rate a recipe
+     * POST /wp-json/kg/v1/recipes/{id}/rate
+     */
+    public function rate_recipe( $request ) {
+        $recipe_id = $request->get_param( 'id' );
+        $rating = $request->get_param( 'rating' );
+        $user_id = get_current_user_id();
+        
+        // Verify recipe exists
+        $recipe = get_post( $recipe_id );
+        if ( ! $recipe || $recipe->post_type !== 'recipe' ) {
+            return new \WP_Error( 'recipe_not_found', 'Recipe not found', [ 'status' => 404 ] );
+        }
+        
+        // Get existing ratings
+        $all_ratings = get_post_meta( $recipe_id, '_kg_ratings', true );
+        if ( ! is_array( $all_ratings ) ) {
+            $all_ratings = [];
+        }
+        
+        // Store user's rating (overwrites if user already rated)
+        $all_ratings[ $user_id ] = floatval( $rating );
+        
+        // Calculate new average
+        $total_ratings = count( $all_ratings );
+        $sum = array_sum( $all_ratings );
+        $average = $sum / $total_ratings;
+        
+        // Update meta fields
+        update_post_meta( $recipe_id, '_kg_ratings', $all_ratings );
+        update_post_meta( $recipe_id, '_kg_rating', round( $average, 1 ) );
+        update_post_meta( $recipe_id, '_kg_rating_count', $total_ratings );
+        
+        return new \WP_REST_Response( [
+            'success' => true,
+            'rating' => round( $average, 1 ),
+            'rating_count' => $total_ratings,
+            'user_rating' => floatval( $rating )
+        ], 200 );
     }
 }

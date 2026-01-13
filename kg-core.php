@@ -91,6 +91,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/IngredientController.php' ) ) req
 if ( file_exists( KG_CORE_PATH . 'includes/API/UserController.php' ) ) require_once KG_CORE_PATH . 'includes/API/UserController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/SearchController.php' ) ) require_once KG_CORE_PATH . 'includes/API/SearchController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/CrossSellController.php' ) ) require_once KG_CORE_PATH . 'includes/API/CrossSellController.php';
+if ( file_exists( KG_CORE_PATH . 'includes/API/FeaturedController.php' ) ) require_once KG_CORE_PATH . 'includes/API/FeaturedController.php';
 
 // 6.5. AI API CONTROLLER DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/API/AIController.php' ) ) require_once KG_CORE_PATH . 'includes/API/AIController.php';
@@ -153,6 +154,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\UserController' ) ) new \KG_Core\API\UserController();
     if ( class_exists( '\KG_Core\API\SearchController' ) ) new \KG_Core\API\SearchController();
     if ( class_exists( '\KG_Core\API\CrossSellController' ) ) new \KG_Core\API\CrossSellController();
+    if ( class_exists( '\KG_Core\API\FeaturedController' ) ) new \KG_Core\API\FeaturedController();
     if ( class_exists( '\KG_Core\API\AIController' ) ) new \KG_Core\API\AIController();
     if ( class_exists( '\KG_Core\API\DiscussionController' ) ) new \KG_Core\API\DiscussionController();
 }
@@ -265,6 +267,39 @@ add_action( 'rest_api_init', function() {
         ],
     ]);
 });
+
+// 8.6. Enhance WordPress posts REST API with additional fields
+add_filter( 'rest_prepare_post', function( $response, $post, $request ) {
+    $data = $response->get_data();
+    
+    // Add author data
+    $author = get_userdata( $post->post_author );
+    $data['author_data'] = [
+        'name' => $author ? $author->display_name : 'KidsGourmet Editörü',
+        'avatar' => get_avatar_url( $post->post_author, [ 'size' => 96 ] )
+    ];
+    
+    // Add category data
+    $categories = get_the_category( $post->ID );
+    $data['category_data'] = !empty( $categories ) ? [
+        'id' => $categories[0]->term_id,
+        'name' => $categories[0]->name,
+        'slug' => $categories[0]->slug
+    ] : null;
+    
+    // Calculate read time
+    $content = strip_tags( $post->post_content );
+    $word_count = str_word_count( $content );
+    $data['read_time'] = ceil( $word_count / 200 ) . ' dk';
+    
+    // Decode HTML entities in title
+    if ( isset( $data['title']['rendered'] ) ) {
+        $data['title']['rendered'] = \KG_Core\Utils\Helper::decode_html_entities( $data['title']['rendered'] );
+    }
+    
+    $response->set_data( $data );
+    return $response;
+}, 10, 3 );
 
 // Opsiyonel: ACF JSON Kayıt Yeri (Eğer ACF kurarsanız diye)
 add_filter('acf/settings/save_json', function( $path ) {
