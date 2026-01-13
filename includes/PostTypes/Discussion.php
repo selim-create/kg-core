@@ -6,7 +6,33 @@ class Discussion {
     public function __construct() {
         add_action( 'init', [ $this, 'register_post_type' ] );
         add_action( 'init', [ $this, 'register_expert_role' ] );
+        add_action( 'init', [ $this, 'register_meta_fields' ] );
         add_filter( 'wp_insert_post_data', [ $this, 'force_pending_status' ], 10, 2 );
+    }
+    
+    /**
+     * Register meta fields for discussions
+     */
+    public function register_meta_fields() {
+        // Featured flag
+        register_post_meta( 'discussion', '_kg_is_featured', [
+            'type' => 'string',
+            'single' => true,
+            'show_in_rest' => true,
+            'default' => '0',
+            'sanitize_callback' => function( $value ) {
+                return $value === '1' ? '1' : '0';
+            }
+        ]);
+        
+        // Answer count
+        register_post_meta( 'discussion', '_kg_answer_count', [
+            'type' => 'integer',
+            'single' => true,
+            'show_in_rest' => true,
+            'default' => 0,
+            'sanitize_callback' => 'absint'
+        ]);
     }
 
     /**
