@@ -7,6 +7,11 @@ namespace KG_Core\Migration;
  */
 class AIRecipeMigrator {
     
+    /**
+     * Recipe IDs JSON file path (relative to plugin directory)
+     */
+    const RECIPE_IDS_FILE = 'data/recipe-ids.json';
+    
     private $api_key;
     private $model;
     private $logger;
@@ -419,16 +424,19 @@ Sadece JSON döndür, başka açıklama ekleme.
     private function findOrCreateIngredient($name) {
         if (empty($name)) return null;
         
-        // Search by title
-        $existing = get_posts([
-            'post_type' => 'ingredient',
-            'title' => $name,
-            'posts_per_page' => 1,
-            'post_status' => 'any'
-        ]);
+        // Search by exact title using WP_Query
+        global $wpdb;
+        $post_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT ID FROM {$wpdb->posts} 
+             WHERE post_type = 'ingredient' 
+             AND post_title = %s 
+             AND post_status IN ('publish', 'draft')
+             LIMIT 1",
+            $name
+        ));
         
-        if (!empty($existing)) {
-            return $existing[0]->ID;
+        if ($post_id) {
+            return (int) $post_id;
         }
         
         // Try similar search
@@ -443,15 +451,15 @@ Sadece JSON döndür, başka açıklama ekleme.
             return $similar[0]->ID;
         }
         
-        // Create new ingredient (will be AI-enhanced via cron)
+        // Create new ingredient (will be AI-enhanced if handler exists)
         $ingredientId = wp_insert_post([
             'post_title' => ucfirst(mb_strtolower($name, 'UTF-8')),
             'post_type' => 'ingredient',
             'post_status' => 'draft'
         ]);
         
-        // Schedule AI generation
-        if (!is_wp_error($ingredientId)) {
+        // Schedule AI generation if hook exists (optional feature)
+        if (!is_wp_error($ingredientId) && has_action('kg_generate_ingredient')) {
             wp_schedule_single_event(time() + 10, 'kg_generate_ingredient', [$name]);
         }
         
@@ -491,13 +499,19 @@ Sadece JSON döndür, başka açıklama ekleme.
      * @return array Recipe post IDs
      */
     public function getRecipeIds() {
-        $jsonFile = KG_CORE_PATH . 'data/recipe-ids.json';
+        $jsonFile = KG_CORE_PATH . self::RECIPE_IDS_FILE;
         
         if (!file_exists($jsonFile)) {
+            $this->logger->log("Recipe IDs file not found: {$jsonFile}", 'warning');
             return [];
         }
         
         $data = json_decode(file_get_contents($jsonFile), true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->logger->log("Invalid JSON in recipe IDs file: " . json_last_error_msg(), 'error');
+            return [];
+        }
         
         return $data['recipe_post_ids'] ?? [];
     }
