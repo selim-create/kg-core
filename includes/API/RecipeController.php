@@ -85,9 +85,12 @@ class RecipeController {
         $instructions_raw = get_post_meta($post_id, '_kg_instructions', true);
         $instructions = !empty($instructions_raw) ? maybe_unserialize($instructions_raw) : [];
         
+        // Use Helper class for HTML entity decoding
+        $title = \KG_Core\Utils\Helper::decode_html_entities( get_the_title( $post_id ) );
+        
         $data = [
             'id'            => $post_id,
-            'title'         => get_the_title( $post_id ),
+            'title'         => $title,
             'slug'          => get_post_field( 'post_name', $post_id ),
             'excerpt'       => get_the_excerpt( $post_id ),
             'image'         => get_the_post_thumbnail_url( $post_id, 'large' ),
@@ -103,12 +106,28 @@ class RecipeController {
         // Add full details if requested
         if ( $full_detail ) {
             $data['content'] = get_the_content( null, false, $post_id );
+            
+            // Extended nutrition data
             $data['nutrition'] = [
                 'calories' => get_post_meta( $post_id, '_kg_calories', true ),
                 'protein'  => get_post_meta( $post_id, '_kg_protein', true ),
+                'carbs'    => get_post_meta( $post_id, '_kg_carbs', true ),
+                'fat'      => get_post_meta( $post_id, '_kg_fat', true ),
                 'fiber'    => get_post_meta( $post_id, '_kg_fiber', true ),
+                'sugar'    => get_post_meta( $post_id, '_kg_sugar', true ),
+                'sodium'   => get_post_meta( $post_id, '_kg_sodium', true ),
                 'vitamins' => get_post_meta( $post_id, '_kg_vitamins', true ),
+                'minerals' => get_post_meta( $post_id, '_kg_minerals', true ),
             ];
+            
+            // New fields as per requirements
+            $data['meal_type'] = get_post_meta( $post_id, '_kg_meal_type', true );
+            $data['cook_time'] = get_post_meta( $post_id, '_kg_cook_time', true );
+            $data['serving_size'] = get_post_meta( $post_id, '_kg_serving_size', true );
+            $data['difficulty'] = get_post_meta( $post_id, '_kg_difficulty', true );
+            $data['freezable'] = get_post_meta( $post_id, '_kg_freezable', true ) === '1';
+            $data['storage_info'] = get_post_meta( $post_id, '_kg_storage_info', true );
+            
             $data['video_url'] = get_post_meta( $post_id, '_kg_video_url', true );
             
             $substitutes_raw = get_post_meta( $post_id, '_kg_substitutes', true );
@@ -122,6 +141,9 @@ class RecipeController {
             
             $data['related_recipes'] = $this->get_related_recipes( $post_id );
             $data['cross_sell'] = $this->get_cross_sell_suggestion( $post_id );
+            
+            // Add SEO data
+            $data['seo'] = $this->get_seo_data( $post_id );
         } else {
             $data['expert'] = [
                 'name'     => get_post_meta( $post_id, '_kg_expert_name', true ),
@@ -318,5 +340,39 @@ class RecipeController {
             'url'   => $cross_sell_url,
             'title' => $cross_sell_title ?: 'Tariften.com\'da daha fazla tarif keşfedin',
         ];
+    }
+
+    /**
+     * Get SEO data from RankMath plugin
+     * @param int $post_id Post ID
+     * @return array SEO data
+     */
+    private function get_seo_data( $post_id ) {
+        $seo_data = array();
+        
+        // RankMath SEO verileri
+        $seo_data['title'] = get_post_meta( $post_id, 'rank_math_title', true );
+        $seo_data['description'] = get_post_meta( $post_id, 'rank_math_description', true );
+        $seo_data['focus_keywords'] = get_post_meta( $post_id, 'rank_math_focus_keyword', true );
+        $seo_data['canonical_url'] = get_post_meta( $post_id, 'rank_math_canonical_url', true );
+        
+        // Open Graph
+        $seo_data['og_title'] = get_post_meta( $post_id, 'rank_math_facebook_title', true );
+        $seo_data['og_description'] = get_post_meta( $post_id, 'rank_math_facebook_description', true );
+        $seo_data['og_image'] = get_post_meta( $post_id, 'rank_math_facebook_image', true );
+        
+        // Twitter Card
+        $seo_data['twitter_title'] = get_post_meta( $post_id, 'rank_math_twitter_title', true );
+        $seo_data['twitter_description'] = get_post_meta( $post_id, 'rank_math_twitter_description', true );
+        
+        // Fallback to defaults if empty
+        if ( empty( $seo_data['title'] ) ) {
+            $seo_data['title'] = get_the_title( $post_id ) . ' - KidsGourmet';
+        }
+        if ( empty( $seo_data['description'] ) ) {
+            $seo_data['description'] = wp_trim_words( get_the_excerpt( $post_id ), 30 );
+        }
+        
+        return $seo_data;
     }
 }

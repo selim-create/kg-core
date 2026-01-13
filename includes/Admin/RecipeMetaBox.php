@@ -40,6 +40,21 @@ class RecipeMetaBox {
         $cross_sell_url = get_post_meta( $post->ID, '_kg_cross_sell_url', true );
         $cross_sell_title = get_post_meta( $post->ID, '_kg_cross_sell_title', true );
         
+        // New fields
+        $meal_type = get_post_meta( $post->ID, '_kg_meal_type', true );
+        $cook_time = get_post_meta( $post->ID, '_kg_cook_time', true );
+        $serving_size = get_post_meta( $post->ID, '_kg_serving_size', true );
+        $difficulty = get_post_meta( $post->ID, '_kg_difficulty', true );
+        $freezable = get_post_meta( $post->ID, '_kg_freezable', true );
+        $storage_info = get_post_meta( $post->ID, '_kg_storage_info', true );
+        
+        // Extended nutrition fields
+        $carbs = get_post_meta( $post->ID, '_kg_carbs', true );
+        $fat = get_post_meta( $post->ID, '_kg_fat', true );
+        $sugar = get_post_meta( $post->ID, '_kg_sugar', true );
+        $sodium = get_post_meta( $post->ID, '_kg_sodium', true );
+        $minerals = get_post_meta( $post->ID, '_kg_minerals', true );
+        
         // New cross-sell data structure
         $cross_sell_data = get_post_meta( $post->ID, '_kg_cross_sell', true );
         if ( ! is_array( $cross_sell_data ) ) {
@@ -74,6 +89,42 @@ class RecipeMetaBox {
             <p>
                 <label for="kg_prep_time"><strong>Hazırlama Süresi (dk):</strong></label><br>
                 <input type="text" id="kg_prep_time" name="kg_prep_time" value="<?php echo esc_attr( $prep_time ); ?>" style="width:100%;">
+            </p>
+            <p>
+                <label for="kg_cook_time"><strong>Pişirme Süresi (dk):</strong></label><br>
+                <input type="text" id="kg_cook_time" name="kg_cook_time" value="<?php echo esc_attr( $cook_time ); ?>" style="width:100%;">
+            </p>
+            <p>
+                <label for="kg_meal_type"><strong>Öğün Tipi:</strong></label><br>
+                <select id="kg_meal_type" name="kg_meal_type" style="width:100%;">
+                    <option value="">Seçiniz</option>
+                    <option value="Kahvaltı" <?php selected( $meal_type, 'Kahvaltı' ); ?>>Kahvaltı</option>
+                    <option value="Öğle" <?php selected( $meal_type, 'Öğle' ); ?>>Öğle</option>
+                    <option value="Akşam" <?php selected( $meal_type, 'Akşam' ); ?>>Akşam</option>
+                    <option value="Ara Öğün" <?php selected( $meal_type, 'Ara Öğün' ); ?>>Ara Öğün</option>
+                </select>
+            </p>
+            <p>
+                <label for="kg_serving_size"><strong>Porsiyon Bilgisi:</strong></label><br>
+                <input type="text" id="kg_serving_size" name="kg_serving_size" value="<?php echo esc_attr( $serving_size ); ?>" style="width:100%;" placeholder="2 porsiyon">
+            </p>
+            <p>
+                <label for="kg_difficulty"><strong>Zorluk Seviyesi:</strong></label><br>
+                <select id="kg_difficulty" name="kg_difficulty" style="width:100%;">
+                    <option value="">Seçiniz</option>
+                    <option value="Kolay" <?php selected( $difficulty, 'Kolay' ); ?>>Kolay</option>
+                    <option value="Orta" <?php selected( $difficulty, 'Orta' ); ?>>Orta</option>
+                    <option value="Zor" <?php selected( $difficulty, 'Zor' ); ?>>Zor</option>
+                </select>
+            </p>
+            <p>
+                <label for="kg_freezable"><strong>Dondurulabilir mi?:</strong></label>
+                <input type="checkbox" id="kg_freezable" name="kg_freezable" value="1" <?php checked( $freezable, 1 ); ?>>
+            </p>
+            <p>
+                <label for="kg_storage_info"><strong>Saklama Bilgisi:</strong></label><br>
+                <textarea id="kg_storage_info" name="kg_storage_info" rows="3" style="width:100%;"><?php echo esc_textarea( $storage_info ); ?></textarea>
+                <small>Örnek: Buzdolabında 2 gün saklanabilir</small>
             </p>
             <p>
                 <label for="kg_is_featured"><strong>Öne Çıkan Tarif:</strong></label>
@@ -125,20 +176,41 @@ class RecipeMetaBox {
             <h3>Beslenme Değerleri</h3>
             <p>
                 <label for="kg_calories"><strong>Kalori:</strong></label><br>
-                <input type="text" id="kg_calories" name="kg_calories" value="<?php echo esc_attr( $calories ); ?>" style="width:100%;">
+                <input type="text" id="kg_calories" name="kg_calories" value="<?php echo esc_attr( $calories ); ?>" style="width:100%;" placeholder="80 kcal">
             </p>
             <p>
                 <label for="kg_protein"><strong>Protein (g):</strong></label><br>
-                <input type="text" id="kg_protein" name="kg_protein" value="<?php echo esc_attr( $protein ); ?>" style="width:100%;">
+                <input type="text" id="kg_protein" name="kg_protein" value="<?php echo esc_attr( $protein ); ?>" style="width:100%;" placeholder="2g">
+            </p>
+            <p>
+                <label for="kg_carbs"><strong>Karbonhidrat (g):</strong></label><br>
+                <input type="text" id="kg_carbs" name="kg_carbs" value="<?php echo esc_attr( $carbs ); ?>" style="width:100%;" placeholder="15g">
+            </p>
+            <p>
+                <label for="kg_fat"><strong>Yağ (g):</strong></label><br>
+                <input type="text" id="kg_fat" name="kg_fat" value="<?php echo esc_attr( $fat ); ?>" style="width:100%;" placeholder="1g">
             </p>
             <p>
                 <label for="kg_fiber"><strong>Lif (g):</strong></label><br>
-                <input type="text" id="kg_fiber" name="kg_fiber" value="<?php echo esc_attr( $fiber ); ?>" style="width:100%;">
+                <input type="text" id="kg_fiber" name="kg_fiber" value="<?php echo esc_attr( $fiber ); ?>" style="width:100%;" placeholder="3g">
+            </p>
+            <p>
+                <label for="kg_sugar"><strong>Şeker (g):</strong></label><br>
+                <input type="text" id="kg_sugar" name="kg_sugar" value="<?php echo esc_attr( $sugar ); ?>" style="width:100%;" placeholder="5g">
+            </p>
+            <p>
+                <label for="kg_sodium"><strong>Sodyum (mg):</strong></label><br>
+                <input type="text" id="kg_sodium" name="kg_sodium" value="<?php echo esc_attr( $sodium ); ?>" style="width:100%;" placeholder="50mg">
             </p>
             <p>
                 <label for="kg_vitamins"><strong>Vitaminler:</strong></label><br>
                 <input type="text" id="kg_vitamins" name="kg_vitamins" value="<?php echo esc_attr( $vitamins ); ?>" style="width:100%;">
                 <small>Örnek: A, C, D, E</small>
+            </p>
+            <p>
+                <label for="kg_minerals"><strong>Mineraller:</strong></label><br>
+                <input type="text" id="kg_minerals" name="kg_minerals" value="<?php echo esc_attr( $minerals ); ?>" style="width:100%;">
+                <small>Örnek: Kalsiyum, Demir, Çinko</small>
             </p>
 
             <h3>Uzman Onayı</h3>
@@ -359,6 +431,26 @@ class RecipeMetaBox {
         if ( isset( $_POST['kg_prep_time'] ) ) {
             update_post_meta( $post_id, '_kg_prep_time', sanitize_text_field( $_POST['kg_prep_time'] ) );
         }
+        
+        // New fields
+        if ( isset( $_POST['kg_cook_time'] ) ) {
+            update_post_meta( $post_id, '_kg_cook_time', sanitize_text_field( $_POST['kg_cook_time'] ) );
+        }
+        if ( isset( $_POST['kg_meal_type'] ) ) {
+            update_post_meta( $post_id, '_kg_meal_type', sanitize_text_field( $_POST['kg_meal_type'] ) );
+        }
+        if ( isset( $_POST['kg_serving_size'] ) ) {
+            update_post_meta( $post_id, '_kg_serving_size', sanitize_text_field( $_POST['kg_serving_size'] ) );
+        }
+        if ( isset( $_POST['kg_difficulty'] ) ) {
+            update_post_meta( $post_id, '_kg_difficulty', sanitize_text_field( $_POST['kg_difficulty'] ) );
+        }
+        if ( isset( $_POST['kg_storage_info'] ) ) {
+            update_post_meta( $post_id, '_kg_storage_info', sanitize_textarea_field( $_POST['kg_storage_info'] ) );
+        }
+        
+        $freezable = isset( $_POST['kg_freezable'] ) ? '1' : '0';
+        update_post_meta( $post_id, '_kg_freezable', $freezable );
 
         $is_featured = isset( $_POST['kg_is_featured'] ) ? '1' : '0';
         update_post_meta( $post_id, '_kg_is_featured', $is_featured );
@@ -423,11 +515,26 @@ class RecipeMetaBox {
         if ( isset( $_POST['kg_protein'] ) ) {
             update_post_meta( $post_id, '_kg_protein', sanitize_text_field( $_POST['kg_protein'] ) );
         }
+        if ( isset( $_POST['kg_carbs'] ) ) {
+            update_post_meta( $post_id, '_kg_carbs', sanitize_text_field( $_POST['kg_carbs'] ) );
+        }
+        if ( isset( $_POST['kg_fat'] ) ) {
+            update_post_meta( $post_id, '_kg_fat', sanitize_text_field( $_POST['kg_fat'] ) );
+        }
         if ( isset( $_POST['kg_fiber'] ) ) {
             update_post_meta( $post_id, '_kg_fiber', sanitize_text_field( $_POST['kg_fiber'] ) );
         }
+        if ( isset( $_POST['kg_sugar'] ) ) {
+            update_post_meta( $post_id, '_kg_sugar', sanitize_text_field( $_POST['kg_sugar'] ) );
+        }
+        if ( isset( $_POST['kg_sodium'] ) ) {
+            update_post_meta( $post_id, '_kg_sodium', sanitize_text_field( $_POST['kg_sodium'] ) );
+        }
         if ( isset( $_POST['kg_vitamins'] ) ) {
             update_post_meta( $post_id, '_kg_vitamins', sanitize_text_field( $_POST['kg_vitamins'] ) );
+        }
+        if ( isset( $_POST['kg_minerals'] ) ) {
+            update_post_meta( $post_id, '_kg_minerals', sanitize_text_field( $_POST['kg_minerals'] ) );
         }
 
         // Expert information
