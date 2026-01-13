@@ -2,6 +2,7 @@
 namespace KG_Core\API;
 
 use KG_Core\Auth\JWTHandler;
+use KG_Core\Auth\GoogleAuth;
 
 class UserController {
 
@@ -33,6 +34,20 @@ class UserController {
             'methods'  => 'GET',
             'callback' => [ $this, 'get_current_user' ],
             'permission_callback' => [ $this, 'check_authentication' ],
+        ]);
+
+        // Google OAuth endpoint
+        register_rest_route( 'kg/v1', '/auth/google', [
+            'methods'  => 'POST',
+            'callback' => [ $this, 'google_auth' ],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'id_token' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'description' => 'Google ID Token',
+                ],
+            ],
         ]);
 
         // Profile endpoints
@@ -255,6 +270,100 @@ class UserController {
             'email' => $user->user_email,
             'name' => $user->display_name,
         ], 200 );
+    }
+
+    /**
+     * Google ile giriş
+     * Frontend'den gelen Google ID token'ı ile kullanıcı girişi yapar
+     */
+    public function google_auth( $request ) {
+        // Google OAuth aktif mi kontrol et
+        if ( ! GoogleAuth::is_enabled() ) {
+            return new \WP_Error(
+                'google_auth_disabled',
+                'Google ile giriş şu anda aktif değil.',
+                [ 'status' => 403 ]
+            );
+        }
+        
+        $id_token = $request->get_param( 'id_token' );
+        
+        if ( empty( $id_token ) ) {
+            return new \WP_Error(
+                'missing_token',
+                'Google ID token gerekli.',
+                [ 'status' => 400 ]
+            );
+        }
+        
+        $google_auth = new GoogleAuth();
+        
+        // Token'ı doğrula
+        $google_data = $google_auth->verify_id_token( $id_token );
+        
+        if ( is_wp_error( $google_data ) ) {
+            return new \WP_Error(
+                'invalid_google_token',
+                $google_data->get_error_message(),
+                [ 'status' => 401 ]
+            );
+        }
+        
+        // Email doğrulanmış mı kontrol et
+        if ( empty( $google_data['email_verified'] ) || $google_data['email_verified'] !== 'true' ) {
+            return new \WP_Error(
+                'email_not_verified',
+                'Google hesabınızın e-posta adresi doğrulanmamış.',
+                [ 'status' => 401 ]
+            );
+        }
+        
+        // Kullanıcıyı bul veya oluştur
+        $user = $google_auth->get_or_create_user( $google_data );
+        
+        if ( is_wp_error( $user ) ) {
+            return new \WP_Error(
+                'user_creation_failed',
+                $user->get_error_message(),
+                [ 'status' => 500 ]
+            );
+        }
+        
+        // JWT token oluştur
+        $token = JWTHandler::generate_token( $user->ID );
+        
+        // Kullanıcı bilgilerini hazırla
+        $user_data = $this->prepare_user_data( $user );
+        
+        return new \WP_REST_Response( [
+            'success' => true,
+            'token' => $token,
+            'user' => $user_data,
+            'message' => 'Google ile giriş başarılı.',
+        ], 200 );
+    }
+
+    /**
+     * Kullanıcı verisini hazırla
+     */
+    private function prepare_user_data( $user ) {
+        // Google avatar varsa kullan, yoksa Gravatar
+        $google_avatar = get_user_meta( $user->ID, 'google_avatar', true );
+        $avatar_url = ! empty( $google_avatar ) ? $google_avatar : get_avatar_url( $user->ID );
+        
+        // Çocuk bilgilerini al
+        $children = get_user_meta( $user->ID, 'kg_children', true );
+        $children = is_array( $children ) ? $children : [];
+        
+        return [
+            'id' => $user->ID,
+            'email' => $user->user_email,
+            'name' => $user->user_login,
+            'display_name' => $user->display_name,
+            'avatar_url' => $avatar_url,
+            'children' => $children,
+            'created_at' => $user->user_registered,
+        ];
     }
 
     /**

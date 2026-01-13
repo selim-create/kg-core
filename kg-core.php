@@ -28,6 +28,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Utils/Helper.php' ) ) {
 
 // 2.5. AUTH SINIFLARI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Auth/JWTHandler.php' ) ) require_once KG_CORE_PATH . 'includes/Auth/JWTHandler.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Auth/GoogleAuth.php' ) ) require_once KG_CORE_PATH . 'includes/Auth/GoogleAuth.php';
 
 // 2.6. CORS DESTEĞI
 if ( file_exists( KG_CORE_PATH . 'includes/CORS/CORSHandler.php' ) ) {

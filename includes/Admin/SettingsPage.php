@@ -78,6 +78,25 @@ class SettingsPage {
             'default' => ''
         ]);
         
+        // === GOOGLE OAUTH AYARLARI ===
+        register_setting('kg_ai_settings', 'kg_google_client_id', [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ]);
+
+        register_setting('kg_ai_settings', 'kg_google_client_secret', [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ]);
+
+        register_setting('kg_ai_settings', 'kg_google_auth_enabled', [
+            'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
+            'default' => false
+        ]);
+        
         // === OTOMASYON ===
         register_setting('kg_ai_settings', 'kg_auto_generate_on_missing', [
             'type' => 'boolean',
@@ -168,6 +187,10 @@ class SettingsPage {
         $pexels_api_key = get_option('kg_pexels_api_key', '');
         
         $auto_generate = get_option('kg_auto_generate_on_missing', false);
+        
+        $google_auth_enabled = get_option('kg_google_auth_enabled', false);
+        $google_client_id = get_option('kg_google_client_id', '');
+        $google_client_secret = get_option('kg_google_client_secret', '');
         
         ?>
         <div class="wrap">
@@ -287,6 +310,53 @@ class SettingsPage {
                             </td>
                         </tr>
                     </table>
+                </div>
+                
+                <!-- GOOGLE OAUTH -->
+                <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h2 style="margin-top: 0; border-bottom: 2px solid #4285F4; padding-bottom: 10px;">
+                        🔐 Google OAuth Ayarları
+                    </h2>
+                    
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">Google ile Giriş</th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="kg_google_auth_enabled" value="1" <?php checked($google_auth_enabled, true); ?>>
+                                    Google ile giriş özelliğini aktif et
+                                </label>
+                                <p class="description">Kullanıcıların Google hesapları ile giriş yapmasına izin verir.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Google Client ID</th>
+                            <td>
+                                <input type="text" name="kg_google_client_id" value="<?php echo esc_attr($google_client_id); ?>" class="regular-text" placeholder="xxxx.apps.googleusercontent.com">
+                                <p class="description">Google Cloud Console'dan alınan Client ID</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Google Client Secret</th>
+                            <td>
+                                <input type="password" name="kg_google_client_secret" value="<?php echo esc_attr($google_client_secret); ?>" class="regular-text" placeholder="GOCSPX-...">
+                                <p class="description">Google Cloud Console'dan alınan Client Secret. <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a></p>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <div style="background: #E8F0FE; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                        <h4 style="margin: 0 0 10px 0; color: #1967D2;">📝 Google OAuth Kurulum Adımları:</h4>
+                        <ol style="margin: 0; padding-left: 20px; color: #5F6368;">
+                            <li>Google Cloud Console'a gidin ve yeni bir proje oluşturun</li>
+                            <li>APIs & Services > Credentials bölümüne gidin</li>
+                            <li>"Create Credentials" > "OAuth client ID" seçin</li>
+                            <li>Application type olarak "Web application" seçin</li>
+                            <li>Authorized JavaScript origins: <code><?php echo home_url(); ?></code></li>
+                            <li>Authorized redirect URIs: <code><?php echo home_url('/wp-json/kg/v1/auth/google/callback'); ?></code></li>
+                            <li>Client ID ve Client Secret'ı yukarıya yapıştırın</li>
+                        </ol>
+                    </div>
                 </div>
                 
                 <!-- OTOMASYON -->
