@@ -451,6 +451,11 @@ Sadece JSON döndür, başka açıklama ekleme.
             set_post_thumbnail($recipeId, $thumbnailId);
         }
         
+        // Generate SEO metadata via CRON
+        if (!wp_next_scheduled('kg_generate_recipe_seo', [$recipeId])) {
+            wp_schedule_single_event(time() + 15, 'kg_generate_recipe_seo', [$recipeId]);
+        }
+        
         return $recipeId;
     }
     
@@ -490,19 +495,15 @@ Sadece JSON döndür, başka açıklama ekleme.
             return $similar[0]->ID;
         }
         
-        // Create new ingredient (will be AI-enhanced if handler exists)
-        $ingredientId = wp_insert_post([
-            'post_title' => ucfirst(mb_strtolower($name, 'UTF-8')),
-            'post_type' => 'ingredient',
-            'post_status' => 'draft'
-        ]);
-        
-        // Schedule AI generation if hook exists (optional feature)
-        if (!is_wp_error($ingredientId) && has_action('kg_generate_ingredient')) {
-            wp_schedule_single_event(time() + 10, 'kg_generate_ingredient', [$name]);
+        // Don't create a draft ingredient immediately - use queue system instead
+        // Schedule ingredient creation via CRON for AI processing
+        if (!wp_next_scheduled('kg_generate_ingredient', [$name])) {
+            wp_schedule_single_event(time() + 5, 'kg_generate_ingredient', [$name]);
         }
         
-        return is_wp_error($ingredientId) ? null : $ingredientId;
+        // Return null to indicate ingredient will be created later
+        // This prevents empty ingredient posts from being created
+        return null;
     }
     
     /**

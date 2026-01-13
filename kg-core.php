@@ -42,6 +42,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Services/TariftenService.php' ) ) req
 if ( file_exists( KG_CORE_PATH . 'includes/Services/AIService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/AIService.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Services/ImageService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/ImageService.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Services/IngredientGenerator.php' ) ) require_once KG_CORE_PATH . 'includes/Services/IngredientGenerator.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Services/RecipeSEOGenerator.php' ) ) require_once KG_CORE_PATH . 'includes/Services/RecipeSEOGenerator.php';
 
 // 3. POST TYPE SINIFLARINI DAHİL ET (CPT)
 // Dosyalar mevcutsa dahil et
@@ -198,7 +199,9 @@ add_filter('acf/settings/load_json', function( $paths ) {
     return $paths;
 });
 
-// 9. CRON HOOK - AI ile malzeme oluşturma
+// 9. CRON HOOKS - AI ile malzeme ve SEO oluşturma
+
+// 9.1. Malzeme oluşturma CRON
 add_action( 'kg_generate_ingredient', function( $ingredient_name ) {
     if ( class_exists( '\KG_Core\Services\IngredientGenerator' ) ) {
         $generator = new \KG_Core\Services\IngredientGenerator();
@@ -206,8 +209,36 @@ add_action( 'kg_generate_ingredient', function( $ingredient_name ) {
         
         if ( is_wp_error( $result ) ) {
             error_log( 'KG Core: Ingredient generation failed for ' . $ingredient_name . ': ' . $result->get_error_message() );
+            
+            // Fallback: Create basic ingredient post if AI fails
+            $fallback_id = wp_insert_post([
+                'post_title' => $ingredient_name,
+                'post_type' => 'ingredient',
+                'post_status' => 'draft',
+                'post_content' => __('Bu malzeme otomatik oluşturuldu ve AI ile zenginleştirilmesi bekleniyor.', 'kg-core')
+            ]);
+            
+            if ( ! is_wp_error( $fallback_id ) ) {
+                update_post_meta( $fallback_id, '_kg_needs_ai_enrichment', '1' );
+                error_log( 'KG Core: Fallback ingredient created (ID: ' . $fallback_id . ') for ' . $ingredient_name );
+            }
         } else {
             error_log( 'KG Core: Ingredient generated successfully - ' . $ingredient_name . ' (ID: ' . $result . ')' );
+        }
+    }
+} );
+
+// 9.2. Recipe SEO oluşturma CRON
+add_action( 'kg_generate_recipe_seo', function( $recipe_id ) {
+    if ( class_exists( '\KG_Core\Services\RecipeSEOGenerator' ) ) {
+        $generator = new \KG_Core\Services\RecipeSEOGenerator();
+        $seo_data = $generator->generateSEO( $recipe_id );
+        
+        if ( is_wp_error( $seo_data ) ) {
+            error_log( 'KG Core: Recipe SEO generation failed for ID ' . $recipe_id . ': ' . $seo_data->get_error_message() );
+        } else {
+            $generator->saveSEO( $recipe_id, $seo_data );
+            error_log( 'KG Core: Recipe SEO generated successfully for ID ' . $recipe_id );
         }
     }
 } );
