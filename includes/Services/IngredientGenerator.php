@@ -331,7 +331,8 @@ class IngredientGenerator {
             
             // Log error if term assignment fails
             if (is_wp_error($result)) {
-                error_log('KG Core: Failed to assign category ' . $category . ' to ingredient ' . (int) $post_id . ': ' . $result->get_error_message());
+                $safe_error = sanitize_text_field($result->get_error_message());
+                error_log('KG Core: Failed to assign category ' . $category . ' to ingredient ' . (int) $post_id . ': ' . $safe_error);
             }
         } else {
             error_log('KG Core: Category not found: ' . $category . ' for ingredient ' . (int) $post_id);

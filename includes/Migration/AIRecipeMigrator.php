@@ -12,6 +12,11 @@ class AIRecipeMigrator {
      */
     const RECIPE_IDS_FILE = 'data/recipe-ids.json';
     
+    /**
+     * Minutes per hour constant for time conversion
+     */
+    const MINUTES_PER_HOUR = 60;
+    
     private $api_key;
     private $model;
     private $logger;
@@ -626,7 +631,7 @@ Sadece JSON döndür, başka açıklama ekleme.
         // Pattern 2: "XX saat" - with word boundaries
         if (preg_match('/\b(\d+)\s*saat\b/i', $cleanContent, $matches)) {
             $hours = (int) $matches[1];
-            return ($hours * 60) . ' dakika'; // Convert to minutes
+            return ($hours * self::MINUTES_PER_HOUR) . ' dakika'; // Convert to minutes
         }
         
         // Pattern 3: "Hazırlama süresi: XX"
