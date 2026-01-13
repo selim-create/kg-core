@@ -269,9 +269,22 @@ class MigrationPage {
             wp_send_json_error($result->get_error_message());
         }
         
+        // Get debug info from logger metadata
+        $logEntry = $this->logger->getLogEntry($postId);
+        $metadata = !empty($logEntry['metadata']) ? json_decode($logEntry['metadata'], true) : [];
+        
+        $debugInfo = [
+            'ingredients_count' => isset($metadata['ingredients_count']) ? $metadata['ingredients_count'] : 0,
+            'instructions_count' => isset($metadata['instructions_count']) ? $metadata['instructions_count'] : 0,
+            'has_expert_note' => isset($metadata['has_expert_note']) ? $metadata['has_expert_note'] : false,
+            'age_group' => isset($metadata['age_group']) ? $metadata['age_group'] : 'none',
+            'ai_enhanced' => isset($metadata['ai_enhanced']) ? $metadata['ai_enhanced'] : false,
+        ];
+        
         wp_send_json_success([
             'recipe_id' => $result,
-            'message' => "Tarif başarıyla oluşturuldu! Recipe ID: {$result}"
+            'message' => "Tarif başarıyla oluşturuldu! Recipe ID: {$result}",
+            'debug' => $debugInfo
         ]);
     }
     

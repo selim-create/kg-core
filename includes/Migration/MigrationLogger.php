@@ -269,6 +269,26 @@ class MigrationLogger {
     }
     
     /**
+     * Get log entry for a specific blog post
+     * 
+     * @param int $blogPostId Blog post ID
+     * @return array|null Log entry or null if not found
+     */
+    public function getLogEntry($blogPostId) {
+        global $wpdb;
+        
+        $result = $wpdb->get_row($wpdb->prepare("
+            SELECT *
+            FROM {$this->db_table}
+            WHERE blog_post_id = %d
+            ORDER BY started_at DESC
+            LIMIT 1
+        ", $blogPostId), ARRAY_A);
+        
+        return $result;
+    }
+    
+    /**
      * Reset migration for a post
      * 
      * @param int $blogPostId Blog post ID

@@ -35,6 +35,7 @@ class AIEnhancer {
             'cross_sell_url' => '',
             'cross_sell_title' => '',
             'seo_description' => '',
+            'description' => '',
         ];
         
         // Build AI prompt
@@ -97,6 +98,7 @@ class AIEnhancer {
             'protein' => 'Protein miktarı gram cinsinden (sadece sayı)',
             'fiber' => 'Lif miktarı gram cinsinden (sadece sayı)',
             'vitamins' => 'Vitamin listesi virgülle ayrılmış (örn: A, C, D)',
+            'description' => 'Bu tarif için 1-2 paragraf açıklama yaz. Malzemeleri veya adımları tekrarlama. Tarifin faydalarından, hangi yaş grubuna uygun olduğundan ve neden besleyici olduğundan bahset.',
             'substitutes' => [
                 [
                     'original' => 'Orijinal malzeme',

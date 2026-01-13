@@ -49,7 +49,20 @@
                     this.setLoading($btn, false);
                     
                     if (response.success) {
-                        this.showResult('success', '✅ ' + response.data.message);
+                        let message = '✅ ' + response.data.message;
+                        
+                        // Add debug information if available
+                        if (response.data.debug) {
+                            const debug = response.data.debug;
+                            message += '\n\n📊 Debug Bilgisi:';
+                            message += `\n- Malzemeler: ${debug.ingredients_count}`;
+                            message += `\n- Adımlar: ${debug.instructions_count}`;
+                            message += `\n- Uzman Notu: ${debug.has_expert_note ? 'Var' : 'Yok'}`;
+                            message += `\n- Yaş Grubu: ${debug.age_group || 'Bulunamadı'}`;
+                            message += `\n- AI Zenginleştirme: ${debug.ai_enhanced ? 'Evet' : 'Hayır'}`;
+                        }
+                        
+                        this.showResult('success', message);
                         this.updateStatus();
                     } else {
                         this.showResult('error', '❌ Hata: ' + response.data);
