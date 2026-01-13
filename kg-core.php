@@ -60,6 +60,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/IngredientCategory.php' ) 
 // 5. ADMIN PANELİ ÖZEL ALANLARI (ACF Alternatifi)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/RecipeMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/RecipeMetaBox.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/IngredientMetaBox.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/PostMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/PostMetaBox.php';
 
 // 5.5. AI ADMIN SAYFALARI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/SettingsPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/SettingsPage.php';
@@ -113,6 +114,9 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\IngredientMetaBox' ) ) {
         new \KG_Core\Admin\IngredientMetaBox();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\PostMetaBox' ) ) {
+        new \KG_Core\Admin\PostMetaBox();
     }
     
     // AI Admin Pages (Sadece Admin panelinde çalışsın)
@@ -186,8 +190,66 @@ function kg_core_enqueue_admin_assets( $hook ) {
             'ajaxurl' => admin_url( 'admin-ajax.php' ),
         ]);
     }
+    
+    // Load on post edit screens for post (WordPress Posts)
+    if ( ( $hook === 'post.php' || $hook === 'post-new.php' ) && $post_type === 'post' ) {
+        // Enqueue WordPress Media Uploader
+        wp_enqueue_media();
+        
+        // Enqueue sponsor media JS
+        wp_enqueue_script( 
+            'kg-sponsor-media-js', 
+            KG_CORE_URL . 'assets/admin/js/sponsor-media.js', 
+            [ 'jquery' ], 
+            KG_CORE_VERSION, 
+            true 
+        );
+    }
 }
 add_action( 'admin_enqueue_scripts', 'kg_core_enqueue_admin_assets' );
+
+// 8.5. REST API - Register sponsor_data field for posts
+add_action( 'rest_api_init', function() {
+    register_rest_field( 'post', 'sponsor_data', [
+        'get_callback' => function( $post ) {
+            $is_sponsored = get_post_meta( $post['id'], '_kg_is_sponsored', true );
+            
+            // Return null if not sponsored
+            if ( $is_sponsored !== '1' ) {
+                return null;
+            }
+            
+            // Get all sponsor meta data
+            $sponsor_logo_id = get_post_meta( $post['id'], '_kg_sponsor_logo', true );
+            $sponsor_light_logo_id = get_post_meta( $post['id'], '_kg_sponsor_light_logo', true );
+            
+            // Convert attachment IDs to URLs
+            $sponsor_logo_url = $sponsor_logo_id ? wp_get_attachment_url( $sponsor_logo_id ) : null;
+            $sponsor_light_logo_url = $sponsor_light_logo_id ? wp_get_attachment_url( $sponsor_light_logo_id ) : null;
+            
+            return [
+                'is_sponsored' => true,
+                'sponsor_name' => get_post_meta( $post['id'], '_kg_sponsor_name', true ),
+                'sponsor_url' => get_post_meta( $post['id'], '_kg_sponsor_url', true ),
+                'sponsor_logo' => [
+                    'id' => $sponsor_logo_id ? absint( $sponsor_logo_id ) : null,
+                    'url' => $sponsor_logo_url,
+                ],
+                'sponsor_light_logo' => [
+                    'id' => $sponsor_light_logo_id ? absint( $sponsor_light_logo_id ) : null,
+                    'url' => $sponsor_light_logo_url,
+                ],
+                'direct_redirect' => get_post_meta( $post['id'], '_kg_direct_redirect', true ) === '1',
+                'gam_impression_url' => get_post_meta( $post['id'], '_kg_gam_impression_url', true ),
+                'gam_click_url' => get_post_meta( $post['id'], '_kg_gam_click_url', true ),
+            ];
+        },
+        'schema' => [
+            'description' => __( 'Sponsor data for the post', 'kg-core' ),
+            'type' => [ 'object', 'null' ],
+        ],
+    ]);
+});
 
 // Opsiyonel: ACF JSON Kayıt Yeri (Eğer ACF kurarsanız diye)
 add_filter('acf/settings/save_json', function( $path ) {
