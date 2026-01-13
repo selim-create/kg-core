@@ -1,7 +1,7 @@
 <?php
 namespace KG_Core\Admin;
 
-use KG_Core\Migration\RecipeMigrator;
+use KG_Core\Migration\AIRecipeMigrator;
 use KG_Core\Migration\MigrationLogger;
 
 /**
@@ -13,7 +13,7 @@ class MigrationPage {
     private $logger;
     
     public function __construct() {
-        $this->migrator = new RecipeMigrator();
+        $this->migrator = new AIRecipeMigrator();
         $this->logger = new MigrationLogger();
         
         add_action('admin_menu', [$this, 'addMenuPage']);
@@ -83,10 +83,11 @@ class MigrationPage {
         
         ?>
         <div class="wrap kg-migration-page">
-            <h1>📋 Tarif Migration Sistemi</h1>
+            <h1>📋 Tarif Migration Sistemi - AI-First</h1>
             <p class="description">
                 Blog'dan 337 adet tarifi yeni "recipe" post type'ına aktarın. 
-                Sistem AI ile eksik verileri otomatik olarak tamamlar.
+                <strong>Sistem OpenAI GPT-4 ile tüm içeriği tek seferde parse eder.</strong>
+                Malzemeler, hazırlanış adımları, uzman notu, beslenme değerleri ve daha fazlası otomatik çıkarılır.
             </p>
             
             <!-- Status Overview -->

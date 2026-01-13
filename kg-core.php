@@ -73,6 +73,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Migration/AIEnhancer.php' ) ) require
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/SEOHandler.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/SEOHandler.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/MigrationLogger.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/MigrationLogger.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php';
 
 // 6. API KONTROL CİHAZLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/API/RecipeController.php' ) ) require_once KG_CORE_PATH . 'includes/API/RecipeController.php';
