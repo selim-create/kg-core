@@ -123,22 +123,40 @@ class IngredientController {
      * Prepare ingredient data for API response
      */
     private function prepare_ingredient_data( $post_id, $full_detail = false ) {
+        // Use Helper class for HTML entity decoding
+        $name = \KG_Core\Utils\Helper::decode_html_entities( get_the_title( $post_id ) );
+        $category = \KG_Core\Utils\Helper::decode_html_entities( get_post_meta( $post_id, '_kg_category', true ) );
+        
         $data = [
             'id'          => $post_id,
-            'name'        => get_the_title( $post_id ),
+            'name'        => $name,
             'slug'        => get_post_field( 'post_name', $post_id ),
             'description' => get_the_excerpt( $post_id ),
             'image'       => get_the_post_thumbnail_url( $post_id, 'large' ),
             'start_age'   => get_post_meta( $post_id, '_kg_start_age', true ),
-            'category'    => get_post_meta( $post_id, '_kg_category', true ),
+            'category'    => $category,
         ];
 
         if ( $full_detail ) {
             $data['description'] = get_the_content( null, false, $post_id );
+            
+            // Description and benefits as HTML
+            $data['description_html'] = apply_filters( 'the_content', get_post_field( 'post_content', $post_id ) );
             $data['benefits'] = get_post_meta( $post_id, '_kg_benefits', true );
+            $data['benefits_html'] = wpautop( get_post_meta( $post_id, '_kg_benefits', true ) );
             
             $prep_methods_raw = get_post_meta( $post_id, '_kg_prep_methods', true );
             $data['prep_methods'] = !empty($prep_methods_raw) ? maybe_unserialize($prep_methods_raw) : [];
+            
+            // New fields: prep_methods_list
+            $prep_methods_list_raw = get_post_meta( $post_id, '_kg_prep_methods_list', true );
+            $data['prep_methods_list'] = !empty($prep_methods_list_raw) ? 
+                array_filter(array_map('trim', explode("\n", $prep_methods_list_raw))) : 
+                array();
+            
+            // Prep tips and cooking suggestions
+            $data['prep_tips'] = get_post_meta( $post_id, '_kg_prep_tips', true );
+            $data['cooking_suggestions'] = get_post_meta( $post_id, '_kg_cooking_suggestions', true );
             
             // New fields
             $prep_by_age_raw = get_post_meta( $post_id, '_kg_prep_by_age', true );
@@ -155,7 +173,7 @@ class IngredientController {
             $data['season'] = get_post_meta( $post_id, '_kg_season', true );
             $data['storage_tips'] = get_post_meta( $post_id, '_kg_storage_tips', true );
             
-            // Nutrition data
+            // Nutrition data (existing nutrition fields)
             $data['nutrition'] = [
                 'calories' => get_post_meta( $post_id, '_kg_calories', true ),
                 'protein' => get_post_meta( $post_id, '_kg_protein', true ),
@@ -163,6 +181,27 @@ class IngredientController {
                 'fat' => get_post_meta( $post_id, '_kg_fat', true ),
                 'fiber' => get_post_meta( $post_id, '_kg_fiber', true ),
                 'vitamins' => get_post_meta( $post_id, '_kg_vitamins', true ),
+            ];
+            
+            // Nutrition per 100g
+            $data['nutrition_per_100g'] = [
+                'calories' => get_post_meta( $post_id, '_kg_ing_calories_100g', true ),
+                'protein' => get_post_meta( $post_id, '_kg_ing_protein_100g', true ),
+                'carbs' => get_post_meta( $post_id, '_kg_ing_carbs_100g', true ),
+                'fat' => get_post_meta( $post_id, '_kg_ing_fat_100g', true ),
+                'fiber' => get_post_meta( $post_id, '_kg_ing_fiber_100g', true ),
+                'sugar' => get_post_meta( $post_id, '_kg_ing_sugar_100g', true ),
+                'vitamins' => get_post_meta( $post_id, '_kg_ing_vitamins', true ),
+                'minerals' => get_post_meta( $post_id, '_kg_ing_minerals', true ),
+            ];
+            
+            // Allergen info
+            $data['allergen_info'] = [
+                'is_allergen' => get_post_meta( $post_id, '_kg_is_allergen', true ) === '1',
+                'allergen_type' => get_post_meta( $post_id, '_kg_allergen_type', true ),
+                'cross_contamination_risk' => get_post_meta( $post_id, '_kg_cross_contamination', true ),
+                'allergy_symptoms' => get_post_meta( $post_id, '_kg_allergy_symptoms', true ),
+                'alternative_ingredients' => get_post_meta( $post_id, '_kg_alternatives', true ),
             ];
             
             $faq_raw = get_post_meta( $post_id, '_kg_faq', true );
@@ -186,6 +225,9 @@ class IngredientController {
             }
             
             $data['related_recipes'] = $this->get_recipes_by_ingredient( $post_id );
+            
+            // Add SEO data
+            $data['seo'] = $this->get_seo_data( $post_id );
         }
 
         return $data;
@@ -222,5 +264,40 @@ class IngredientController {
         wp_reset_postdata();
 
         return $recipes;
+    }
+
+    /**
+     * Get SEO data from RankMath plugin
+     * @param int $post_id Post ID
+     * @return array SEO data
+     */
+    private function get_seo_data( $post_id ) {
+        $seo_data = array();
+        
+        // RankMath SEO verileri
+        $seo_data['title'] = get_post_meta( $post_id, 'rank_math_title', true );
+        $seo_data['description'] = get_post_meta( $post_id, 'rank_math_description', true );
+        $seo_data['focus_keywords'] = get_post_meta( $post_id, 'rank_math_focus_keyword', true );
+        $seo_data['canonical_url'] = get_post_meta( $post_id, 'rank_math_canonical_url', true );
+        
+        // Open Graph
+        $seo_data['og_title'] = get_post_meta( $post_id, 'rank_math_facebook_title', true );
+        $seo_data['og_description'] = get_post_meta( $post_id, 'rank_math_facebook_description', true );
+        $seo_data['og_image'] = get_post_meta( $post_id, 'rank_math_facebook_image', true );
+        
+        // Twitter Card
+        $seo_data['twitter_title'] = get_post_meta( $post_id, 'rank_math_twitter_title', true );
+        $seo_data['twitter_description'] = get_post_meta( $post_id, 'rank_math_twitter_description', true );
+        
+        // Fallback to defaults if empty
+        if ( empty( $seo_data['title'] ) ) {
+            $site_name = get_option( 'blogname' ) ?: 'KidsGourmet';
+            $seo_data['title'] = get_the_title( $post_id ) . ' - ' . $site_name;
+        }
+        if ( empty( $seo_data['description'] ) ) {
+            $seo_data['description'] = wp_trim_words( get_the_excerpt( $post_id ), 30 );
+        }
+        
+        return $seo_data;
     }
 }
