@@ -173,7 +173,7 @@ class RecipeMigrator {
         // Create post
         $postData = [
             'post_title' => $originalPost->post_title,
-            'post_content' => $originalPost->post_content,
+            'post_content' => isset($aiData['description']) ? $aiData['description'] : $this->generateDescription($parsedData),
             'post_excerpt' => $originalPost->post_excerpt,
             'post_type' => 'recipe',
             'post_status' => 'draft', // Create as draft for review
@@ -246,6 +246,19 @@ class RecipeMigrator {
         update_post_meta($originalPost->ID, '_kg_migrated_to', $recipeId);
         
         return $recipeId;
+    }
+    
+    /**
+     * Generate a simple description when AI doesn't provide one
+     * 
+     * @param array $parsedData Parsed recipe data
+     * @return string Generated description
+     */
+    private function generateDescription($parsedData) {
+        $ingredientCount = count($parsedData['ingredients']);
+        $title = isset($parsedData['title']) ? $parsedData['title'] : 'Bu tarif';
+        
+        return "Bu {$title} tarifi {$ingredientCount} malzeme ile hazırlanır. Aşağıda detaylı malzeme listesi ve hazırlanış adımlarını bulabilirsiniz.";
     }
     
     /**

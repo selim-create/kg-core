@@ -58,8 +58,11 @@ class ContentParser {
     private function extractIngredients($content) {
         $ingredients = [];
         
+        error_log("KG Migration: Starting ingredient extraction");
+        error_log("KG Migration: Content length: " . strlen($content));
+        
         // Pattern 1: Look for "Malzemeler" section
-        if (preg_match('/Malzemeler\s*(<\/h[1-6]>|<\/p>|<br\s*\/?>)/i', $content, $matches, PREG_OFFSET_CAPTURE)) {
+        if (preg_match('/Malzemeler?\s*[:\s]*(<\/h[1-6]>|<\/p>|<\/strong>|<br\s*\/?>|\n)/iu', $content, $matches, PREG_OFFSET_CAPTURE)) {
             $startPos = $matches[0][1];
             
             // Find end of ingredients section (usually starts with "Hazırlanış" or another heading)
@@ -85,6 +88,7 @@ class ContentParser {
             }
         }
         
+        error_log("KG Migration: Found " . count($ingredients) . " ingredients");
         return array_filter($ingredients); // Remove empty items
     }
     
@@ -97,8 +101,10 @@ class ContentParser {
     private function extractInstructions($content) {
         $instructions = [];
         
+        error_log("KG Migration: Starting instruction extraction");
+        
         // Look for "Hazırlanışı" or "Hazırlanış" section
-        if (preg_match('/Hazırlan[ıi]ş[ıi]?\s*(<\/h[1-6]>|<\/p>|<br\s*\/?>)/i', $content, $matches, PREG_OFFSET_CAPTURE)) {
+        if (preg_match('/Hazırlan[ıi]ş[ıi]?\s*[:\s]*(<\/h[1-6]>|<\/p>|<\/strong>|<br\s*\/?>|\n)/iu', $content, $matches, PREG_OFFSET_CAPTURE)) {
             $startPos = $matches[0][1];
             
             // Find end - usually before expert note or end of content
@@ -134,6 +140,7 @@ class ContentParser {
             }
         }
         
+        error_log("KG Migration: Found " . count($instructions) . " instructions");
         return array_filter($instructions);
     }
     
@@ -150,6 +157,8 @@ class ContentParser {
             'name' => '',
             'title' => '',
         ];
+        
+        error_log("KG Migration: Starting expert note extraction");
         
         // Pattern to match expert note header with Turkish characters
         // Examples: "Doç.Dr. Enver Mahir Gülcan'ın notu", "Dyt. Figen Fişekçi Üvez'in notu:"
@@ -182,6 +191,12 @@ class ContentParser {
                 $result['title'] = trim($titleMatches[1]);
                 $result['name'] = trim($titleMatches[2]);
             }
+        }
+        
+        if (!empty($result['note'])) {
+            error_log("KG Migration: Found expert note from: " . $result['name']);
+        } else {
+            error_log("KG Migration: No expert note found");
         }
         
         return $result;

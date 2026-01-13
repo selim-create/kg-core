@@ -222,6 +222,27 @@ class IngredientParser {
      * @return int|null New ingredient post ID or null on error
      */
     public function createIngredient($ingredientName) {
+        // First check if it exists
+        $existing = $this->matchIngredient($ingredientName);
+        if ($existing) {
+            return $existing;
+        }
+        
+        // Try to use IngredientGenerator with AI
+        if (class_exists('KG_Core\Services\IngredientGenerator')) {
+            $generator = new \KG_Core\Services\IngredientGenerator();
+            $result = $generator->create($ingredientName);
+            
+            if (!is_wp_error($result)) {
+                error_log("KG Migration: Created ingredient with AI: {$ingredientName} (ID: {$result})");
+                return $result;
+            }
+            
+            // If AI failed, log the error and fall back to simple creation
+            error_log("KG Migration: AI ingredient creation failed for {$ingredientName}: " . $result->get_error_message());
+        }
+        
+        // Fallback: Create simple ingredient post without AI
         $post_data = [
             'post_title' => $ingredientName,
             'post_type' => 'ingredient',
@@ -236,6 +257,7 @@ class IngredientParser {
             return null;
         }
         
+        error_log("KG Migration: Created simple ingredient: {$ingredientName} (ID: {$post_id})");
         return $post_id;
     }
     
