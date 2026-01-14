@@ -100,6 +100,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/UserController.php' ) ) require_o
 if ( file_exists( KG_CORE_PATH . 'includes/API/SearchController.php' ) ) require_once KG_CORE_PATH . 'includes/API/SearchController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/CrossSellController.php' ) ) require_once KG_CORE_PATH . 'includes/API/CrossSellController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/FeaturedController.php' ) ) require_once KG_CORE_PATH . 'includes/API/FeaturedController.php';
+if ( file_exists( KG_CORE_PATH . 'includes/API/CollectionController.php' ) ) require_once KG_CORE_PATH . 'includes/API/CollectionController.php';
 
 // 6.5. AI API CONTROLLER DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/API/AIController.php' ) ) require_once KG_CORE_PATH . 'includes/API/AIController.php';
@@ -173,6 +174,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\SearchController' ) ) new \KG_Core\API\SearchController();
     if ( class_exists( '\KG_Core\API\CrossSellController' ) ) new \KG_Core\API\CrossSellController();
     if ( class_exists( '\KG_Core\API\FeaturedController' ) ) new \KG_Core\API\FeaturedController();
+    if ( class_exists( '\KG_Core\API\CollectionController' ) ) new \KG_Core\API\CollectionController();
     if ( class_exists( '\KG_Core\API\AIController' ) ) new \KG_Core\API\AIController();
     if ( class_exists( '\KG_Core\API\DiscussionController' ) ) new \KG_Core\API\DiscussionController();
     if ( class_exists( '\KG_Core\API\ExpertController' ) ) new \KG_Core\API\ExpertController();

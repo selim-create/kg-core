@@ -716,81 +716,175 @@ class UserController {
     }
 
     /**
-     * Get favorite recipes
+     * Get favorite items (recipes, ingredients, posts, discussions)
      */
     public function get_favorites( $request ) {
         $user_id = $this->get_authenticated_user_id( $request );
-        $favorites = get_user_meta( $user_id, '_kg_favorites', true );
+        $type = $request->get_param( 'type' ) ?: 'all';
 
-        if ( ! is_array( $favorites ) ) {
-            $favorites = [];
+        // Migrate legacy favorites if not done yet
+        $this->migrate_legacy_favorites( $user_id );
+
+        // Validate type parameter
+        $allowed_types = [ 'all', 'recipe', 'ingredient', 'post', 'discussion' ];
+        if ( ! in_array( $type, $allowed_types ) ) {
+            return new \WP_Error( 'invalid_type', 'Invalid type parameter. Must be one of: all, recipe, ingredient, post, discussion', [ 'status' => 400 ] );
         }
 
-        // Get recipe details
-        $recipes = [];
-        foreach ( $favorites as $recipe_id ) {
-            $post = get_post( $recipe_id );
-            if ( $post && $post->post_type === 'recipe' ) {
-                $recipes[] = [
-                    'id' => $post->ID,
-                    'title' => $post->post_title,
-                    'slug' => $post->post_name,
-                    'image' => get_the_post_thumbnail_url( $post->ID, 'medium' ),
-                ];
-            }
+        $response = [];
+        $counts = [
+            'all' => 0,
+            'recipes' => 0,
+            'ingredients' => 0,
+            'posts' => 0,
+            'discussions' => 0,
+        ];
+
+        // Get recipes
+        if ( $type === 'all' || $type === 'recipe' ) {
+            $recipes = $this->get_favorite_recipes( $user_id );
+            $response['recipes'] = $recipes;
+            $counts['recipes'] = count( $recipes );
+            $counts['all'] += count( $recipes );
         }
 
-        return new \WP_REST_Response( $recipes, 200 );
+        // Get ingredients
+        if ( $type === 'all' || $type === 'ingredient' ) {
+            $ingredients = $this->get_favorite_ingredients( $user_id );
+            $response['ingredients'] = $ingredients;
+            $counts['ingredients'] = count( $ingredients );
+            $counts['all'] += count( $ingredients );
+        }
+
+        // Get posts
+        if ( $type === 'all' || $type === 'post' ) {
+            $posts = $this->get_favorite_posts( $user_id );
+            $response['posts'] = $posts;
+            $counts['posts'] = count( $posts );
+            $counts['all'] += count( $posts );
+        }
+
+        // Get discussions
+        if ( $type === 'all' || $type === 'discussion' ) {
+            $discussions = $this->get_favorite_discussions( $user_id );
+            $response['discussions'] = $discussions;
+            $counts['discussions'] = count( $discussions );
+            $counts['all'] += count( $discussions );
+        }
+
+        $response['counts'] = $counts;
+
+        return new \WP_REST_Response( $response, 200 );
     }
 
     /**
-     * Add recipe to favorites
+     * Add item to favorites
      */
     public function add_favorite( $request ) {
         $user_id = $this->get_authenticated_user_id( $request );
-        $recipe_id = absint( $request->get_param( 'recipe_id' ) );
+        $item_id = absint( $request->get_param( 'item_id' ) );
+        $item_type = sanitize_text_field( $request->get_param( 'item_type' ) );
 
-        if ( ! $recipe_id ) {
-            return new \WP_Error( 'missing_recipe_id', 'Recipe ID is required', [ 'status' => 400 ] );
+        // Validate required parameters
+        if ( ! $item_id ) {
+            return new \WP_Error( 'missing_item_id', 'Item ID is required', [ 'status' => 400 ] );
         }
 
-        $recipe = get_post( $recipe_id );
-        if ( ! $recipe || $recipe->post_type !== 'recipe' ) {
-            return new \WP_Error( 'invalid_recipe', 'Invalid recipe ID', [ 'status' => 404 ] );
+        if ( empty( $item_type ) ) {
+            return new \WP_Error( 'missing_item_type', 'Item type is required', [ 'status' => 400 ] );
         }
 
-        $favorites = get_user_meta( $user_id, '_kg_favorites', true );
+        // Validate item_type
+        $allowed_types = [ 'recipe', 'ingredient', 'post', 'discussion' ];
+        if ( ! in_array( $item_type, $allowed_types ) ) {
+            return new \WP_Error( 'invalid_item_type', 'Invalid item type. Must be one of: recipe, ingredient, post, discussion', [ 'status' => 400 ] );
+        }
+
+        // Get expected post type for validation
+        $expected_post_type = $this->get_post_type_for_item_type( $item_type );
+
+        // Verify post exists and has correct type
+        $post = get_post( $item_id );
+        if ( ! $post || $post->post_type !== $expected_post_type ) {
+            return new \WP_Error( 'invalid_item', 'Invalid item ID or item does not exist', [ 'status' => 404 ] );
+        }
+
+        // Get the appropriate meta key
+        $meta_key = '_kg_favorite_' . $item_type . 's';
+        if ( $item_type === 'post' ) {
+            $meta_key = '_kg_favorite_posts';
+        } else if ( $item_type === 'discussion' ) {
+            $meta_key = '_kg_favorite_discussions';
+        }
+
+        $favorites = get_user_meta( $user_id, $meta_key, true );
         if ( ! is_array( $favorites ) ) {
             $favorites = [];
         }
 
-        if ( ! in_array( $recipe_id, $favorites ) ) {
-            $favorites[] = $recipe_id;
-            update_user_meta( $user_id, '_kg_favorites', $favorites );
+        // Check if already in favorites
+        if ( in_array( $item_id, $favorites ) ) {
+            return new \WP_REST_Response( [ 
+                'success' => true,
+                'message' => 'Item already in favorites' 
+            ], 200 );
         }
 
-        return new \WP_REST_Response( [ 'message' => 'Recipe added to favorites' ], 201 );
+        $favorites[] = $item_id;
+        update_user_meta( $user_id, $meta_key, $favorites );
+
+        return new \WP_REST_Response( [ 
+            'success' => true,
+            'message' => 'Item added to favorites' 
+        ], 201 );
     }
 
     /**
-     * Remove recipe from favorites
+     * Remove item from favorites
      */
     public function remove_favorite( $request ) {
         $user_id = $this->get_authenticated_user_id( $request );
-        $recipe_id = absint( $request->get_param( 'id' ) );
+        $item_id = absint( $request->get_param( 'id' ) );
+        $item_type = sanitize_text_field( $request->get_param( 'type' ) );
 
-        $favorites = get_user_meta( $user_id, '_kg_favorites', true );
+        // Validate required parameters
+        if ( ! $item_id ) {
+            return new \WP_Error( 'missing_item_id', 'Item ID is required', [ 'status' => 400 ] );
+        }
+
+        if ( empty( $item_type ) ) {
+            return new \WP_Error( 'missing_type', 'Type parameter is required', [ 'status' => 400 ] );
+        }
+
+        // Validate item_type
+        $allowed_types = [ 'recipe', 'ingredient', 'post', 'discussion' ];
+        if ( ! in_array( $item_type, $allowed_types ) ) {
+            return new \WP_Error( 'invalid_type', 'Invalid type. Must be one of: recipe, ingredient, post, discussion', [ 'status' => 400 ] );
+        }
+
+        // Get the appropriate meta key
+        $meta_key = '_kg_favorite_' . $item_type . 's';
+        if ( $item_type === 'post' ) {
+            $meta_key = '_kg_favorite_posts';
+        } else if ( $item_type === 'discussion' ) {
+            $meta_key = '_kg_favorite_discussions';
+        }
+
+        $favorites = get_user_meta( $user_id, $meta_key, true );
         if ( ! is_array( $favorites ) ) {
             $favorites = [];
         }
 
-        $favorites = array_filter( $favorites, function( $id ) use ( $recipe_id ) {
-            return $id !== $recipe_id;
+        $favorites = array_filter( $favorites, function( $id ) use ( $item_id ) {
+            return $id !== $item_id;
         });
 
-        update_user_meta( $user_id, '_kg_favorites', array_values( $favorites ) );
+        update_user_meta( $user_id, $meta_key, array_values( $favorites ) );
 
-        return new \WP_REST_Response( [ 'message' => 'Recipe removed from favorites' ], 200 );
+        return new \WP_REST_Response( [ 
+            'success' => true,
+            'message' => 'Item removed from favorites' 
+        ], 200 );
     }
 
     /**
@@ -1078,5 +1172,245 @@ class UserController {
         ];
         
         return get_comments( $args );
+    }
+
+    /**
+     * Get favorite recipes with formatted data
+     */
+    private function get_favorite_recipes( $user_id ) {
+        $favorites = get_user_meta( $user_id, '_kg_favorite_recipes', true );
+        if ( ! is_array( $favorites ) ) {
+            $favorites = [];
+        }
+
+        $recipes = [];
+        foreach ( $favorites as $recipe_id ) {
+            $post = get_post( $recipe_id );
+            if ( $post && $post->post_type === 'recipe' && $post->post_status === 'publish' ) {
+                $recipes[] = $this->format_recipe_card( $post );
+            }
+        }
+
+        return $recipes;
+    }
+
+    /**
+     * Get favorite ingredients with formatted data
+     */
+    private function get_favorite_ingredients( $user_id ) {
+        $favorites = get_user_meta( $user_id, '_kg_favorite_ingredients', true );
+        if ( ! is_array( $favorites ) ) {
+            $favorites = [];
+        }
+
+        $ingredients = [];
+        foreach ( $favorites as $ingredient_id ) {
+            $post = get_post( $ingredient_id );
+            if ( $post && $post->post_type === 'ingredient' && $post->post_status === 'publish' ) {
+                $ingredients[] = $this->format_ingredient_card( $post );
+            }
+        }
+
+        return $ingredients;
+    }
+
+    /**
+     * Get favorite posts with formatted data
+     */
+    private function get_favorite_posts( $user_id ) {
+        $favorites = get_user_meta( $user_id, '_kg_favorite_posts', true );
+        if ( ! is_array( $favorites ) ) {
+            $favorites = [];
+        }
+
+        $posts = [];
+        foreach ( $favorites as $post_id ) {
+            $post = get_post( $post_id );
+            if ( $post && $post->post_type === 'post' && $post->post_status === 'publish' ) {
+                $posts[] = $this->format_post_card( $post );
+            }
+        }
+
+        return $posts;
+    }
+
+    /**
+     * Get favorite discussions with formatted data
+     */
+    private function get_favorite_discussions( $user_id ) {
+        $favorites = get_user_meta( $user_id, '_kg_favorite_discussions', true );
+        if ( ! is_array( $favorites ) ) {
+            $favorites = [];
+        }
+
+        $discussions = [];
+        foreach ( $favorites as $discussion_id ) {
+            $post = get_post( $discussion_id );
+            if ( $post && $post->post_type === 'discussion' && $post->post_status === 'publish' ) {
+                $discussions[] = $this->format_discussion_card( $post );
+            }
+        }
+
+        return $discussions;
+    }
+
+    /**
+     * Format recipe data for card display
+     */
+    private function format_recipe_card( $post ) {
+        // Get age group taxonomy
+        $age_groups = wp_get_post_terms( $post->ID, 'age-group' );
+        $age_group = '';
+        $age_group_color = '';
+        
+        if ( ! empty( $age_groups ) && ! is_wp_error( $age_groups ) ) {
+            $age_group = $age_groups[0]->name;
+            $age_group_color = get_term_meta( $age_groups[0]->term_id, '_kg_color', true ) ?: '#22C55E';
+        }
+
+        // Get categories
+        $categories = [];
+        $meal_types = wp_get_post_terms( $post->ID, 'meal-type' );
+        if ( ! empty( $meal_types ) && ! is_wp_error( $meal_types ) ) {
+            foreach ( $meal_types as $meal_type ) {
+                $categories[] = $meal_type->name;
+            }
+        }
+
+        return [
+            'id' => $post->ID,
+            'title' => \KG_Core\Utils\Helper::decode_html_entities( $post->post_title ),
+            'slug' => $post->post_name,
+            'image' => get_the_post_thumbnail_url( $post->ID, 'medium' ),
+            'age_group' => $age_group,
+            'age_group_color' => $age_group_color,
+            'prep_time' => get_post_meta( $post->ID, '_kg_prep_time', true ),
+            'categories' => $categories,
+        ];
+    }
+
+    /**
+     * Format ingredient data for card display
+     */
+    private function format_ingredient_card( $post ) {
+        $start_age = get_post_meta( $post->ID, '_kg_start_age', true );
+        $allergy_risk = get_post_meta( $post->ID, '_kg_allergy_risk', true ) ?: 'Düşük';
+
+        return [
+            'id' => $post->ID,
+            'name' => \KG_Core\Utils\Helper::decode_html_entities( $post->post_title ),
+            'slug' => $post->post_name,
+            'image' => get_the_post_thumbnail_url( $post->ID, 'medium' ),
+            'start_age' => $start_age,
+            'allergy_risk' => $allergy_risk,
+        ];
+    }
+
+    /**
+     * Format post data for card display
+     */
+    private function format_post_card( $post ) {
+        // Get category
+        $categories = get_the_category( $post->ID );
+        $category = '';
+        if ( ! empty( $categories ) ) {
+            $category = $categories[0]->name;
+        }
+
+        // Calculate read time (assuming 200 words per minute)
+        $content = $post->post_content;
+        $word_count = str_word_count( strip_tags( $content ) );
+        $read_time = ceil( $word_count / 200 );
+
+        return [
+            'id' => $post->ID,
+            'title' => \KG_Core\Utils\Helper::decode_html_entities( $post->post_title ),
+            'slug' => $post->post_name,
+            'image' => get_the_post_thumbnail_url( $post->ID, 'medium' ),
+            'category' => $category,
+            'read_time' => $read_time . ' dk',
+        ];
+    }
+
+    /**
+     * Format discussion data for card display
+     */
+    private function format_discussion_card( $post ) {
+        // Get author data
+        $author = get_user_by( 'id', $post->post_author );
+        $author_name = $author ? $author->display_name : 'Unknown';
+        
+        // Get author avatar
+        $avatar_id = get_user_meta( $post->post_author, '_kg_avatar_id', true );
+        $author_avatar = '';
+        if ( $avatar_id ) {
+            $author_avatar = wp_get_attachment_url( $avatar_id );
+        }
+        if ( ! $author_avatar ) {
+            $google_avatar = get_user_meta( $post->post_author, 'google_avatar', true );
+            $author_avatar = ! empty( $google_avatar ) ? $google_avatar : get_avatar_url( $post->post_author );
+        }
+
+        // Get circle (community_circle taxonomy)
+        $circles = wp_get_post_terms( $post->ID, 'community_circle' );
+        $circle = '';
+        if ( ! empty( $circles ) && ! is_wp_error( $circles ) ) {
+            $circle = $circles[0]->name;
+        }
+
+        // Get answer count
+        $answer_count = get_comments_number( $post->ID );
+
+        return [
+            'id' => $post->ID,
+            'title' => \KG_Core\Utils\Helper::decode_html_entities( $post->post_title ),
+            'slug' => $post->post_name,
+            'author' => $author_name,
+            'author_avatar' => $author_avatar,
+            'answer_count' => $answer_count,
+            'circle' => $circle,
+        ];
+    }
+
+    /**
+     * Get WordPress post type from item type
+     */
+    private function get_post_type_for_item_type( $item_type ) {
+        $mapping = [
+            'recipe' => 'recipe',
+            'ingredient' => 'ingredient',
+            'post' => 'post',
+            'discussion' => 'discussion',
+        ];
+
+        return isset( $mapping[ $item_type ] ) ? $mapping[ $item_type ] : '';
+    }
+
+    /**
+     * Migrate legacy _kg_favorites to _kg_favorite_recipes
+     */
+    private function migrate_legacy_favorites( $user_id ) {
+        // Check if migration already done
+        $migrated = get_user_meta( $user_id, '_kg_favorites_migrated', true );
+        if ( $migrated === '1' ) {
+            return;
+        }
+
+        // Get legacy favorites
+        $legacy_favorites = get_user_meta( $user_id, '_kg_favorites', true );
+        if ( is_array( $legacy_favorites ) && ! empty( $legacy_favorites ) ) {
+            // Migrate to new meta key
+            $existing_recipes = get_user_meta( $user_id, '_kg_favorite_recipes', true );
+            if ( ! is_array( $existing_recipes ) ) {
+                $existing_recipes = [];
+            }
+
+            // Merge and deduplicate
+            $merged = array_unique( array_merge( $existing_recipes, $legacy_favorites ) );
+            update_user_meta( $user_id, '_kg_favorite_recipes', $merged );
+        }
+
+        // Mark as migrated
+        update_user_meta( $user_id, '_kg_favorites_migrated', '1' );
     }
 }
