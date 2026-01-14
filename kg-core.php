@@ -51,6 +51,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/Services/AIService.php' ) ) require_o
 if ( file_exists( KG_CORE_PATH . 'includes/Services/ImageService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/ImageService.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Services/IngredientGenerator.php' ) ) require_once KG_CORE_PATH . 'includes/Services/IngredientGenerator.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Services/RecipeSEOGenerator.php' ) ) require_once KG_CORE_PATH . 'includes/Services/RecipeSEOGenerator.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Services/MealPlanGenerator.php' ) ) require_once KG_CORE_PATH . 'includes/Services/MealPlanGenerator.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Services/ShoppingListAggregator.php' ) ) require_once KG_CORE_PATH . 'includes/Services/ShoppingListAggregator.php';
 
 // 3. POST TYPE SINIFLARINI DAHİL ET (CPT)
 // Dosyalar mevcutsa dahil et
@@ -108,6 +110,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/AIController.php' ) ) require_onc
 if ( file_exists( KG_CORE_PATH . 'includes/API/DiscussionController.php' ) ) require_once KG_CORE_PATH . 'includes/API/DiscussionController.php';
 // Expert API Controller
 if ( file_exists( KG_CORE_PATH . 'includes/API/ExpertController.php' ) ) require_once KG_CORE_PATH . 'includes/API/ExpertController.php';
+// Meal Plan API Controller
+if ( file_exists( KG_CORE_PATH . 'includes/API/MealPlanController.php' ) ) require_once KG_CORE_PATH . 'includes/API/MealPlanController.php';
 
 // 7. SINIFLARI BAŞLAT (INIT HOOK)
 function kg_core_init() {
@@ -178,6 +182,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\AIController' ) ) new \KG_Core\API\AIController();
     if ( class_exists( '\KG_Core\API\DiscussionController' ) ) new \KG_Core\API\DiscussionController();
     if ( class_exists( '\KG_Core\API\ExpertController' ) ) new \KG_Core\API\ExpertController();
+    if ( class_exists( '\KG_Core\API\MealPlanController' ) ) new \KG_Core\API\MealPlanController();
 }
 add_action( 'plugins_loaded', 'kg_core_init' );
 
