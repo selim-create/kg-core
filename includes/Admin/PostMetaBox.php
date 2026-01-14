@@ -21,6 +21,7 @@ class PostMetaBox {
 
     public function render_meta_box( $post ) {
         // Get existing values
+        $is_featured = get_post_meta( $post->ID, '_kg_is_featured', true );
         $is_sponsored = get_post_meta( $post->ID, '_kg_is_sponsored', true );
         $sponsor_name = get_post_meta( $post->ID, '_kg_sponsor_name', true );
         $sponsor_url = get_post_meta( $post->ID, '_kg_sponsor_url', true );
@@ -29,11 +30,22 @@ class PostMetaBox {
         $direct_redirect = get_post_meta( $post->ID, '_kg_direct_redirect', true );
         $gam_impression_url = get_post_meta( $post->ID, '_kg_gam_impression_url', true );
         $gam_click_url = get_post_meta( $post->ID, '_kg_gam_click_url', true );
+        $has_discount = get_post_meta( $post->ID, '_kg_has_discount', true );
+        $discount_text = get_post_meta( $post->ID, '_kg_discount_text', true );
 
         // Security nonce
         wp_nonce_field( 'kg_sponsor_save', 'kg_sponsor_nonce' );
         ?>
         <div class="kg-sponsor-meta-box">
+            <p>
+                <label for="kg_is_featured">
+                    <input type="checkbox" id="kg_is_featured" name="kg_is_featured" value="1" <?php checked( $is_featured, 1 ); ?>>
+                    <strong>Öne Çıkan Gönderi mi?</strong>
+                </label>
+            </p>
+
+            <hr>
+
             <p>
                 <label for="kg_is_sponsored">
                     <input type="checkbox" id="kg_is_sponsored" name="kg_is_sponsored" value="1" <?php checked( $is_sponsored, 1 ); ?>>
@@ -112,6 +124,21 @@ class PostMetaBox {
                     <input type="url" id="kg_gam_click_url" name="kg_gam_click_url" value="<?php echo esc_attr( $gam_click_url ); ?>" style="width:100%;" placeholder="https://ad.doubleclick.net/...adurl=">
                     <small>GAM'dan alınan, sonu <code>adurl=</code> ile biten base URL</small>
                 </p>
+
+                <h3>İndirim Bilgisi</h3>
+
+                <p>
+                    <label for="kg_has_discount">
+                        <input type="checkbox" id="kg_has_discount" name="kg_has_discount" value="1" <?php checked( $has_discount, 1 ); ?>>
+                        <strong>İndirim var mı?</strong>
+                    </label>
+                </p>
+
+                <p>
+                    <label for="kg_discount_text"><strong>İndirim Metni:</strong></label><br>
+                    <input type="text" id="kg_discount_text" name="kg_discount_text" value="<?php echo esc_attr( $discount_text ); ?>" style="width:100%;" placeholder="Örn: %20 İndirim">
+                    <small>İndirim varsa gösterilecek metin</small>
+                </p>
             </div>
         </div>
         <?php
@@ -129,6 +156,10 @@ class PostMetaBox {
         
         // Permission check
         if ( ! current_user_can( 'edit_post', $post_id ) ) return;
+
+        // Save is_featured checkbox
+        $is_featured = isset( $_POST['kg_is_featured'] ) ? '1' : '0';
+        update_post_meta( $post_id, '_kg_is_featured', $is_featured );
 
         // Save is_sponsored checkbox
         $is_sponsored = isset( $_POST['kg_is_sponsored'] ) ? '1' : '0';
@@ -171,6 +202,14 @@ class PostMetaBox {
             if ( isset( $_POST['kg_gam_click_url'] ) ) {
                 update_post_meta( $post_id, '_kg_gam_click_url', esc_url_raw( $_POST['kg_gam_click_url'] ) );
             }
+
+            // Discount fields
+            $has_discount = isset( $_POST['kg_has_discount'] ) ? '1' : '0';
+            update_post_meta( $post_id, '_kg_has_discount', $has_discount );
+
+            if ( isset( $_POST['kg_discount_text'] ) ) {
+                update_post_meta( $post_id, '_kg_discount_text', sanitize_text_field( $_POST['kg_discount_text'] ) );
+            }
         } else {
             // If not sponsored, clear all sponsor fields
             delete_post_meta( $post_id, '_kg_sponsor_name' );
@@ -180,6 +219,8 @@ class PostMetaBox {
             delete_post_meta( $post_id, '_kg_direct_redirect' );
             delete_post_meta( $post_id, '_kg_gam_impression_url' );
             delete_post_meta( $post_id, '_kg_gam_click_url' );
+            delete_post_meta( $post_id, '_kg_has_discount' );
+            delete_post_meta( $post_id, '_kg_discount_text' );
         }
     }
 }
