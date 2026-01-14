@@ -128,7 +128,7 @@ class DiscussionAdmin {
                 break;
                 
             case 'kg_featured':
-                $featured = get_post_meta( $post_id, '_is_featured_question', true );
+                $featured = get_post_meta( $post_id, '_kg_is_featured', true );
                 echo $featured ? '⭐' : '-';
                 break;
         }
@@ -385,7 +385,7 @@ class DiscussionAdmin {
         }
 
         // Set as featured
-        update_post_meta( $post_id, '_is_featured_question', true );
+        update_post_meta( $post_id, '_kg_is_featured', '1' );
 
         wp_send_json_success( [ 'message' => 'Soru öne çıkarıldı ve onaylandı' ] );
     }
