@@ -354,3 +354,22 @@ add_action( 'kg_generate_recipe_seo', function( $recipe_id ) {
         }
     }
 } );
+
+// 9.3. Helper function for taxonomy HTML entity decoding
+function kg_decode_taxonomy_response( $response, $term ) {
+    $data = $response->get_data();
+    if ( isset( $data['name'] ) ) {
+        $data['name'] = html_entity_decode( $data['name'], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+    }
+    if ( isset( $data['description'] ) ) {
+        $data['description'] = html_entity_decode( $data['description'], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+    }
+    $response->set_data( $data );
+    return $response;
+}
+
+// 9.4. Add HTML entity decoding filters for taxonomies
+add_filter( 'rest_prepare_age-group', 'kg_decode_taxonomy_response', 10, 2 );
+add_filter( 'rest_prepare_meal-type', 'kg_decode_taxonomy_response', 10, 2 );
+add_filter( 'rest_prepare_diet-type', 'kg_decode_taxonomy_response', 10, 2 );
+add_filter( 'rest_prepare_category', 'kg_decode_taxonomy_response', 10, 2 );

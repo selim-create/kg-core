@@ -42,6 +42,7 @@ class IngredientMetaBox {
 
     public function render_meta_box( $post ) {
         // Mevcut değerleri çek
+        $is_featured = get_post_meta( $post->ID, '_kg_is_featured', true );
         $start_age = get_post_meta( $post->ID, '_kg_start_age', true );
         
         // Convert old string format to numeric for backward compatibility
@@ -84,6 +85,13 @@ class IngredientMetaBox {
         ?>
         <div class="kg-meta-box">
             <h3>Temel Bilgiler</h3>
+
+            <p>
+                <label for="kg_is_featured">
+                    <input type="checkbox" id="kg_is_featured" name="kg_is_featured" value="1" <?php checked( $is_featured, 1 ); ?>>
+                    <strong>Öne Çıkan Malzeme mi?</strong>
+                </label>
+            </p>
             
             <p>
                 <label for="kg_category"><strong>Kategori:</strong></label><br>
@@ -352,6 +360,10 @@ class IngredientMetaBox {
         
         // Yetki kontrolü
         if ( ! current_user_can( 'edit_post', $post_id ) ) return;
+
+        // Save is_featured checkbox
+        $is_featured = isset( $_POST['kg_is_featured'] ) ? '1' : '0';
+        update_post_meta( $post_id, '_kg_is_featured', $is_featured );
 
         // Save basic info
         if ( isset( $_POST['kg_start_age'] ) ) {
