@@ -249,11 +249,11 @@ class UserController {
             return new \WP_Error( 'missing_credentials', 'Email/username and password are required', [ 'status' => 400 ] );
         }
 
-        // Email veya username ile kullanıcı bul
+        // Find user by email or username
         if ( is_email( $email_or_username ) ) {
             $user = wp_authenticate( $email_or_username, $password );
         } else {
-            // Username ile dene
+            // Try with username
             $user = wp_authenticate_username_password( null, $email_or_username, $password );
         }
 
@@ -263,7 +263,7 @@ class UserController {
 
         $token = JWTHandler::generate_token( $user->ID );
 
-        // User rolünü de döndür
+        // Also return user role
         $roles = $user->roles;
 
         return new \WP_REST_Response( [
@@ -296,7 +296,7 @@ class UserController {
             return new \WP_Error( 'user_not_found', 'User not found', [ 'status' => 404 ] );
         }
 
-        // Çocuk bilgilerini al
+        // Get children information
         $children = get_user_meta( $user_id, '_kg_children', true );
         if ( ! is_array( $children ) ) {
             $children = [];
@@ -317,7 +317,7 @@ class UserController {
         $roles = $user->roles;
         $primary_role = !empty($roles) ? $roles[0] : 'subscriber';
 
-        // Display name ve parent role
+        // Display name and parent role
         $display_name = get_user_meta( $user_id, '_kg_display_name', true );
         $parent_role = get_user_meta( $user_id, '_kg_parent_role', true );
 
@@ -529,7 +529,7 @@ class UserController {
             return new \WP_Error( 'missing_fields', 'Name and birth date are required', [ 'status' => 400 ] );
         }
 
-        // KVKK consent validation - daha esnek kontrol
+        // KVKK consent validation - more flexible control
         if ( empty( $kvkk_consent ) || 
              ( $kvkk_consent !== true && 
                $kvkk_consent !== 'true' && 
@@ -954,7 +954,7 @@ class UserController {
         $question_count = $this->get_user_question_count( $user_id );
         $comment_count = $this->get_user_comment_count( $user_id );
 
-        // Kullanıcı rolünü ekle
+        // Add user role
         $roles = $user->roles;
         $primary_role = !empty($roles) ? $roles[0] : 'subscriber';
 

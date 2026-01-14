@@ -42,7 +42,7 @@ class ExpertController {
             return new \WP_Error( 'user_not_found', 'User not found', [ 'status' => 404 ] );
         }
 
-        // Yetkili roller
+        // Authorized roles
         $allowed_roles = [ 'administrator', 'editor', 'kg_expert' ];
         $has_permission = array_intersect( $allowed_roles, $user->roles );
         
@@ -67,7 +67,7 @@ class ExpertController {
      * Get expert dashboard data
      */
     public function get_dashboard( $request ) {
-        // Bekleyen sorular (pending discussions)
+        // Pending questions (pending discussions)
         $pending_questions = new \WP_Query([
             'post_type' => 'discussion',
             'post_status' => 'pending',
@@ -75,13 +75,13 @@ class ExpertController {
             'fields' => 'ids',
         ]);
 
-        // Bekleyen yorumlar
+        // Pending comments
         $pending_comments = get_comments([
             'status' => 'hold',
             'count' => true,
         ]);
 
-        // Bugün cevaplanan sorular
+        // Questions answered today
         $today_start = date('Y-m-d 00:00:00');
         $today_answers = new \WP_Query([
             'post_type' => 'discussion',
@@ -99,7 +99,7 @@ class ExpertController {
             'fields' => 'ids',
         ]);
 
-        // Haftalık istatistikler
+        // Weekly statistics
         $week_start = date('Y-m-d 00:00:00', strtotime('-7 days'));
         $weekly_questions = new \WP_Query([
             'post_type' => 'discussion',
