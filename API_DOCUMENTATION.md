@@ -439,24 +439,79 @@ Authorization: Bearer {token}
 
 ---
 
-## Favorites
+## Favorites (Extended)
+
+The favorites system supports multiple content types: **recipes**, **ingredients**, **posts** (blog articles), and **discussions** (community questions).
 
 ### Get Favorites
 ```
 GET /kg/v1/user/favorites
+GET /kg/v1/user/favorites?type=all|recipe|ingredient|post|discussion
 Authorization: Bearer {token}
 ```
 
+**Query Parameters:**
+- `type` (optional): Filter by content type. Default: `all`
+  - `all` - Returns all favorites
+  - `recipe` - Returns only recipe favorites
+  - `ingredient` - Returns only ingredient favorites
+  - `post` - Returns only blog post favorites
+  - `discussion` - Returns only discussion favorites
+
 **Response (200):**
 ```json
-[
-  {
-    "id": 123,
-    "title": "Bal Kabaklı Çorba",
-    "slug": "bal-kabakli-corba",
-    "image": "https://example.com/image.jpg"
+{
+  "recipes": [
+    {
+      "id": 123,
+      "title": "Muzlu Bebek Pankeki",
+      "slug": "muzlu-bebek-pankeki",
+      "image": "https://...",
+      "age_group": "+8 Ay",
+      "age_group_color": "#22C55E",
+      "prep_time": "15 dk",
+      "categories": ["Kahvaltılar"]
+    }
+  ],
+  "ingredients": [
+    {
+      "id": 456,
+      "name": "Avokado",
+      "slug": "avokado",
+      "image": "https://...",
+      "start_age": "+6 Ay",
+      "allergy_risk": "Düşük"
+    }
+  ],
+  "posts": [
+    {
+      "id": 789,
+      "title": "Bebekler Ne Zaman Su İçmeli?",
+      "slug": "bebekler-ne-zaman-su-icmeli",
+      "image": "https://...",
+      "category": "Sağlık",
+      "read_time": "4 dk"
+    }
+  ],
+  "discussions": [
+    {
+      "id": 101,
+      "title": "6 aylık bebek için ilk yemek önerileri",
+      "slug": "6-aylik-bebek-icin-ilk-yemek-onerileri",
+      "author": "AyşeAnne",
+      "author_avatar": "https://...",
+      "answer_count": 12,
+      "circle": "6-9 Ay"
+    }
+  ],
+  "counts": {
+    "all": 24,
+    "recipes": 18,
+    "ingredients": 1,
+    "posts": 3,
+    "discussions": 2
   }
-]
+}
 ```
 
 ---
@@ -470,31 +525,281 @@ Authorization: Bearer {token}
 **Body:**
 ```json
 {
-  "recipe_id": 123
+  "item_id": 123,
+  "item_type": "recipe"
 }
 ```
+
+**Parameters:**
+- `item_id` (required): ID of the item to add
+- `item_type` (required): Type of item - must be one of: `recipe`, `ingredient`, `post`, `discussion`
 
 **Response (201):**
 ```json
 {
-  "message": "Recipe added to favorites"
+  "success": true,
+  "message": "Item added to favorites"
 }
 ```
+
+**Error Responses:**
+- `400` - Missing or invalid parameters
+- `404` - Item not found or invalid item type
 
 ---
 
 ### Remove from Favorites
 ```
-DELETE /kg/v1/user/favorites/{recipe_id}
+DELETE /kg/v1/user/favorites/{item_id}?type={item_type}
+Authorization: Bearer {token}
+```
+
+**Path Parameters:**
+- `item_id`: ID of the item to remove
+
+**Query Parameters:**
+- `type` (required): Type of item - must be one of: `recipe`, `ingredient`, `post`, `discussion`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Item removed from favorites"
+}
+```
+
+---
+
+## Collections
+
+Collections allow users to organize their favorite content into custom groups.
+
+### Get All Collections
+```
+GET /kg/v1/user/collections
+Authorization: Bearer {token}
+```
+
+**Response (200):**
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Kahvaltılar",
+    "icon": "mug-hot",
+    "color": "orange",
+    "item_count": 12,
+    "created_at": "2026-01-14T10:00:00+00:00"
+  },
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "name": "Buzluk İçin",
+    "icon": "snowflake",
+    "color": "blue",
+    "item_count": 5,
+    "created_at": "2026-01-13T10:00:00+00:00"
+  }
+]
+```
+
+---
+
+### Get Single Collection
+```
+GET /kg/v1/user/collections/{id}
 Authorization: Bearer {token}
 ```
 
 **Response (200):**
 ```json
 {
-  "message": "Recipe removed from favorites"
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Kahvaltılar",
+  "icon": "mug-hot",
+  "color": "orange",
+  "item_count": 12,
+  "items": [
+    {
+      "item_id": 123,
+      "item_type": "recipe",
+      "added_at": "2026-01-14T10:00:00+00:00",
+      "data": {
+        "id": 123,
+        "title": "Muzlu Bebek Pankeki",
+        "slug": "muzlu-bebek-pankeki",
+        "image": "https://...",
+        "age_group": "+8 Ay",
+        "prep_time": "15 dk"
+      }
+    }
+  ],
+  "created_at": "2026-01-14T10:00:00+00:00",
+  "updated_at": "2026-01-14T11:00:00+00:00"
 }
 ```
+
+**Error Responses:**
+- `404` - Collection not found
+
+---
+
+### Create Collection
+```
+POST /kg/v1/user/collections
+Authorization: Bearer {token}
+```
+
+**Body:**
+```json
+{
+  "name": "Kahvaltılar",
+  "icon": "mug-hot",
+  "color": "orange"
+}
+```
+
+**Parameters:**
+- `name` (required, 1-100 characters): Collection name
+- `icon` (required): Icon identifier. Allowed values: `mug-hot`, `snowflake`, `carrot`, `heart`, `star`, `bookmark`, `folder`, `utensils`, `apple-whole`, `fish`, `egg`, `bread-slice`, `sun`, `moon`, `cookie`
+- `color` (required): Color identifier. Allowed values: `orange`, `blue`, `green`, `purple`, `pink`, `yellow`, `red`, `teal`
+
+**Response (201):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Kahvaltılar",
+  "icon": "mug-hot",
+  "color": "orange",
+  "item_count": 0,
+  "items": [],
+  "created_at": "2026-01-14T10:00:00+00:00",
+  "updated_at": "2026-01-14T10:00:00+00:00"
+}
+```
+
+**Error Responses:**
+- `400` - Invalid parameters (missing name, invalid icon/color, name too long)
+
+---
+
+### Update Collection
+```
+PUT /kg/v1/user/collections/{id}
+Authorization: Bearer {token}
+```
+
+**Body:**
+```json
+{
+  "name": "Sabah Kahvaltıları",
+  "icon": "sun",
+  "color": "yellow"
+}
+```
+
+**Parameters:**
+All parameters are optional. Only provided fields will be updated.
+- `name` (optional, 1-100 characters): New collection name
+- `icon` (optional): New icon identifier
+- `color` (optional): New color identifier
+
+**Response (200):**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Sabah Kahvaltıları",
+  "icon": "sun",
+  "color": "yellow",
+  "item_count": 12,
+  "created_at": "2026-01-14T10:00:00+00:00",
+  "updated_at": "2026-01-14T15:00:00+00:00"
+}
+```
+
+**Error Responses:**
+- `400` - Invalid parameters
+- `404` - Collection not found
+
+---
+
+### Delete Collection
+```
+DELETE /kg/v1/user/collections/{id}
+Authorization: Bearer {token}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Collection deleted successfully"
+}
+```
+
+**Error Responses:**
+- `404` - Collection not found
+
+---
+
+### Add Item to Collection
+```
+POST /kg/v1/user/collections/{id}/items
+Authorization: Bearer {token}
+```
+
+**Body:**
+```json
+{
+  "item_id": 123,
+  "item_type": "recipe"
+}
+```
+
+**Parameters:**
+- `item_id` (required): ID of the item to add
+- `item_type` (required): Type of item - must be one of: `recipe`, `ingredient`, `post`, `discussion`
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "message": "Item added to collection",
+  "item_count": 13
+}
+```
+
+**Error Responses:**
+- `400` - Invalid parameters
+- `404` - Collection or item not found
+- `409` - Item already exists in collection
+
+---
+
+### Remove Item from Collection
+```
+DELETE /kg/v1/user/collections/{id}/items/{item_id}?type={item_type}
+Authorization: Bearer {token}
+```
+
+**Path Parameters:**
+- `id`: Collection ID
+- `item_id`: ID of the item to remove
+
+**Query Parameters:**
+- `type` (required): Type of item - must be one of: `recipe`, `ingredient`, `post`, `discussion`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Item removed from collection",
+  "item_count": 11
+}
+```
+
+**Error Responses:**
+- `400` - Invalid parameters
+- `404` - Collection or item not found
 
 ---
 
