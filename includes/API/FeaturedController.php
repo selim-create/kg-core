@@ -375,9 +375,9 @@ class FeaturedController {
             
             // Format start age
             $start_age_display = $start_age ? $start_age . ' Ay' : '+6 Ay';
-            if ( $start_age == '6' ) {
+            if ( $start_age === '6' ) {
                 $start_age_display = '+6 Ay';
-            } elseif ( $start_age == '12' ) {
+            } elseif ( $start_age === '12' ) {
                 $start_age_display = '+12 Ay';
             }
             

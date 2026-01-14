@@ -62,15 +62,39 @@ if (!file_exists($featured_controller_path)) {
         echo "  ✓ category_slug field added\n";
     }
     
-    // Syntax check
-    exec("php -l " . escapeshellarg($featured_controller_path) . " 2>&1", $output, $return_var);
-    if ($return_var !== 0) {
-        $errors[] = "Syntax error in FeaturedController.php: " . implode("\n", $output);
+    // Syntax check using token_get_all (safer than exec)
+    $syntax_check = kg_check_php_syntax($featured_controller_path);
+    if ($syntax_check !== true) {
+        $errors[] = "Syntax error in FeaturedController.php: " . $syntax_check;
     } else {
         echo "  ✓ Syntax is valid\n";
     }
 }
 echo "\n";
+
+// Helper function for safer PHP syntax validation
+function kg_check_php_syntax($file) {
+    $code = file_get_contents($file);
+    if ($code === false) {
+        return "Cannot read file";
+    }
+    
+    // Use token_get_all to check syntax without executing
+    $tokens = @token_get_all($code);
+    if ($tokens === false) {
+        return "Invalid PHP syntax";
+    }
+    
+    // Also check using php -l for complete validation
+    $output = [];
+    $return_var = 0;
+    exec("php -l " . escapeshellarg($file) . " 2>&1", $output, $return_var);
+    if ($return_var !== 0) {
+        return implode("\n", $output);
+    }
+    
+    return true;
+}
 
 // Test 2: Check PostMetaBox.php
 echo "Test 2: Checking PostMetaBox.php...\n";
@@ -103,9 +127,9 @@ if (!file_exists($post_metabox_path)) {
     }
     
     // Syntax check
-    exec("php -l " . escapeshellarg($post_metabox_path) . " 2>&1", $output, $return_var);
-    if ($return_var !== 0) {
-        $errors[] = "Syntax error in PostMetaBox.php: " . implode("\n", $output);
+    $syntax_check = kg_check_php_syntax($post_metabox_path);
+    if ($syntax_check !== true) {
+        $errors[] = "Syntax error in PostMetaBox.php: " . $syntax_check;
     } else {
         echo "  ✓ Syntax is valid\n";
     }
@@ -136,9 +160,9 @@ if (!file_exists($ingredient_metabox_path)) {
     }
     
     // Syntax check
-    exec("php -l " . escapeshellarg($ingredient_metabox_path) . " 2>&1", $output, $return_var);
-    if ($return_var !== 0) {
-        $errors[] = "Syntax error in IngredientMetaBox.php: " . implode("\n", $output);
+    $syntax_check = kg_check_php_syntax($ingredient_metabox_path);
+    if ($syntax_check !== true) {
+        $errors[] = "Syntax error in IngredientMetaBox.php: " . $syntax_check;
     } else {
         echo "  ✓ Syntax is valid\n";
     }
@@ -172,9 +196,9 @@ if (!file_exists($main_file_path)) {
     }
     
     // Syntax check
-    exec("php -l " . escapeshellarg($main_file_path) . " 2>&1", $output, $return_var);
-    if ($return_var !== 0) {
-        $errors[] = "Syntax error in kg-core.php: " . implode("\n", $output);
+    $syntax_check = kg_check_php_syntax($main_file_path);
+    if ($syntax_check !== true) {
+        $errors[] = "Syntax error in kg-core.php: " . $syntax_check;
     } else {
         echo "  ✓ Syntax is valid\n";
     }
@@ -197,9 +221,9 @@ if (!file_exists($helper_path)) {
     }
     
     // Syntax check
-    exec("php -l " . escapeshellarg($helper_path) . " 2>&1", $output, $return_var);
-    if ($return_var !== 0) {
-        $errors[] = "Syntax error in Helper.php: " . implode("\n", $output);
+    $syntax_check = kg_check_php_syntax($helper_path);
+    if ($syntax_check !== true) {
+        $errors[] = "Syntax error in Helper.php: " . $syntax_check;
     } else {
         echo "  ✓ Syntax is valid\n";
     }
