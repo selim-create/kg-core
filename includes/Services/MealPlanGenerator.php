@@ -263,6 +263,7 @@ class MealPlanGenerator {
             'posts_per_page' => 20,
             'orderby' => 'rand',
             'tax_query' => [
+                'relation' => 'AND',
                 [
                     'taxonomy' => 'age-group',
                     'field' => 'slug',
@@ -273,7 +274,6 @@ class MealPlanGenerator {
         
         // Add meal type filter if provided
         if ( $meal_type_slug ) {
-            $args['tax_query']['relation'] = 'AND';
             $args['tax_query'][] = [
                 'taxonomy' => 'meal-type',
                 'field' => 'slug',
@@ -283,7 +283,6 @@ class MealPlanGenerator {
         
         // Exclude allergens if specified
         if ( ! empty( $allergies ) ) {
-            $args['tax_query']['relation'] = 'AND';
             $args['tax_query'][] = [
                 'taxonomy' => 'allergen',
                 'field' => 'slug',
