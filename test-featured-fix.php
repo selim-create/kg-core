@@ -91,7 +91,8 @@ echo "✅ PASS: direct_redirect field is included in sponsored content response\
 echo "Test 5: Checking discount_text HTML entity decoding...\n";
 
 // Look for the discount_text line with decode_html_entities
-$discount_decode_pattern = '/\$discount_text = .*decode_html_entities.*\$discount_text/';
+// More specific regex to avoid false positives
+$discount_decode_pattern = '/\$discount_text\s*=\s*\\\\KG_Core\\\\Utils\\\\Helper::decode_html_entities\(\s*\$discount_text\s*\);/';
 if ( !preg_match( $discount_decode_pattern, $controller_content ) ) {
     echo "❌ FAIL: discount_text is not being decoded with decode_html_entities\n";
     exit(1);
