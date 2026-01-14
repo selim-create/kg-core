@@ -100,6 +100,20 @@ class MealPlanController {
             ],
         ]);
 
+        // Assign recipe to slot (manual assignment)
+        register_rest_route( 'kg/v1', '/meal-plans/(?P<id>[a-zA-Z0-9\-]+)/slots/(?P<slotId>[a-zA-Z0-9\-]+)/assign', [
+            'methods'  => 'PUT',
+            'callback' => [ $this, 'assign_recipe_to_slot' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+            'args' => [
+                'recipe_id' => [
+                    'required' => true,
+                    'type' => 'integer',
+                    'description' => 'Recipe ID to assign to the slot',
+                ],
+            ],
+        ]);
+
         // Generate shopping list
         register_rest_route( 'kg/v1', '/meal-plans/(?P<id>[a-zA-Z0-9\-]+)/shopping-list', [
             'methods'  => 'POST',
@@ -493,6 +507,69 @@ class MealPlanController {
     }
 
     /**
+     * Assign a recipe to a slot (manual assignment)
+     */
+    public function assign_recipe_to_slot( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+        $plan_id = $request->get_param( 'id' );
+        $slot_id = $request->get_param( 'slotId' );
+        $recipe_id = absint( $request->get_param( 'recipe_id' ) );
+
+        // Validate recipe exists
+        $recipe = get_post( $recipe_id );
+        if ( ! $recipe || $recipe->post_type !== 'recipe' || $recipe->post_status !== 'publish' ) {
+            return new \WP_Error( 'invalid_recipe', 'Recipe not found or not published', [ 'status' => 404 ] );
+        }
+
+        $plans = get_user_meta( $user_id, '_kg_meal_plans', true );
+        if ( ! is_array( $plans ) ) {
+            return new \WP_Error( 'no_plans', 'No meal plans found', [ 'status' => 404 ] );
+        }
+
+        // Find plan and slot
+        $plan_index = null;
+        $day_index = null;
+        $slot_index = null;
+
+        foreach ( $plans as $p_idx => $plan ) {
+            if ( $plan['id'] === $plan_id ) {
+                foreach ( $plan['days'] as $d_idx => $day ) {
+                    foreach ( $day['slots'] as $s_idx => $slot ) {
+                        if ( $slot['id'] === $slot_id ) {
+                            $plan_index = $p_idx;
+                            $day_index = $d_idx;
+                            $slot_index = $s_idx;
+                            break 3;
+                        }
+                    }
+                }
+            }
+        }
+
+        if ( $plan_index === null ) {
+            return new \WP_Error( 'slot_not_found', 'Plan or slot not found', [ 'status' => 404 ] );
+        }
+
+        // Update slot with the new recipe
+        $plans[$plan_index]['days'][$day_index]['slots'][$slot_index]['recipe_id'] = $recipe_id;
+        $plans[$plan_index]['days'][$day_index]['slots'][$slot_index]['status'] = 'filled';
+        $plans[$plan_index]['days'][$day_index]['slots'][$slot_index]['skip_reason'] = null;
+        $plans[$plan_index]['updated_at'] = current_time( 'c' );
+
+        update_user_meta( $user_id, '_kg_meal_plans', $plans );
+
+        // Return full updated plan
+        $enriched_plan = $this->enrich_plan_with_recipes( $plans[$plan_index] );
+        $nutrition_summary = $this->generator->calculate_nutrition_summary( $plans[$plan_index] );
+        $enriched_plan['nutrition_summary'] = $nutrition_summary;
+
+        return new \WP_REST_Response( [
+            'success' => true,
+            'plan' => $enriched_plan,
+        ], 200 );
+    }
+
+    /**
      * Generate shopping list
      */
     public function generate_shopping_list( $request ) {
@@ -519,7 +596,12 @@ class MealPlanController {
         // Generate shopping list
         $shopping_list = $this->shopping_list_aggregator->generate( $plan );
 
-        return new \WP_REST_Response( $shopping_list, 200 );
+        // Ensure response format matches frontend expectation
+        return new \WP_REST_Response( [
+            'success' => true,
+            'items' => $shopping_list['items'] ?? [],
+            'total_count' => $shopping_list['total_count'] ?? 0,
+        ], 200 );
     }
 
     /**
