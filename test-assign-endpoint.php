@@ -165,7 +165,7 @@ if ($has_method) {
 }
 
 // Test 3: Test ShoppingListAggregator response format
-echo "\n" . colorize("Test 2: Shopping List Format", 'info') . "\n";
+echo "\n" . colorize("Test 3: Shopping List Format", 'info') . "\n";
 $total_tests++;
 $aggregator = new \KG_Core\Services\ShoppingListAggregator();
 
@@ -202,7 +202,7 @@ if (test_result("Shopping list has 'total_count' field", $has_total_count)) {
 }
 
 // Test 4: Verify generate_shopping_list method wraps response correctly
-echo "\n" . colorize("Test 3: Controller Response Wrapping", 'info') . "\n";
+echo "\n" . colorize("Test 4: Controller Response Wrapping", 'info') . "\n";
 $total_tests++;
 
 // Check if the code contains the correct response wrapping
@@ -227,7 +227,7 @@ if (test_result("generate_shopping_list wraps response with 'total_count'", $has
 
 // Test 5: Check route registration
 if ($wordpress_loaded) {
-    echo "\n" . colorize("Test 4: Route Registration", 'info') . "\n";
+    echo "\n" . colorize("Test 5: Route Registration", 'info') . "\n";
     
     // Initialize the controller to register routes
     new \KG_Core\API\MealPlanController();
@@ -249,7 +249,7 @@ if ($wordpress_loaded) {
         $passed_tests++;
     }
 } else {
-    echo "\n" . colorize("Test 4: Route Registration (Skipped - WordPress not loaded)", 'warning') . "\n";
+    echo "\n" . colorize("Test 5: Route Registration (Skipped - WordPress not loaded)", 'warning') . "\n";
 }
 
 // Summary

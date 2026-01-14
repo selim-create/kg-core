@@ -100,7 +100,7 @@ class MealPlanController {
             ],
         ]);
 
-        // Assign recipe to slot (manuel ekleme)
+        // Assign recipe to slot (manual assignment)
         register_rest_route( 'kg/v1', '/meal-plans/(?P<id>[a-zA-Z0-9\-]+)/slots/(?P<slotId>[a-zA-Z0-9\-]+)/assign', [
             'methods'  => 'PUT',
             'callback' => [ $this, 'assign_recipe_to_slot' ],
@@ -507,7 +507,7 @@ class MealPlanController {
     }
 
     /**
-     * Assign a recipe to a slot (manuel ekleme)
+     * Assign a recipe to a slot (manual assignment)
      */
     public function assign_recipe_to_slot( $request ) {
         $user_id = $this->get_authenticated_user_id( $request );
