@@ -813,7 +813,7 @@ class UserController {
         $meta_key = '_kg_favorite_' . $item_type . 's';
         if ( $item_type === 'post' ) {
             $meta_key = '_kg_favorite_posts';
-        } else if ( $item_type === 'discussion' ) {
+        } elseif ( $item_type === 'discussion' ) {
             $meta_key = '_kg_favorite_discussions';
         }
 
@@ -866,7 +866,7 @@ class UserController {
         $meta_key = '_kg_favorite_' . $item_type . 's';
         if ( $item_type === 'post' ) {
             $meta_key = '_kg_favorite_posts';
-        } else if ( $item_type === 'discussion' ) {
+        } elseif ( $item_type === 'discussion' ) {
             $meta_key = '_kg_favorite_discussions';
         }
 
