@@ -27,7 +27,7 @@ class DiscussionMetaBox {
         ?>
         <p>
             <label for="kg_is_featured">
-                <input type="checkbox" id="kg_is_featured" name="kg_is_featured" value="1" <?php checked( $is_featured, '1' ); ?>>
+                <input type="checkbox" id="kg_is_featured" name="kg_is_featured" value="1" <?php checked( $is_featured, 1 ); ?>>
                 <strong>Öne Çıkan Soru mu?</strong>
             </label>
         </p>
