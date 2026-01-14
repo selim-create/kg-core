@@ -271,7 +271,7 @@ class UserController {
             'user_id' => $user->ID,
             'email' => $user->user_email,
             'name' => $user->display_name,
-            'role' => !empty($roles) ? $roles[0] : 'subscriber',
+            'role' => ! empty( $roles ) ? $roles[0] : 'subscriber',
         ], 200 );
     }
 
@@ -315,7 +315,7 @@ class UserController {
 
         // Role
         $roles = $user->roles;
-        $primary_role = !empty($roles) ? $roles[0] : 'subscriber';
+        $primary_role = ! empty( $roles ) ? $roles[0] : 'subscriber';
 
         // Display name and parent role
         $display_name = get_user_meta( $user_id, '_kg_display_name', true );
@@ -956,7 +956,7 @@ class UserController {
 
         // Add user role
         $roles = $user->roles;
-        $primary_role = !empty($roles) ? $roles[0] : 'subscriber';
+        $primary_role = ! empty( $roles ) ? $roles[0] : 'subscriber';
 
         return new \WP_REST_Response( [
             'id' => $user->ID,

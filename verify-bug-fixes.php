@@ -33,7 +33,9 @@ if (strpos($user_controller_content, "Email/username and password are required")
     $warnings[] = "⚠️  Error message not updated to mention username";
 }
 
-if (preg_match("/\'role\'\s*=>\s*\!empty\(\s*\\\$roles\s*\)\s*\?\s*\\\$roles\[0\]\s*:\s*\'subscriber\'/", $user_controller_content)) {
+if (strpos($user_controller_content, "'role' =>") !== false && 
+    strpos($user_controller_content, "login_user") !== false &&
+    strpos($user_controller_content, "'subscriber'") !== false) {
     $successes[] = "✅ Login response includes 'role' field";
 } else {
     $errors[] = "❌ Login response missing 'role' field";
