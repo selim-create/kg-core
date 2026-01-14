@@ -3,6 +3,7 @@ namespace KG_Core\API;
 
 use KG_Core\Auth\JWTHandler;
 use KG_Core\Auth\GoogleAuth;
+use KG_Core\Utils\PrivacyHelper;
 
 class UserController {
 
@@ -124,6 +125,20 @@ class UserController {
             'methods'  => 'DELETE',
             'callback' => [ $this, 'remove_from_shopping_list' ],
             'permission_callback' => [ $this, 'check_authentication' ],
+        ]);
+
+        // Extended user profile endpoint
+        register_rest_route( 'kg/v1', '/user/me', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_user_me' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+        ]);
+
+        // Public user profile endpoint
+        register_rest_route( 'kg/v1', '/user/public/(?P<username>[a-zA-Z0-9_-]+)', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_public_profile' ],
+            'permission_callback' => '__return_true',
         ]);
     }
 
@@ -398,6 +413,9 @@ class UserController {
         $user_id = $this->get_authenticated_user_id( $request );
         $name = sanitize_text_field( $request->get_param( 'name' ) );
         $phone = sanitize_text_field( $request->get_param( 'phone' ) );
+        $display_name = sanitize_text_field( $request->get_param( 'display_name' ) );
+        $parent_role = sanitize_text_field( $request->get_param( 'parent_role' ) );
+        $avatar_id = absint( $request->get_param( 'avatar_id' ) );
 
         if ( $name ) {
             wp_update_user( [
@@ -408,6 +426,30 @@ class UserController {
 
         if ( $phone ) {
             update_user_meta( $user_id, 'phone', $phone );
+        }
+
+        // Handle new user meta fields
+        if ( $display_name ) {
+            update_user_meta( $user_id, '_kg_display_name', $display_name );
+        }
+
+        if ( $parent_role ) {
+            // Validate parent_role enum
+            $allowed_roles = [ 'Anne', 'Baba', 'Bakıcı', 'Diğer' ];
+            if ( in_array( $parent_role, $allowed_roles ) ) {
+                update_user_meta( $user_id, '_kg_parent_role', $parent_role );
+            } else {
+                return new \WP_Error( 'invalid_parent_role', 'Invalid parent role. Must be one of: Anne, Baba, Bakıcı, Diğer', [ 'status' => 400 ] );
+            }
+        }
+
+        if ( $avatar_id ) {
+            // Verify attachment exists
+            if ( get_post( $avatar_id ) && get_post_type( $avatar_id ) === 'attachment' ) {
+                update_user_meta( $user_id, '_kg_avatar_id', $avatar_id );
+            } else {
+                return new \WP_Error( 'invalid_avatar_id', 'Invalid avatar ID', [ 'status' => 400 ] );
+            }
         }
 
         return new \WP_REST_Response( [ 'message' => 'Profile updated successfully' ], 200 );
@@ -434,11 +476,51 @@ class UserController {
         $user_id = $this->get_authenticated_user_id( $request );
         $name = sanitize_text_field( $request->get_param( 'name' ) );
         $birth_date = sanitize_text_field( $request->get_param( 'birth_date' ) );
-        $allergens = $request->get_param( 'allergens' );
+        $gender = sanitize_text_field( $request->get_param( 'gender' ) );
+        $allergies = $request->get_param( 'allergies' );
+        $feeding_style = sanitize_text_field( $request->get_param( 'feeding_style' ) );
+        $photo_id = absint( $request->get_param( 'photo_id' ) );
+        $kvkk_consent = $request->get_param( 'kvkk_consent' );
         $notes = sanitize_textarea_field( $request->get_param( 'notes' ) );
 
+        // Required fields validation
         if ( empty( $name ) || empty( $birth_date ) ) {
             return new \WP_Error( 'missing_fields', 'Name and birth date are required', [ 'status' => 400 ] );
+        }
+
+        // KVKK consent validation (required and must be true)
+        if ( $kvkk_consent !== true && $kvkk_consent !== 'true' && $kvkk_consent !== 1 && $kvkk_consent !== '1' ) {
+            return new \WP_Error( 'kvkk_consent_required', 'KVKK consent is required and must be true', [ 'status' => 400 ] );
+        }
+
+        // Birth date validation - cannot be in the future
+        $birth_date_obj = \DateTime::createFromFormat( 'Y-m-d', $birth_date );
+        $now = new \DateTime();
+        if ( ! $birth_date_obj || $birth_date_obj > $now ) {
+            return new \WP_Error( 'invalid_birth_date', 'Birth date cannot be in the future', [ 'status' => 400 ] );
+        }
+
+        // Gender validation
+        if ( ! empty( $gender ) ) {
+            $allowed_genders = [ 'male', 'female', 'unspecified' ];
+            if ( ! in_array( $gender, $allowed_genders ) ) {
+                return new \WP_Error( 'invalid_gender', 'Gender must be one of: male, female, unspecified', [ 'status' => 400 ] );
+            }
+        }
+
+        // Feeding style validation
+        if ( ! empty( $feeding_style ) ) {
+            $allowed_feeding_styles = [ 'blw', 'puree', 'mixed' ];
+            if ( ! in_array( $feeding_style, $allowed_feeding_styles ) ) {
+                return new \WP_Error( 'invalid_feeding_style', 'Feeding style must be one of: blw, puree, mixed', [ 'status' => 400 ] );
+            }
+        }
+
+        // Photo ID validation
+        if ( $photo_id > 0 ) {
+            if ( ! get_post( $photo_id ) || get_post_type( $photo_id ) !== 'attachment' ) {
+                return new \WP_Error( 'invalid_photo_id', 'Invalid photo ID', [ 'status' => 400 ] );
+            }
         }
 
         $children = get_user_meta( $user_id, '_kg_children', true );
@@ -446,12 +528,26 @@ class UserController {
             $children = [];
         }
 
+        // Generate UUID v4
+        $uuid = sprintf(
+            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
+            mt_rand( 0, 0xffff ),
+            mt_rand( 0, 0x0fff ) | 0x4000,
+            mt_rand( 0, 0x3fff ) | 0x8000,
+            mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff )
+        );
+
         $child = [
-            'id' => uniqid(),
+            'id' => $uuid,
             'name' => $name,
             'birth_date' => $birth_date,
-            'allergens' => is_array( $allergens ) ? $allergens : [],
-            'notes' => $notes ?: '',
+            'gender' => $gender ?: 'unspecified',
+            'allergies' => is_array( $allergies ) ? $allergies : [],
+            'feeding_style' => $feeding_style ?: 'mixed',
+            'photo_id' => $photo_id > 0 ? $photo_id : null,
+            'kvkk_consent' => true,
+            'created_at' => current_time( 'c' ), // ISO 8601 format
         ];
 
         $children[] = $child;
@@ -477,13 +573,56 @@ class UserController {
             if ( $child['id'] === $child_id ) {
                 $name = $request->get_param( 'name' );
                 $birth_date = $request->get_param( 'birth_date' );
-                $allergens = $request->get_param( 'allergens' );
-                $notes = $request->get_param( 'notes' );
+                $gender = $request->get_param( 'gender' );
+                $allergies = $request->get_param( 'allergies' );
+                $feeding_style = $request->get_param( 'feeding_style' );
+                $photo_id = $request->get_param( 'photo_id' );
 
-                if ( $name ) $children[$index]['name'] = sanitize_text_field( $name );
-                if ( $birth_date ) $children[$index]['birth_date'] = sanitize_text_field( $birth_date );
-                if ( is_array( $allergens ) ) $children[$index]['allergens'] = $allergens;
-                if ( $notes !== null ) $children[$index]['notes'] = sanitize_textarea_field( $notes );
+                if ( $name ) {
+                    $children[$index]['name'] = sanitize_text_field( $name );
+                }
+
+                if ( $birth_date ) {
+                    // Validate birth date
+                    $birth_date_obj = \DateTime::createFromFormat( 'Y-m-d', $birth_date );
+                    $now = new \DateTime();
+                    if ( ! $birth_date_obj || $birth_date_obj > $now ) {
+                        return new \WP_Error( 'invalid_birth_date', 'Birth date cannot be in the future', [ 'status' => 400 ] );
+                    }
+                    $children[$index]['birth_date'] = sanitize_text_field( $birth_date );
+                }
+
+                if ( $gender !== null ) {
+                    $allowed_genders = [ 'male', 'female', 'unspecified' ];
+                    if ( ! in_array( $gender, $allowed_genders ) ) {
+                        return new \WP_Error( 'invalid_gender', 'Gender must be one of: male, female, unspecified', [ 'status' => 400 ] );
+                    }
+                    $children[$index]['gender'] = $gender;
+                }
+
+                if ( is_array( $allergies ) ) {
+                    $children[$index]['allergies'] = $allergies;
+                }
+
+                if ( $feeding_style !== null ) {
+                    $allowed_feeding_styles = [ 'blw', 'puree', 'mixed' ];
+                    if ( ! in_array( $feeding_style, $allowed_feeding_styles ) ) {
+                        return new \WP_Error( 'invalid_feeding_style', 'Feeding style must be one of: blw, puree, mixed', [ 'status' => 400 ] );
+                    }
+                    $children[$index]['feeding_style'] = $feeding_style;
+                }
+
+                if ( $photo_id !== null ) {
+                    $photo_id_int = absint( $photo_id );
+                    if ( $photo_id_int > 0 ) {
+                        if ( ! get_post( $photo_id_int ) || get_post_type( $photo_id_int ) !== 'attachment' ) {
+                            return new \WP_Error( 'invalid_photo_id', 'Invalid photo ID', [ 'status' => 400 ] );
+                        }
+                        $children[$index]['photo_id'] = $photo_id_int;
+                    } else {
+                        $children[$index]['photo_id'] = null;
+                    }
+                }
 
                 $found = true;
                 break;
@@ -718,5 +857,168 @@ class UserController {
                 update_user_meta( $user_id, '_kg_followed_circles', $circles );
             }
         }
+    }
+
+    /**
+     * Get extended user profile (/user/me)
+     * Returns full profile data for authenticated user
+     */
+    public function get_user_me( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+        $user = get_user_by( 'id', $user_id );
+
+        if ( ! $user ) {
+            return new \WP_Error( 'user_not_found', 'User not found', [ 'status' => 404 ] );
+        }
+
+        // Get user meta fields
+        $display_name = get_user_meta( $user_id, '_kg_display_name', true );
+        $parent_role = get_user_meta( $user_id, '_kg_parent_role', true );
+        $avatar_id = get_user_meta( $user_id, '_kg_avatar_id', true );
+        
+        // Get avatar URL
+        $avatar_url = '';
+        if ( $avatar_id ) {
+            $avatar_url = wp_get_attachment_url( $avatar_id );
+        }
+        if ( ! $avatar_url ) {
+            $google_avatar = get_user_meta( $user_id, 'google_avatar', true );
+            $avatar_url = ! empty( $google_avatar ) ? $google_avatar : get_avatar_url( $user_id );
+        }
+
+        // Get children data
+        $children = get_user_meta( $user_id, '_kg_children', true );
+        if ( ! is_array( $children ) ) {
+            $children = [];
+        }
+
+        // Get followed circles
+        $followed_circles = get_user_meta( $user_id, '_kg_followed_circles', true );
+        if ( ! is_array( $followed_circles ) ) {
+            $followed_circles = [];
+        }
+
+        // Get user stats
+        $question_count = $this->get_user_question_count( $user_id );
+        $comment_count = $this->get_user_comment_count( $user_id );
+
+        return new \WP_REST_Response( [
+            'id' => $user->ID,
+            'email' => $user->user_email,
+            'display_name' => $display_name ?: $user->display_name,
+            'parent_role' => $parent_role,
+            'avatar_url' => $avatar_url,
+            'children' => $children,
+            'followed_circles' => $followed_circles,
+            'stats' => [
+                'question_count' => $question_count,
+                'comment_count' => $comment_count,
+            ],
+        ], 200 );
+    }
+
+    /**
+     * Get public user profile by username
+     * Returns filtered public data only (no sensitive information)
+     */
+    public function get_public_profile( $request ) {
+        $username = $request->get_param( 'username' );
+        
+        // Get user by login or slug
+        $user = get_user_by( 'login', $username );
+        if ( ! $user ) {
+            $user = get_user_by( 'slug', $username );
+        }
+
+        if ( ! $user ) {
+            return new \WP_Error( 'user_not_found', 'User not found', [ 'status' => 404 ] );
+        }
+
+        $user_id = $user->ID;
+
+        // Get user meta fields
+        $display_name = get_user_meta( $user_id, '_kg_display_name', true );
+        $parent_role = get_user_meta( $user_id, '_kg_parent_role', true );
+        $avatar_id = get_user_meta( $user_id, '_kg_avatar_id', true );
+        
+        // Get avatar URL
+        $avatar_url = '';
+        if ( $avatar_id ) {
+            $avatar_url = wp_get_attachment_url( $avatar_id );
+        }
+        if ( ! $avatar_url ) {
+            $google_avatar = get_user_meta( $user_id, 'google_avatar', true );
+            $avatar_url = ! empty( $google_avatar ) ? $google_avatar : get_avatar_url( $user_id );
+        }
+
+        // Get user stats (public only)
+        $question_count = $this->get_user_question_count( $user_id );
+        $approved_comments = $this->get_user_approved_comment_count( $user_id );
+
+        // Get badges (placeholder for future implementation)
+        $badges = [];
+
+        // Get recent activity (placeholder for future implementation)
+        $recent_activity = [];
+
+        // Build public profile data (NO children, birth_date, or email)
+        $public_data = [
+            'id' => $user->ID,
+            'display_name' => $display_name ?: $user->display_name,
+            'parent_role' => $parent_role,
+            'avatar_url' => $avatar_url,
+            'badges' => $badges,
+            'stats' => [
+                'question_count' => $question_count,
+                'approved_comments' => $approved_comments,
+            ],
+            'recent_activity' => $recent_activity,
+        ];
+
+        // Apply privacy filter to ensure no sensitive data leaks
+        $public_data = PrivacyHelper::filter_public_profile( $public_data );
+
+        return new \WP_REST_Response( $public_data, 200 );
+    }
+
+    /**
+     * Get user question count
+     */
+    private function get_user_question_count( $user_id ) {
+        $args = [
+            'post_type' => 'discussion',
+            'author' => $user_id,
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+        ];
+        
+        $query = new \WP_Query( $args );
+        return $query->found_posts;
+    }
+
+    /**
+     * Get user comment count
+     */
+    private function get_user_comment_count( $user_id ) {
+        $args = [
+            'user_id' => $user_id,
+            'count' => true,
+        ];
+        
+        return get_comments( $args );
+    }
+
+    /**
+     * Get user approved comment count
+     */
+    private function get_user_approved_comment_count( $user_id ) {
+        $args = [
+            'user_id' => $user_id,
+            'status' => 'approve',
+            'count' => true,
+        ];
+        
+        return get_comments( $args );
     }
 }
