@@ -415,13 +415,14 @@ class MealPlanController {
 
         update_user_meta( $user_id, '_kg_meal_plans', $plans );
 
-        // Return updated slot with recipe details
-        $updated_slot = $plans[$plan_index]['days'][$day_index]['slots'][$slot_index];
-        $updated_slot['recipe'] = $this->get_recipe_details( $new_recipe->ID );
+        // Return full updated plan
+        $enriched_plan = $this->enrich_plan_with_recipes( $plans[$plan_index] );
+        $nutrition_summary = $this->generator->calculate_nutrition_summary( $plans[$plan_index] );
+        $enriched_plan['nutrition_summary'] = $nutrition_summary;
 
         return new \WP_REST_Response( [
             'success' => true,
-            'slot' => $updated_slot,
+            'plan' => $enriched_plan,
         ], 200 );
     }
 
@@ -432,7 +433,12 @@ class MealPlanController {
         $user_id = $this->get_authenticated_user_id( $request );
         $plan_id = $request->get_param( 'id' );
         $slot_id = $request->get_param( 'slotId' );
-        $skip_reason = sanitize_text_field( $request->get_param( 'skip_reason' ) );
+        $skip_reason = sanitize_text_field( $request->get_param( 'reason' ) ); // 'reason' parameter (frontend sends this)
+        
+        // Fallback to 'skip_reason' for backwards compatibility
+        if ( $skip_reason === null || $skip_reason === '' ) {
+            $skip_reason = sanitize_text_field( $request->get_param( 'skip_reason' ) );
+        }
 
         $plans = get_user_meta( $user_id, '_kg_meal_plans', true );
         if ( ! is_array( $plans ) ) {
@@ -451,6 +457,7 @@ class MealPlanController {
 
         // Find and update slot
         $found = false;
+        $plan_index = null;
         foreach ( $plans as $p_idx => $plan ) {
             if ( $plan['id'] === $plan_id ) {
                 foreach ( $plan['days'] as $d_idx => $day ) {
@@ -460,6 +467,7 @@ class MealPlanController {
                             $plans[$p_idx]['days'][$d_idx]['slots'][$s_idx]['skip_reason'] = $skip_reason;
                             $plans[$p_idx]['updated_at'] = current_time( 'c' );
                             $found = true;
+                            $plan_index = $p_idx;
                             break 3;
                         }
                     }
@@ -473,9 +481,14 @@ class MealPlanController {
 
         update_user_meta( $user_id, '_kg_meal_plans', $plans );
 
+        // Return full updated plan
+        $enriched_plan = $this->enrich_plan_with_recipes( $plans[$plan_index] );
+        $nutrition_summary = $this->generator->calculate_nutrition_summary( $plans[$plan_index] );
+        $enriched_plan['nutrition_summary'] = $nutrition_summary;
+
         return new \WP_REST_Response( [
             'success' => true,
-            'message' => 'Slot skipped successfully',
+            'plan' => $enriched_plan,
         ], 200 );
     }
 
