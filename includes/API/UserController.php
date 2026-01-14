@@ -530,12 +530,20 @@ class UserController {
         // Generate UUID v4 using WordPress function
         $uuid = wp_generate_uuid4();
 
+        // Sanitize allergies array
+        $sanitized_allergies = [];
+        if ( is_array( $allergies ) ) {
+            foreach ( $allergies as $allergy ) {
+                $sanitized_allergies[] = sanitize_text_field( $allergy );
+            }
+        }
+
         $child = [
             'id' => $uuid,
             'name' => $name,
             'birth_date' => $birth_date,
             'gender' => $gender ?: 'unspecified',
-            'allergies' => is_array( $allergies ) ? $allergies : [],
+            'allergies' => $sanitized_allergies,
             'feeding_style' => $feeding_style ?: 'mixed',
             'photo_id' => $photo_id > 0 ? $photo_id : null,
             'kvkk_consent' => true,
@@ -593,7 +601,12 @@ class UserController {
                 }
 
                 if ( is_array( $allergies ) ) {
-                    $children[$index]['allergies'] = $allergies;
+                    // Sanitize allergies array
+                    $sanitized_allergies = [];
+                    foreach ( $allergies as $allergy ) {
+                        $sanitized_allergies[] = sanitize_text_field( $allergy );
+                    }
+                    $children[$index]['allergies'] = $sanitized_allergies;
                 }
 
                 if ( $feeding_style !== null ) {
