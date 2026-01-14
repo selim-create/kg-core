@@ -54,7 +54,7 @@ class SearchController {
             return new \WP_Error( 'missing_query', 'Search query is required', [ 'status' => 400 ] );
         }
 
-        // Genişletilmiş post types desteği
+        // Extended post types support
         $post_types = [];
         switch ( $type ) {
             case 'recipe':
@@ -95,7 +95,7 @@ class SearchController {
         $search_query = new \WP_Query( $args );
         $results = [];
         
-        // Kategorize edilmiş sonuçlar için
+        // Categorized results structure
         $categorized = [
             'recipes' => [],
             'ingredients' => [],
@@ -161,7 +161,7 @@ class SearchController {
         }
         wp_reset_postdata();
         
-        // Counts hesapla
+        // Calculate counts
         $counts = [
             'total' => count( $results ),
             'recipes' => count( $categorized['recipes'] ),
