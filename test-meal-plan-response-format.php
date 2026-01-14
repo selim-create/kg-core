@@ -258,7 +258,7 @@ if (test_result("skipSlot has fallback to 'skip_reason'", $has_skip_reason_fallb
 
 // Test 4.3: Check that the fallback logic is implemented
 $total_tests++;
-$has_fallback_logic = strpos($source, "if ( empty( \$skip_reason ) )") !== false;
+$has_fallback_logic = strpos($source, "if ( \$skip_reason === null || \$skip_reason === '' )") !== false;
 if (test_result("skipSlot implements fallback logic", $has_fallback_logic)) {
     $passed_tests++;
 }

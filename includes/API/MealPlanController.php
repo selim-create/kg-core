@@ -436,7 +436,7 @@ class MealPlanController {
         $skip_reason = sanitize_text_field( $request->get_param( 'reason' ) ); // 'reason' parameter (frontend sends this)
         
         // Fallback to 'skip_reason' for backwards compatibility
-        if ( empty( $skip_reason ) ) {
+        if ( $skip_reason === null || $skip_reason === '' ) {
             $skip_reason = sanitize_text_field( $request->get_param( 'skip_reason' ) );
         }
 
