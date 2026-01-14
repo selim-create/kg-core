@@ -481,7 +481,6 @@ class UserController {
         $feeding_style = sanitize_text_field( $request->get_param( 'feeding_style' ) );
         $photo_id = absint( $request->get_param( 'photo_id' ) );
         $kvkk_consent = $request->get_param( 'kvkk_consent' );
-        $notes = sanitize_textarea_field( $request->get_param( 'notes' ) );
 
         // Required fields validation
         if ( empty( $name ) || empty( $birth_date ) ) {
@@ -528,15 +527,8 @@ class UserController {
             $children = [];
         }
 
-        // Generate UUID v4
-        $uuid = sprintf(
-            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
-            mt_rand( 0, 0xffff ),
-            mt_rand( 0, 0x0fff ) | 0x4000,
-            mt_rand( 0, 0x3fff ) | 0x8000,
-            mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff )
-        );
+        // Generate UUID v4 using WordPress function
+        $uuid = wp_generate_uuid4();
 
         $child = [
             'id' => $uuid,

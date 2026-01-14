@@ -229,12 +229,12 @@ if (file_exists($userControllerFile)) {
         $failed++;
     }
     
-    // Check for UUID v4 generation
-    if (strpos($content, 'sprintf') !== false && strpos($content, '0x4000') !== false) {
-        echo "   ✓ UUID v4 generation implemented\n";
+    // Check for UUID v4 generation using WordPress function
+    if (strpos($content, 'wp_generate_uuid4()') !== false) {
+        echo "   ✓ UUID v4 generation using wp_generate_uuid4()\n";
         $passed++;
     } else {
-        echo "   ✗ UUID v4 generation missing\n";
+        echo "   ✗ UUID v4 generation missing or not using wp_generate_uuid4()\n";
         $failed++;
     }
     
