@@ -44,6 +44,18 @@ class MealPlanGenerator {
     ];
 
     /**
+     * Age group mapping
+     */
+    const AGE_GROUP_MAPPING = [
+        '0-6' => '0-6-ay-sadece-sut',
+        '6-8' => '6-8-ay-baslangic',
+        '9-11' => '9-11-ay-gecis',
+        '12-18' => '12-18-ay-pekistirme',
+        '19-36' => '19-36-ay-cesitlendirme',
+        '36+' => '3-yas-usti',
+    ];
+
+    /**
      * Turkish day names
      */
     const DAY_NAMES = [

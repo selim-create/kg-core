@@ -19,6 +19,49 @@ class ShoppingListAggregator {
     ];
 
     /**
+     * Turkish measurement units
+     */
+    const UNITS = [
+        'adet', 'gram', 'kg', 'ml', 'lt',
+        'su bardağı', 'çay kaşığı', 'yemek kaşığı',
+        'tutam', 'dilim', 'demet'
+    ];
+
+    /**
+     * Fruits and vegetables keywords for categorization
+     */
+    const FRUITS_VEGETABLES = [
+        'avokado', 'muz', 'elma', 'armut', 'şeftali', 'kiraz', 'çilek', 'üzüm',
+        'havuç', 'kabak', 'patates', 'tatlı patates', 'brokoli', 'karnabahar',
+        'ıspanak', 'bezelye', 'domates', 'salatalık', 'biber', 'patlıcan',
+        'meyve', 'sebze',
+    ];
+
+    /**
+     * Meat and protein keywords for categorization
+     */
+    const MEAT_PROTEIN = [
+        'tavuk', 'hindi', 'et', 'kıyma', 'balık', 'somon', 'levrek',
+        'yumurta', 'fasulye', 'nohut', 'mercimek', 'bakla',
+    ];
+
+    /**
+     * Dairy keywords for categorization
+     */
+    const DAIRY = [
+        'süt', 'yoğurt', 'peynir', 'labne', 'lor', 'beyaz peynir',
+        'kaşar', 'tereyağı', 'krema',
+    ];
+
+    /**
+     * Grains keywords for categorization
+     */
+    const GRAINS = [
+        'un', 'bulgur', 'pirinç', 'makarna', 'ekmek', 'yulaf',
+        'arpa', 'mısır', 'tahıl', 'kepek',
+    ];
+
+    /**
      * Generate shopping list from meal plan
      *
      * @param array $plan Meal plan data
@@ -156,7 +199,8 @@ class ShoppingListAggregator {
      * @return string Unit
      */
     private function extract_unit( $amount ) {
-        if ( preg_match( '/(adet|gram|kg|ml|lt|su bardağı|çay kaşığı|yemek kaşığı|tutam|dilim|demet)/i', $amount, $matches ) ) {
+        $units_pattern = '(' . implode( '|', array_map( 'preg_quote', self::UNITS ) ) . ')';
+        if ( preg_match( '/' . $units_pattern . '/i', $amount, $matches ) ) {
             return $matches[1];
         }
         return 'adet';
@@ -214,50 +258,28 @@ class ShoppingListAggregator {
         $name_lower = mb_strtolower( $name, 'UTF-8' );
         
         // Fruits & Vegetables
-        $fruits_vegetables = [
-            'avokado', 'muz', 'elma', 'armut', 'şeftali', 'kiraz', 'çilek', 'üzüm',
-            'havuç', 'kabak', 'patates', 'tatlı patates', 'brokoli', 'karnabahar',
-            'ıspanak', 'bezelye', 'domates', 'salatalık', 'biber', 'patlıcan',
-            'meyve', 'sebze',
-        ];
-        
-        foreach ( $fruits_vegetables as $item ) {
+        foreach ( self::FRUITS_VEGETABLES as $item ) {
             if ( strpos( $name_lower, $item ) !== false ) {
                 return 'fruits_vegetables';
             }
         }
         
         // Meat & Protein
-        $meat_protein = [
-            'tavuk', 'hindi', 'et', 'kıyma', 'balık', 'somon', 'levrek',
-            'yumurta', 'fasulye', 'nohut', 'mercimek', 'bakla',
-        ];
-        
-        foreach ( $meat_protein as $item ) {
+        foreach ( self::MEAT_PROTEIN as $item ) {
             if ( strpos( $name_lower, $item ) !== false ) {
                 return 'meat_protein';
             }
         }
         
         // Dairy
-        $dairy = [
-            'süt', 'yoğurt', 'peynir', 'labne', 'lor', 'beyaz peynir',
-            'kaşar', 'tereyağı', 'krema',
-        ];
-        
-        foreach ( $dairy as $item ) {
+        foreach ( self::DAIRY as $item ) {
             if ( strpos( $name_lower, $item ) !== false ) {
                 return 'dairy';
             }
         }
         
         // Grains
-        $grains = [
-            'un', 'bulgur', 'pirinç', 'makarna', 'ekmek', 'yulaf',
-            'arpa', 'mısır', 'tahıl', 'kepek',
-        ];
-        
-        foreach ( $grains as $item ) {
+        foreach ( self::GRAINS as $item ) {
             if ( strpos( $name_lower, $item ) !== false ) {
                 return 'grains';
             }

@@ -199,7 +199,7 @@ class MealPlanController {
      */
     public function get_active_plan( $request ) {
         $user_id = $this->get_authenticated_user_id( $request );
-        $child_id = $request->get_param( 'child_id' );
+        $child_id = sanitize_text_field( $request->get_param( 'child_id' ) );
 
         if ( empty( $child_id ) ) {
             return new \WP_Error( 'missing_child_id', 'child_id parameter is required', [ 'status' => 400 ] );
@@ -580,21 +580,13 @@ class MealPlanController {
     }
 
     /**
-     * Get age group slug for months
+     * Get age group slug for months - delegates to generator
      */
     private function get_age_group_for_months( $age_in_months ) {
-        if ( $age_in_months >= 0 && $age_in_months <= 6 ) {
-            return '0-6-ay-sadece-sut';
-        } elseif ( $age_in_months >= 6 && $age_in_months <= 8 ) {
-            return '6-8-ay-baslangic';
-        } elseif ( $age_in_months >= 9 && $age_in_months <= 11 ) {
-            return '9-11-ay-gecis';
-        } elseif ( $age_in_months >= 12 && $age_in_months <= 18 ) {
-            return '12-18-ay-pekistirme';
-        } elseif ( $age_in_months >= 19 && $age_in_months <= 36 ) {
-            return '19-36-ay-cesitlendirme';
-        } else {
-            return '3-yas-usti';
-        }
+        // Use reflection to access private method from generator
+        // Alternative: make this method public in MealPlanGenerator
+        $reflection = new \ReflectionMethod( $this->generator, 'get_age_group_for_months' );
+        $reflection->setAccessible( true );
+        return $reflection->invoke( $this->generator, $age_in_months );
     }
 }
