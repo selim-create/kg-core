@@ -961,12 +961,12 @@ class UserController {
         return new \WP_REST_Response( [
             'id' => $user->ID,
             'email' => $user->user_email,
-            'name' => $user->display_name, // name alanı ekle
+            'name' => $user->display_name, // Add name field
             'display_name' => $display_name ?: $user->display_name,
             'parent_role' => $parent_role,
             'avatar_url' => $avatar_url,
             'children' => $children,
-            'role' => $primary_role, // WordPress rolü
+            'role' => $primary_role, // WordPress role
             'followed_circles' => $followed_circles,
             'stats' => [
                 'question_count' => $question_count,
