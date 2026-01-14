@@ -26,9 +26,16 @@ if ( file_exists( KG_CORE_PATH . 'includes/Utils/Helper.php' ) ) {
     error_log( 'KG Core: Helper.php dosyası bulunamadı.' );
 }
 
+if ( file_exists( KG_CORE_PATH . 'includes/Utils/PrivacyHelper.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/Utils/PrivacyHelper.php';
+}
+
 // 2.5. AUTH SINIFLARI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Auth/JWTHandler.php' ) ) require_once KG_CORE_PATH . 'includes/Auth/JWTHandler.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Auth/GoogleAuth.php' ) ) require_once KG_CORE_PATH . 'includes/Auth/GoogleAuth.php';
+
+// 2.5.1. ROL YÖNETİMİ SINIFLARI DAHİL ET
+if ( file_exists( KG_CORE_PATH . 'includes/Roles/RoleManager.php' ) ) require_once KG_CORE_PATH . 'includes/Roles/RoleManager.php';
 
 // 2.6. CORS DESTEĞI
 if ( file_exists( KG_CORE_PATH . 'includes/CORS/CORSHandler.php' ) ) {
@@ -98,6 +105,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/FeaturedController.php' ) ) requi
 if ( file_exists( KG_CORE_PATH . 'includes/API/AIController.php' ) ) require_once KG_CORE_PATH . 'includes/API/AIController.php';
 // Discussion API Controller
 if ( file_exists( KG_CORE_PATH . 'includes/API/DiscussionController.php' ) ) require_once KG_CORE_PATH . 'includes/API/DiscussionController.php';
+// Expert API Controller
+if ( file_exists( KG_CORE_PATH . 'includes/API/ExpertController.php' ) ) require_once KG_CORE_PATH . 'includes/API/ExpertController.php';
 
 // 7. SINIFLARI BAŞLAT (INIT HOOK)
 function kg_core_init() {
@@ -152,6 +161,11 @@ function kg_core_init() {
         new \KG_Core\Admin\DiscussionAdmin();
     }
 
+    // Role Manager (RBAC)
+    if ( class_exists( '\KG_Core\Roles\RoleManager' ) ) {
+        new \KG_Core\Roles\RoleManager();
+    }
+
     // API Controllers
     if ( class_exists( '\KG_Core\API\RecipeController' ) ) new \KG_Core\API\RecipeController();
     if ( class_exists( '\KG_Core\API\IngredientController' ) ) new \KG_Core\API\IngredientController();
@@ -161,6 +175,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\FeaturedController' ) ) new \KG_Core\API\FeaturedController();
     if ( class_exists( '\KG_Core\API\AIController' ) ) new \KG_Core\API\AIController();
     if ( class_exists( '\KG_Core\API\DiscussionController' ) ) new \KG_Core\API\DiscussionController();
+    if ( class_exists( '\KG_Core\API\ExpertController' ) ) new \KG_Core\API\ExpertController();
 }
 add_action( 'plugins_loaded', 'kg_core_init' );
 
