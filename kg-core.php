@@ -66,6 +66,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/CommunityCircle.php' ) ) r
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/RecipeMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/RecipeMetaBox.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/IngredientMetaBox.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/PostMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/PostMetaBox.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/DiscussionMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/DiscussionMetaBox.php';
 
 // 5.5. AI ADMIN SAYFALARI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/SettingsPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/SettingsPage.php';
@@ -129,6 +130,9 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\PostMetaBox' ) ) {
         new \KG_Core\Admin\PostMetaBox();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\DiscussionMetaBox' ) ) {
+        new \KG_Core\Admin\DiscussionMetaBox();
     }
     
     // AI Admin Pages (Sadece Admin panelinde çalışsın)
