@@ -158,10 +158,23 @@ class FeaturedController {
             'posts_per_page' => $limit,
             'post_status' => 'publish',
             'meta_query' => [
+                'relation' => 'AND',
                 [
                     'key' => '_kg_is_featured',
                     'value' => '1',
                     'compare' => '='
+                ],
+                [
+                    'relation' => 'OR',
+                    [
+                        'key' => '_kg_is_sponsored',
+                        'compare' => 'NOT EXISTS'
+                    ],
+                    [
+                        'key' => '_kg_is_sponsored',
+                        'value' => '1',
+                        'compare' => '!='
+                    ]
                 ]
             ],
             'orderby' => 'date',
@@ -217,7 +230,7 @@ class FeaturedController {
         $args = [
             'post_type' => 'discussion',
             'posts_per_page' => $limit,
-            'post_status' => 'publish',
+            'post_status' => ['publish', 'pending'],
             'meta_query' => [
                 [
                     'key' => '_kg_is_featured',
@@ -274,8 +287,14 @@ class FeaturedController {
             'posts_per_page' => $limit,
             'post_status' => 'publish',
             'meta_query' => [
+                'relation' => 'AND',
                 [
                     'key' => '_kg_is_sponsored',
+                    'value' => '1',
+                    'compare' => '='
+                ],
+                [
+                    'key' => '_kg_is_featured',
                     'value' => '1',
                     'compare' => '='
                 ]
@@ -291,6 +310,7 @@ class FeaturedController {
             // Get sponsor data
             $sponsor_name = get_post_meta( $post->ID, '_kg_sponsor_name', true );
             $sponsor_url = get_post_meta( $post->ID, '_kg_sponsor_url', true );
+            $direct_redirect = get_post_meta( $post->ID, '_kg_direct_redirect', true ) === '1';
             
             // Get sponsor logos and convert to URLs
             $sponsor_logo_id = get_post_meta( $post->ID, '_kg_sponsor_logo', true );
@@ -316,6 +336,7 @@ class FeaturedController {
             // Check for discount
             $has_discount = get_post_meta( $post->ID, '_kg_has_discount', true ) === '1';
             $discount_text = get_post_meta( $post->ID, '_kg_discount_text', true ) ?: '';
+            $discount_text = \KG_Core\Utils\Helper::decode_html_entities( $discount_text );
             
             // Decode HTML entities
             $title = \KG_Core\Utils\Helper::decode_html_entities( $post->post_title );
@@ -335,6 +356,7 @@ class FeaturedController {
                     'sponsor_logo' => $sponsor_logo,
                     'sponsor_light_logo' => $sponsor_light_logo,
                     'sponsor_url' => $sponsor_url ?: '',
+                    'direct_redirect' => $direct_redirect,
                     'category' => $category_name,
                     'category_slug' => $category_slug,
                     'has_discount' => $has_discount,
