@@ -416,6 +416,7 @@ class FeaturedController {
                 'image' => get_the_post_thumbnail_url( $post->ID, 'large' ) ?: '',
                 'excerpt' => $excerpt,
                 'date' => get_the_date( 'c', $post->ID ),
+                'url' => '/malzeme-rehberi/' . $post->post_name,
                 'meta' => [
                     'start_age' => $start_age_display,
                     'allergy_risk' => $allergy_risk ?: 'Düşük',
