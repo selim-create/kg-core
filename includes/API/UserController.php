@@ -242,26 +242,36 @@ class UserController {
      * Login user
      */
     public function login_user( $request ) {
-        $email = sanitize_email( $request->get_param( 'email' ) );
+        $email_or_username = sanitize_text_field( $request->get_param( 'email' ) );
         $password = $request->get_param( 'password' );
 
-        if ( empty( $email ) || empty( $password ) ) {
-            return new \WP_Error( 'missing_credentials', 'Email and password are required', [ 'status' => 400 ] );
+        if ( empty( $email_or_username ) || empty( $password ) ) {
+            return new \WP_Error( 'missing_credentials', 'Email/username and password are required', [ 'status' => 400 ] );
         }
 
-        $user = wp_authenticate( $email, $password );
+        // Email veya username ile kullanıcı bul
+        if ( is_email( $email_or_username ) ) {
+            $user = wp_authenticate( $email_or_username, $password );
+        } else {
+            // Username ile dene
+            $user = wp_authenticate_username_password( null, $email_or_username, $password );
+        }
 
         if ( is_wp_error( $user ) ) {
-            return new \WP_Error( 'invalid_credentials', 'Invalid email or password', [ 'status' => 401 ] );
+            return new \WP_Error( 'invalid_credentials', 'Invalid email/username or password', [ 'status' => 401 ] );
         }
 
         $token = JWTHandler::generate_token( $user->ID );
+
+        // User rolünü de döndür
+        $roles = $user->roles;
 
         return new \WP_REST_Response( [
             'token' => $token,
             'user_id' => $user->ID,
             'email' => $user->user_email,
             'name' => $user->display_name,
+            'role' => !empty($roles) ? $roles[0] : 'subscriber',
         ], 200 );
     }
 
@@ -286,10 +296,42 @@ class UserController {
             return new \WP_Error( 'user_not_found', 'User not found', [ 'status' => 404 ] );
         }
 
+        // Çocuk bilgilerini al
+        $children = get_user_meta( $user_id, '_kg_children', true );
+        if ( ! is_array( $children ) ) {
+            $children = [];
+        }
+
+        // Avatar URL
+        $avatar_id = get_user_meta( $user_id, '_kg_avatar_id', true );
+        $avatar_url = '';
+        if ( $avatar_id ) {
+            $avatar_url = wp_get_attachment_url( $avatar_id );
+        }
+        if ( ! $avatar_url ) {
+            $google_avatar = get_user_meta( $user_id, 'google_avatar', true );
+            $avatar_url = ! empty( $google_avatar ) ? $google_avatar : get_avatar_url( $user_id );
+        }
+
+        // Role
+        $roles = $user->roles;
+        $primary_role = !empty($roles) ? $roles[0] : 'subscriber';
+
+        // Display name ve parent role
+        $display_name = get_user_meta( $user_id, '_kg_display_name', true );
+        $parent_role = get_user_meta( $user_id, '_kg_parent_role', true );
+
         return new \WP_REST_Response( [
             'user_id' => $user->ID,
+            'id' => $user->ID,
             'email' => $user->user_email,
             'name' => $user->display_name,
+            'display_name' => $display_name ?: $user->display_name,
+            'parent_role' => $parent_role,
+            'avatar_url' => $avatar_url,
+            'children' => $children,
+            'role' => $primary_role,
+            'created_at' => $user->user_registered,
         ], 200 );
     }
 
@@ -487,9 +529,14 @@ class UserController {
             return new \WP_Error( 'missing_fields', 'Name and birth date are required', [ 'status' => 400 ] );
         }
 
-        // KVKK consent validation (required and must be true)
-        if ( $kvkk_consent !== true && $kvkk_consent !== 'true' && $kvkk_consent !== 1 && $kvkk_consent !== '1' ) {
-            return new \WP_Error( 'kvkk_consent_required', 'KVKK consent is required and must be true', [ 'status' => 400 ] );
+        // KVKK consent validation - daha esnek kontrol
+        if ( empty( $kvkk_consent ) || 
+             ( $kvkk_consent !== true && 
+               $kvkk_consent !== 'true' && 
+               $kvkk_consent !== 1 && 
+               $kvkk_consent !== '1' && 
+               $kvkk_consent !== 'on' ) ) {
+            return new \WP_Error( 'kvkk_consent_required', 'KVKK consent is required', [ 'status' => 400 ] );
         }
 
         // Birth date validation - cannot be in the future
@@ -907,13 +954,19 @@ class UserController {
         $question_count = $this->get_user_question_count( $user_id );
         $comment_count = $this->get_user_comment_count( $user_id );
 
+        // Kullanıcı rolünü ekle
+        $roles = $user->roles;
+        $primary_role = !empty($roles) ? $roles[0] : 'subscriber';
+
         return new \WP_REST_Response( [
             'id' => $user->ID,
             'email' => $user->user_email,
+            'name' => $user->display_name, // name alanı ekle
             'display_name' => $display_name ?: $user->display_name,
             'parent_role' => $parent_role,
             'avatar_url' => $avatar_url,
             'children' => $children,
+            'role' => $primary_role, // WordPress rolü
             'followed_circles' => $followed_circles,
             'stats' => [
                 'question_count' => $question_count,

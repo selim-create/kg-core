@@ -26,22 +26,34 @@ class ExpertController {
         $token = JWTHandler::get_token_from_request();
         
         if ( ! $token ) {
-            return false;
+            return new \WP_Error( 'not_authenticated', 'Authentication required', [ 'status' => 401 ] );
         }
         
         $payload = JWTHandler::validate_token( $token );
         
         if ( ! $payload ) {
-            return false;
+            return new \WP_Error( 'invalid_token', 'Invalid token', [ 'status' => 401 ] );
         }
         
         $user_id = $payload['user_id'];
+        $user = get_user_by( 'id', $user_id );
+        
+        if ( ! $user ) {
+            return new \WP_Error( 'user_not_found', 'User not found', [ 'status' => 404 ] );
+        }
+
+        // Yetkili roller
+        $allowed_roles = [ 'administrator', 'editor', 'kg_expert' ];
+        $has_permission = array_intersect( $allowed_roles, $user->roles );
+        
+        if ( empty( $has_permission ) ) {
+            return new \WP_Error( 'forbidden', 'You do not have permission to access this resource', [ 'status' => 403 ] );
+        }
         
         // Store user ID in request for later use
         $request->set_param( 'authenticated_user_id', $user_id );
         
-        // Check if user has expert permission
-        return RoleManager::has_expert_permission( $user_id );
+        return true;
     }
     
     /**
@@ -55,26 +67,65 @@ class ExpertController {
      * Get expert dashboard data
      */
     public function get_dashboard( $request ) {
-        $user_id = $this->get_authenticated_user_id( $request );
-        
-        // Get pending questions (discussions with status 'pending')
-        $pending_questions = $this->get_pending_questions_count();
-        
-        // Get pending comments (comments with status 'hold')
-        $pending_comments = $this->get_pending_comments_count();
-        
-        // Get today's answers by this expert
-        $today_answers = $this->get_today_answers_count( $user_id );
-        
-        // Get weekly stats
-        $weekly_stats = $this->get_weekly_stats( $user_id );
-        
-        return new \WP_REST_Response( [
-            'pending_questions' => $pending_questions,
-            'pending_comments' => $pending_comments,
-            'today_answers' => $today_answers,
-            'weekly_stats' => $weekly_stats,
-        ], 200 );
+        // Bekleyen sorular (pending discussions)
+        $pending_questions = new \WP_Query([
+            'post_type' => 'discussion',
+            'post_status' => 'pending',
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+        ]);
+
+        // Bekleyen yorumlar
+        $pending_comments = get_comments([
+            'status' => 'hold',
+            'count' => true,
+        ]);
+
+        // Bugün cevaplanan sorular
+        $today_start = date('Y-m-d 00:00:00');
+        $today_answers = new \WP_Query([
+            'post_type' => 'discussion',
+            'post_status' => 'publish',
+            'date_query' => [
+                'after' => $today_start,
+            ],
+            'meta_query' => [
+                [
+                    'key' => '_expert_answered',
+                    'value' => '1',
+                ],
+            ],
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+        ]);
+
+        // Haftalık istatistikler
+        $week_start = date('Y-m-d 00:00:00', strtotime('-7 days'));
+        $weekly_questions = new \WP_Query([
+            'post_type' => 'discussion',
+            'post_status' => 'publish',
+            'date_query' => [
+                'after' => $week_start,
+            ],
+            'meta_query' => [
+                [
+                    'key' => '_expert_answered',
+                    'value' => '1',
+                ],
+            ],
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+        ]);
+
+        return new \WP_REST_Response([
+            'pending_questions' => $pending_questions->found_posts,
+            'pending_comments' => (int) $pending_comments,
+            'today_answers' => $today_answers->found_posts,
+            'weekly_stats' => [
+                'questions_answered' => $weekly_questions->found_posts,
+                'comments_moderated' => 0, // Placeholder
+            ],
+        ], 200);
     }
     
     /**
