@@ -74,7 +74,7 @@ class IngredientGenerator {
      * @param int $post_id Post ID
      * @param array $data AI-generated data
      */
-    private function saveMetaFields($post_id, $data) {
+    public function saveMetaFields($post_id, $data) {
         // Basic info
         if (isset($data['start_age'])) {
             update_post_meta($post_id, '_kg_start_age', intval($data['start_age']));
@@ -330,7 +330,7 @@ class IngredientGenerator {
      * @param int $post_id Post ID
      * @param string $category Category name
      */
-    private function assignCategory($post_id, $category) {
+    public function assignCategory($post_id, $category) {
         $category = sanitize_text_field($category);
         
         // Check if term exists

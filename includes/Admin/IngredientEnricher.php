@@ -301,17 +301,12 @@ class IngredientEnricher {
 
         $generator = new \KG_Core\Services\IngredientGenerator();
         
-        // Use reflection to call private method
-        $reflection = new \ReflectionClass($generator);
-        $method = $reflection->getMethod('saveMetaFields');
-        $method->setAccessible(true);
-        $method->invoke($generator, $post_id, $ai_data);
+        // Call protected methods directly (accessible from same package)
+        $generator->saveMetaFields($post_id, $ai_data);
 
         // Also update category
         if (!empty($ai_data['category'])) {
-            $assignCategory = $reflection->getMethod('assignCategory');
-            $assignCategory->setAccessible(true);
-            $assignCategory->invoke($generator, $post_id, $ai_data['category']);
+            $generator->assignCategory($post_id, $ai_data['category']);
         }
 
         return ['Tüm alanlar'];
@@ -363,8 +358,11 @@ class IngredientEnricher {
                                     if (resp.data && resp.data.message) {
                                         errorMsg = resp.data.message;
                                     }
-                                } catch (e) {
-                                    // Ignore parse error
+                                } catch (parseError) {
+                                    // JSON parse failed, use raw response if available
+                                    if (xhr.responseText.length < 100) {
+                                        errorMsg = 'Sunucu hatası: ' + xhr.responseText;
+                                    }
                                 }
                             }
                             statusDiv.html('<span style=\"color: #d63638;\">❌ ' + errorMsg + '</span>');
@@ -412,8 +410,11 @@ class IngredientEnricher {
                                     if (resp.data && resp.data.message) {
                                         errorMsg = resp.data.message;
                                     }
-                                } catch (e) {
-                                    // Ignore parse error
+                                } catch (parseError) {
+                                    // JSON parse failed, use raw response if available
+                                    if (xhr.responseText.length < 100) {
+                                        errorMsg = 'Sunucu hatası: ' + xhr.responseText;
+                                    }
                                 }
                             }
                             statusDiv.html('<span style=\"color: #d63638;\">❌ ' + errorMsg + '</span>');
