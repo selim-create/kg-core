@@ -37,6 +37,57 @@ class ToolController {
             'callback' => [ $this, 'submit_blw_test' ],
             'permission_callback' => '__return_true',
         ]);
+
+        // === NEW SMART ASSISTANT TOOLS ===
+
+        // Ingredient Guide - Check if ingredient is suitable
+        register_rest_route( 'kg/v1', '/tools/ingredient-guide/check', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'ingredient_guide_check' ],
+            'permission_callback' => '__return_true',
+        ]);
+
+        // Solid Food Readiness - Get configuration
+        register_rest_route( 'kg/v1', '/tools/solid-food-readiness/config', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'solid_food_readiness_config' ],
+            'permission_callback' => '__return_true',
+        ]);
+
+        // Solid Food Readiness - Submit test
+        register_rest_route( 'kg/v1', '/tools/solid-food-readiness/submit', [
+            'methods'  => 'POST',
+            'callback' => [ $this, 'solid_food_readiness_submit' ],
+            'permission_callback' => '__return_true',
+        ]);
+
+        // Food Check - Quick suitability check
+        register_rest_route( 'kg/v1', '/tools/food-check', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'food_check' ],
+            'permission_callback' => '__return_true',
+        ]);
+
+        // Allergen Planner - Get configuration
+        register_rest_route( 'kg/v1', '/tools/allergen-planner/config', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'allergen_planner_config' ],
+            'permission_callback' => '__return_true',
+        ]);
+
+        // Allergen Planner - Generate introduction plan
+        register_rest_route( 'kg/v1', '/tools/allergen-planner/generate', [
+            'methods'  => 'POST',
+            'callback' => [ $this, 'allergen_planner_generate' ],
+            'permission_callback' => '__return_true',
+        ]);
+
+        // Water Calculator - Calculate daily fluid needs
+        register_rest_route( 'kg/v1', '/tools/water-calculator', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'water_calculator' ],
+            'permission_callback' => '__return_true',
+        ]);
     }
 
     /**
@@ -862,5 +913,291 @@ class ToolController {
             'disclaimer_text' => '<p>Bu test yalnızca genel bilgilendirme amaçlıdır ve tıbbi tavsiye yerine geçmez. BLW\'ye başlamadan önce mutlaka çocuk doktorunuzla görüşün. Her bebek farklıdır ve bireysel değerlendirme önemlidir.</p>',
             'emergency_text' => '<p><strong>ACİL DURUM:</strong> Boğulma durumunda 112\'yi arayın. Heimlich manevrası hakkında bilgi sahibi olun. BLW sırasında bebeğinizi asla yalnız bırakmayın.</p>',
         ];
+    }
+
+    // === NEW SMART ASSISTANT TOOL METHODS ===
+
+    /**
+     * Ingredient Guide - Check if ingredient is suitable for child's age
+     */
+    public function ingredient_guide_check( $request ) {
+        $ingredient_slug = $request->get_param( 'ingredient_slug' );
+        $child_age_months = (int) $request->get_param( 'child_age_months' );
+
+        if ( empty( $ingredient_slug ) ) {
+            return new \WP_Error( 'missing_ingredient_slug', 'ingredient_slug parametresi gereklidir', [ 'status' => 400 ] );
+        }
+
+        if ( $child_age_months < 0 ) {
+            return new \WP_Error( 'invalid_age', 'Geçerli bir yaş değeri giriniz', [ 'status' => 400 ] );
+        }
+
+        // Get ingredient by slug
+        $args = [
+            'name' => $ingredient_slug,
+            'post_type' => 'ingredient',
+            'post_status' => 'publish',
+            'numberposts' => 1,
+        ];
+
+        $posts = get_posts( $args );
+
+        if ( empty( $posts ) ) {
+            return new \WP_Error( 'ingredient_not_found', 'Malzeme bulunamadı', [ 'status' => 404 ] );
+        }
+
+        $ingredient_id = $posts[0]->ID;
+        
+        // Get ingredient details
+        $ingredient = [
+            'id' => $ingredient_id,
+            'name' => get_the_title( $ingredient_id ),
+            'slug' => get_post_field( 'post_name', $ingredient_id ),
+            'image' => get_the_post_thumbnail_url( $ingredient_id, 'medium' ),
+        ];
+
+        $start_age = (int) get_post_meta( $ingredient_id, '_kg_start_age', true );
+        $allergy_risk = get_post_meta( $ingredient_id, '_kg_allergy_risk', true );
+        
+        // Determine suitability
+        $is_suitable = $child_age_months >= $start_age;
+        
+        // Get warnings
+        $warnings = [];
+        if ( ! $is_suitable ) {
+            $warnings[] = sprintf( 'Bu malzeme %d aylıktan itibaren verilebilir', $start_age );
+        }
+        if ( in_array( $allergy_risk, [ 'Yüksek', 'Orta' ] ) ) {
+            $warnings[] = 'Alerji riski taşır - Dikkatli tanıtılmalı';
+        }
+
+        // Get preparation methods by age
+        $prep_by_age_raw = get_post_meta( $ingredient_id, '_kg_prep_by_age', true );
+        $prep_by_age = ! empty( $prep_by_age_raw ) ? maybe_unserialize( $prep_by_age_raw ) : [];
+
+        // Get preparation method for child's age
+        $preparation_method = '';
+        foreach ( $prep_by_age as $prep ) {
+            if ( isset( $prep['age_range'] ) && isset( $prep['method'] ) ) {
+                $preparation_method .= $prep['age_range'] . ': ' . $prep['method'] . ' | ';
+            }
+        }
+        $preparation_method = rtrim( $preparation_method, ' | ' );
+
+        // Get pairings
+        $pairings_raw = get_post_meta( $ingredient_id, '_kg_pairings', true );
+        $pairings = ! empty( $pairings_raw ) ? maybe_unserialize( $pairings_raw ) : [];
+
+        // Get tips
+        $tips = get_post_meta( $ingredient_id, '_kg_pro_tips', true );
+
+        // Get related recipes
+        $related_recipes = $this->get_recipes_by_ingredient( $ingredient_id );
+
+        return new \WP_REST_Response( [
+            'ingredient' => $ingredient,
+            'is_suitable' => $is_suitable,
+            'start_age_months' => $start_age,
+            'allergy_risk' => $allergy_risk ?: 'Düşük',
+            'warnings' => $warnings,
+            'preparation_method' => $preparation_method,
+            'prep_by_age' => $prep_by_age,
+            'tips' => $tips ?: '',
+            'pairings' => $pairings,
+            'related_recipes' => $related_recipes,
+        ], 200 );
+    }
+
+    /**
+     * Get recipes that use this ingredient
+     */
+    private function get_recipes_by_ingredient( $ingredient_id, $limit = 5 ) {
+        $ingredient_name = get_the_title( $ingredient_id );
+        
+        $args = [
+            'post_type' => 'recipe',
+            'posts_per_page' => $limit,
+            'post_status' => 'publish',
+            's' => $ingredient_name,
+        ];
+
+        $query = new \WP_Query( $args );
+        $recipes = [];
+
+        if ( $query->have_posts() ) {
+            while ( $query->have_posts() ) {
+                $query->the_post();
+                $recipes[] = [
+                    'id' => get_the_ID(),
+                    'title' => get_the_title(),
+                    'slug' => get_post_field( 'post_name', get_the_ID() ),
+                    'image' => get_the_post_thumbnail_url( get_the_ID(), 'medium' ),
+                ];
+            }
+        }
+        wp_reset_postdata();
+
+        return $recipes;
+    }
+
+    /**
+     * Solid Food Readiness - Get configuration
+     */
+    public function solid_food_readiness_config( $request ) {
+        $config = \KG_Core\Services\SolidFoodReadinessChecker::get_config();
+        return new \WP_REST_Response( $config, 200 );
+    }
+
+    /**
+     * Solid Food Readiness - Submit test
+     */
+    public function solid_food_readiness_submit( $request ) {
+        $answers = $request->get_param( 'answers' );
+        
+        $result = \KG_Core\Services\SolidFoodReadinessChecker::submit( $answers );
+        
+        if ( is_wp_error( $result ) ) {
+            return $result;
+        }
+
+        // Check if user is authenticated and wants to save result
+        $token = JWTHandler::get_token_from_request();
+        if ( $token ) {
+            $payload = JWTHandler::validate_token( $token );
+            if ( $payload ) {
+                $user_id = $payload['user_id'];
+                $child_id = $request->get_param( 'child_id' );
+
+                // Save result to user meta
+                $results = get_user_meta( $user_id, '_kg_solid_food_readiness_results', true );
+                if ( ! is_array( $results ) ) {
+                    $results = [];
+                }
+
+                $result_entry = [
+                    'id' => $this->generate_uuid(),
+                    'child_id' => $child_id ?: null,
+                    'score' => $result['score'],
+                    'result_category' => $result['result']['id'],
+                    'timestamp' => $result['timestamp'],
+                ];
+
+                $results[] = $result_entry;
+                update_user_meta( $user_id, '_kg_solid_food_readiness_results', $results );
+            }
+        }
+
+        return new \WP_REST_Response( $result, 200 );
+    }
+
+    /**
+     * Food Check - Quick suitability check
+     */
+    public function food_check( $request ) {
+        $query = $request->get_param( 'query' );
+        $child_age_months = (int) $request->get_param( 'child_age_months' );
+
+        $result = \KG_Core\Services\FoodSuitabilityChecker::check( $query, $child_age_months );
+        
+        if ( is_wp_error( $result ) ) {
+            return $result;
+        }
+
+        return new \WP_REST_Response( $result, 200 );
+    }
+
+    /**
+     * Allergen Planner - Get configuration
+     */
+    public function allergen_planner_config( $request ) {
+        $config = \KG_Core\Services\AllergenPlanner::get_config();
+        return new \WP_REST_Response( $config, 200 );
+    }
+
+    /**
+     * Allergen Planner - Generate introduction plan
+     */
+    public function allergen_planner_generate( $request ) {
+        $allergen_id = $request->get_param( 'allergen_id' );
+        
+        if ( empty( $allergen_id ) ) {
+            return new \WP_Error( 'missing_allergen_id', 'allergen_id parametresi gereklidir', [ 'status' => 400 ] );
+        }
+
+        $params = [
+            'child_id' => $request->get_param( 'child_id' ),
+            'previous_reactions' => $request->get_param( 'previous_reactions' ),
+        ];
+
+        $plan = \KG_Core\Services\AllergenPlanner::generate_plan( $allergen_id, $params );
+        
+        if ( is_wp_error( $plan ) ) {
+            return $plan;
+        }
+
+        // Check if user is authenticated and wants to save plan
+        $token = JWTHandler::get_token_from_request();
+        if ( $token ) {
+            $payload = JWTHandler::validate_token( $token );
+            if ( $payload ) {
+                $user_id = $payload['user_id'];
+                $child_id = $request->get_param( 'child_id' );
+
+                // Save plan to user meta
+                $plans = get_user_meta( $user_id, '_kg_allergen_plans', true );
+                if ( ! is_array( $plans ) ) {
+                    $plans = [];
+                }
+
+                $plan_entry = [
+                    'id' => $this->generate_uuid(),
+                    'child_id' => $child_id ?: null,
+                    'allergen_id' => $allergen_id,
+                    'plan' => $plan,
+                    'created_at' => current_time( 'c' ),
+                ];
+
+                $plans[] = $plan_entry;
+                update_user_meta( $user_id, '_kg_allergen_plans', $plans );
+            }
+        }
+
+        return new \WP_REST_Response( $plan, 200 );
+    }
+
+    /**
+     * Water Calculator - Calculate daily fluid needs
+     */
+    public function water_calculator( $request ) {
+        $weight_kg = (float) $request->get_param( 'weight_kg' );
+        $age_months = (int) $request->get_param( 'age_months' );
+        $weather = $request->get_param( 'weather' ) ?: 'normal';
+        $is_breastfed = (bool) $request->get_param( 'is_breastfed' );
+
+        $result = \KG_Core\Services\WaterCalculator::calculate( $weight_kg, $age_months, $weather, $is_breastfed );
+        
+        if ( is_wp_error( $result ) ) {
+            return $result;
+        }
+
+        return new \WP_REST_Response( $result, 200 );
+    }
+
+    /**
+     * Generate UUID helper
+     */
+    private function generate_uuid() {
+        if ( function_exists( 'wp_generate_uuid4' ) ) {
+            return wp_generate_uuid4();
+        }
+
+        return sprintf(
+            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
+            mt_rand( 0, 0xffff ),
+            mt_rand( 0, 0x0fff ) | 0x4000,
+            mt_rand( 0, 0x3fff ) | 0x8000,
+            mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff )
+        );
     }
 }
