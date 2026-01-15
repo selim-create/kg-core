@@ -57,7 +57,7 @@ class AgeGroup {
 
         $default_terms = [
             [
-                'name' => 'Hazırlık Evresi (0-6 Ay)',
+                'name' => '0-6 Ay (Hazırlık Evresi)',
                 'slug' => '0-6-ay-sadece-sut',
                 'meta' => [
                     'min_month' => 0,
@@ -71,7 +71,7 @@ class AgeGroup {
                 ],
             ],
             [
-                'name' => 'Başlangıç & Tadım (6-8 Ay)',
+                'name' => '6-8 Ay (Başlangıç & Tadım)',
                 'slug' => '6-8-ay-baslangic',
                 'meta' => [
                     'min_month' => 6,
@@ -85,7 +85,7 @@ class AgeGroup {
                 ],
             ],
             [
-                'name' => 'Keşif & Pütürlüye Geçiş (9-11 Ay)',
+                'name' => '9-11 Ay (Keşif & Pütürlüye Geçiş)',
                 'slug' => '9-11-ay-kesif',
                 'meta' => [
                     'min_month' => 9,
@@ -99,7 +99,7 @@ class AgeGroup {
                 ],
             ],
             [
-                'name' => 'Aile Sofrasına Geçiş (12-24 Ay)',
+                'name' => '12-24 Ay (Aile Sofrasına Geçiş)',
                 'slug' => '12-24-ay-gecis',
                 'meta' => [
                     'min_month' => 12,
@@ -113,7 +113,7 @@ class AgeGroup {
                 ],
             ],
             [
-                'name' => 'Çocuk Gurme (2+ Yaş)',
+                'name' => '2+ Yaş (Çocuk Gurme)',
                 'slug' => '2-yas-ve-uzeri',
                 'meta' => [
                     'min_month' => 24,
@@ -385,5 +385,28 @@ class AgeGroup {
                 'type'        => 'object',
             ],
         ] );
+    }
+
+    /**
+     * Update existing terms with new name format (age/month info first)
+     * This should be run once to migrate existing data
+     */
+    public function update_existing_terms() {
+        $term_updates = [
+            '0-6-ay-sadece-sut' => '0-6 Ay (Hazırlık Evresi)',
+            '6-8-ay-baslangic' => '6-8 Ay (Başlangıç & Tadım)',
+            '9-11-ay-kesif' => '9-11 Ay (Keşif & Pütürlüye Geçiş)',
+            '12-24-ay-gecis' => '12-24 Ay (Aile Sofrasına Geçiş)',
+            '2-yas-ve-uzeri' => '2+ Yaş (Çocuk Gurme)',
+        ];
+        
+        foreach ( $term_updates as $slug => $new_name ) {
+            $term = get_term_by( 'slug', $slug, 'age-group' );
+            if ( $term && ! is_wp_error( $term ) ) {
+                wp_update_term( $term->term_id, 'age-group', [
+                    'name' => $new_name,
+                ] );
+            }
+        }
     }
 }
