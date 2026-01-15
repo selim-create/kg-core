@@ -141,7 +141,7 @@ class WaterCalculator {
             $notes[] = '6-12 ay arası bebekler için su ihtiyacının çoğu anne sütü/mamadan karşılanır';
             $notes[] = 'Ek gıda ile birlikte az miktarda su verilebilir';
             if ( $weather === 'hot' ) {
-                $notes[] = 'Sıcak havalarda %10-20 artış önerilir';
+                $notes[] = 'Sıcak havalarda %15 artış uygulanmıştır';
             }
         } else {
             $notes[] = '12 ay ve üzeri çocuklar için dengeli sıvı alımı önemlidir';

@@ -106,9 +106,7 @@ class FoodTrialController {
 
         // Filter by child_id if provided
         if ( $child_id ) {
-            $all_trials = array_filter( $all_trials, function( $trial ) use ( $child_id ) {
-                return $trial['child_id'] === $child_id;
-            });
+            $all_trials = $this->filter_trials_by_child( $all_trials, $child_id );
         }
 
         // Sort by trial_date descending
@@ -331,9 +329,7 @@ class FoodTrialController {
 
         // Filter by child_id if provided
         if ( $child_id ) {
-            $all_trials = array_filter( $all_trials, function( $trial ) use ( $child_id ) {
-                return $trial['child_id'] === $child_id;
-            });
+            $all_trials = $this->filter_trials_by_child( $all_trials, $child_id );
         }
 
         // Calculate statistics
@@ -385,6 +381,19 @@ class FoodTrialController {
         }
 
         return $date->format( 'Y-m-d' );
+    }
+
+    /**
+     * Filter trials by child ID
+     * 
+     * @param array $trials All trials
+     * @param string $child_id Child ID to filter by
+     * @return array Filtered trials
+     */
+    private function filter_trials_by_child( $trials, $child_id ) {
+        return array_filter( $trials, function( $trial ) use ( $child_id ) {
+            return $trial['child_id'] === $child_id;
+        });
     }
 
     /**

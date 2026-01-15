@@ -126,6 +126,7 @@ class FoodSuitabilityChecker {
         foreach ( self::$hardcoded_rules as $rule_id => $rule ) {
             // Check if query matches keywords
             $matches = false;
+            $matched_keyword = '';
             foreach ( $rule['keywords'] as $keyword ) {
                 if ( strpos( $query_lower, mb_strtolower( $keyword, 'UTF-8' ) ) !== false ) {
                     // Check for exceptions
@@ -143,6 +144,7 @@ class FoodSuitabilityChecker {
                     }
                     
                     $matches = true;
+                    $matched_keyword = $keyword;
                     break;
                 }
             }
@@ -156,7 +158,7 @@ class FoodSuitabilityChecker {
                 return [
                     'status' => 'not_suitable',
                     'status_color' => 'red',
-                    'message' => sprintf( '%s %d aydan önce verilmemelidir', ucfirst( $keyword ), $rule['min_age_months'] ),
+                    'message' => sprintf( '%s %d aydan önce verilmemelidir', ucfirst( $matched_keyword ), $rule['min_age_months'] ),
                     'reason' => $rule['reason'],
                     'recommended_age' => $rule['min_age_months'] . '+ ay',
                 ];
