@@ -175,6 +175,12 @@ class Helper {
      * Decode HTML entities safely
      * Handles double-encoded entities like &amp;amp;
      * 
+     * We run html_entity_decode twice because some WordPress functions
+     * or database imports may double-encode entities. For example:
+     * - First decode: &amp;amp; → &amp;
+     * - Second decode: &amp; → &
+     * This ensures clean output regardless of encoding depth.
+     * 
      * @param string $text Text to decode
      * @return string Decoded text
      */

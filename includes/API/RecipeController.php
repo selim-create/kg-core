@@ -223,17 +223,20 @@ class RecipeController {
 
     /**
      * Get all recipes with pagination and filtering
+     * 
+     * NOTE: API parameter names use hyphens (age-group, diet-type, etc.)
+     * This is consistent with REST API conventions and WordPress taxonomy slugs
      */
     public function get_recipes( $request ) {
         $page = $request->get_param( 'page' ) ?: 1;
         $per_page = $request->get_param( 'per_page' ) ?: 12;
         
-        // Mevcut filtreler
+        // Existing filters (using hyphenated parameter names)
         $age_group = $request->get_param( 'age-group' );
         $diet_type = $request->get_param( 'diet-type' );
         $allergen = $request->get_param( 'allergen' );
         
-        // YENİ FİLTRELER
+        // NEW FILTERS
         $meal_type = $request->get_param( 'meal-type' );
         $special_condition = $request->get_param( 'special-condition' );
         $ingredient = $request->get_param( 'ingredient' );

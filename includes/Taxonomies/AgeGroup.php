@@ -403,9 +403,13 @@ class AgeGroup {
         foreach ( $term_updates as $slug => $new_name ) {
             $term = get_term_by( 'slug', $slug, 'age-group' );
             if ( $term && ! is_wp_error( $term ) ) {
-                wp_update_term( $term->term_id, 'age-group', [
+                $result = wp_update_term( $term->term_id, 'age-group', [
                     'name' => $new_name,
                 ] );
+                
+                if ( is_wp_error( $result ) ) {
+                    error_log( 'KG Core: Failed to update age-group term ' . $slug . ': ' . $result->get_error_message() );
+                }
             }
         }
     }
