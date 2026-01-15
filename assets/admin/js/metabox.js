@@ -308,6 +308,10 @@
                             <input type="hidden" name="kg_ingredients[${index}][ingredient_id]" class="kg-ingredient-id" value="">
                         </div>
                     </div>
+                    <div class="kg-ingredient-note-row" style="margin-top: 8px;">
+                        <label>Not <small>(opsiyonel - kullanıcıya gösterilecek ipucu)</small></label>
+                        <input type="text" name="kg_ingredients[${index}][note]" class="kg-ingredient-note" placeholder="Örn: Oda sıcaklığında olmalı, taze sıkılmış tercih edin" style="width: 100%;">
+                    </div>
                 </div>
             </div>
         `;

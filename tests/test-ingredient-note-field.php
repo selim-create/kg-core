@@ -107,8 +107,41 @@ if (file_exists($metaBoxFile)) {
 }
 echo "\n";
 
-// Test 3: Check RecipeController (should automatically include note)
-echo "3. RecipeController - API Data Preparation\n";
+// Test 3: Check JavaScript template for new ingredient items
+echo "3. JavaScript - getIngredientTemplate() Function\n";
+$jsFile = $baseDir . '/assets/admin/js/metabox.js';
+
+if (file_exists($jsFile)) {
+    echo "   ✓ File exists: metabox.js\n";
+    $passed++;
+    
+    $content = file_get_contents($jsFile);
+    
+    // Check for note field in template
+    if (strpos($content, 'kg-ingredient-note-row') !== false) {
+        echo "   ✓ Note field container in JavaScript template found\n";
+        $passed++;
+    } else {
+        echo "   ✗ Note field container in JavaScript template not found\n";
+        $failed++;
+    }
+    
+    // Check for note input in template
+    if (preg_match('/name="kg_ingredients\[\$\{index\}\]\[note\]"/', $content)) {
+        echo "   ✓ Note input field in JavaScript template found\n";
+        $passed++;
+    } else {
+        echo "   ✗ Note input field in JavaScript template not found\n";
+        $failed++;
+    }
+} else {
+    echo "   ✗ File not found: metabox.js\n";
+    $failed++;
+}
+echo "\n";
+
+// Test 4: Check RecipeController (should automatically include note)
+echo "4. RecipeController - API Data Preparation\n";
 $controllerFile = $baseDir . '/includes/API/RecipeController.php';
 
 if (file_exists($controllerFile)) {
