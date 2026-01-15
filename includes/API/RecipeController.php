@@ -209,7 +209,7 @@ class RecipeController {
             
             // Extended expert data with note and image
             $expert_note = get_post_meta( $post_id, '_kg_expert_note', true );
-            $expert_image = ''; // Gravatar veya custom field kullanılabilir
+            $expert_image = ''; // Gravatar or custom field can be used
             $expert_name = get_post_meta( $post_id, '_kg_expert_name', true );
             if ( ! empty( $expert_name ) ) {
                 // Try to find user by name for avatar
