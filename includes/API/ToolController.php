@@ -281,11 +281,27 @@ class ToolController {
                 return new \WP_Error( 'registration_failed', 'Email and password are required for registration', [ 'status' => 400 ] );
             }
 
+            // Validate email format
+            if ( ! is_email( $email ) ) {
+                return new \WP_Error( 'invalid_email', 'Please provide a valid email address', [ 'status' => 400 ] );
+            }
+
+            // Check if email already exists
+            if ( email_exists( $email ) ) {
+                return new \WP_Error( 'email_exists', 'An account with this email already exists. Please login instead.', [ 'status' => 409 ] );
+            }
+
+            // Validate password strength
+            if ( strlen( $password ) < 8 ) {
+                return new \WP_Error( 'weak_password', 'Password must be at least 8 characters long', [ 'status' => 400 ] );
+            }
+
             // Create user
             $user_id = wp_create_user( $email, $password, $email );
 
             if ( is_wp_error( $user_id ) ) {
-                return new \WP_Error( 'registration_failed', $user_id->get_error_message(), [ 'status' => 400 ] );
+                // Return generic error to avoid exposing system details
+                return new \WP_Error( 'registration_failed', 'Unable to create user account. Please try again.', [ 'status' => 500 ] );
             }
 
             // Set user role
@@ -379,8 +395,22 @@ class ToolController {
             $blw_results = [];
         }
 
+        // Generate UUID - fallback for WordPress < 4.7
+        if ( function_exists( 'wp_generate_uuid4' ) ) {
+            $uuid = wp_generate_uuid4();
+        } else {
+            $uuid = sprintf(
+                '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+                mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
+                mt_rand( 0, 0xffff ),
+                mt_rand( 0, 0x0fff ) | 0x4000,
+                mt_rand( 0, 0x3fff ) | 0x8000,
+                mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff )
+            );
+        }
+
         $result_entry = [
-            'id' => wp_generate_uuid4(),
+            'id' => $uuid,
             'child_id' => $child_id ?: null,
             'score' => $result['score'],
             'result_category' => $result['result']['id'],

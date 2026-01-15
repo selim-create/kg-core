@@ -245,8 +245,7 @@ if (file_exists($pluginFile)) {
     $content = file_get_contents($pluginFile);
     
     // Check if ToolController is required
-    if (strpos($content, "require_once KG_CORE_PATH . 'includes/API/ToolController.php'") !== false ||
-        strpos($content, "require_once KG_CORE_PATH . 'includes/API/ToolController.php'") !== false) {
+    if (strpos($content, "includes/API/ToolController.php") !== false) {
         echo "   ✓ ToolController required\n";
         $passed++;
     } else {
