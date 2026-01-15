@@ -147,6 +147,19 @@ class UserController {
             'callback' => [ $this, 'get_expert_public_profile' ],
             'permission_callback' => '__return_true',
         ]);
+
+        // BLW test results endpoints
+        register_rest_route( 'kg/v1', '/user/blw-results', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_blw_results' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+        ]);
+
+        register_rest_route( 'kg/v1', '/user/children/(?P<child_id>[a-zA-Z0-9-]+)/blw-results', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_child_blw_results' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+        ]);
     }
 
     /**
@@ -1853,5 +1866,72 @@ class UserController {
         $primary_role = $roles[0];
         
         return isset( $role_map[ $primary_role ] ) ? $role_map[ $primary_role ] : ucfirst( $primary_role );
+    }
+
+    /**
+     * Get user's BLW test results
+     */
+    public function get_blw_results( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+        $blw_results = get_user_meta( $user_id, '_kg_blw_results', true );
+
+        if ( ! is_array( $blw_results ) ) {
+            $blw_results = [];
+        }
+
+        // Sort by timestamp (newest first)
+        usort( $blw_results, function( $a, $b ) {
+            return strtotime( $b['timestamp'] ) - strtotime( $a['timestamp'] );
+        });
+
+        return new \WP_REST_Response( $blw_results, 200 );
+    }
+
+    /**
+     * Get BLW test results for a specific child
+     */
+    public function get_child_blw_results( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+        $child_id = $request->get_param( 'child_id' );
+
+        if ( empty( $child_id ) ) {
+            return new \WP_Error( 'missing_child_id', 'Child ID is required', [ 'status' => 400 ] );
+        }
+
+        // Verify child belongs to user
+        $children = get_user_meta( $user_id, '_kg_children', true );
+        if ( ! is_array( $children ) ) {
+            return new \WP_Error( 'no_children', 'No children found', [ 'status' => 404 ] );
+        }
+
+        $child_exists = false;
+        foreach ( $children as $child ) {
+            if ( $child['id'] === $child_id ) {
+                $child_exists = true;
+                break;
+            }
+        }
+
+        if ( ! $child_exists ) {
+            return new \WP_Error( 'child_not_found', 'Child not found or does not belong to user', [ 'status' => 404 ] );
+        }
+
+        // Get BLW results
+        $all_results = get_user_meta( $user_id, '_kg_blw_results', true );
+        if ( ! is_array( $all_results ) ) {
+            $all_results = [];
+        }
+
+        // Filter by child_id
+        $child_results = array_filter( $all_results, function( $result ) use ( $child_id ) {
+            return isset( $result['child_id'] ) && $result['child_id'] === $child_id;
+        });
+
+        // Sort by timestamp (newest first)
+        usort( $child_results, function( $a, $b ) {
+            return strtotime( $b['timestamp'] ) - strtotime( $a['timestamp'] );
+        });
+
+        return new \WP_REST_Response( array_values( $child_results ), 200 );
     }
 }
