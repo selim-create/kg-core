@@ -113,7 +113,7 @@ class GoogleAuth {
             'user_email' => $email,
             'user_pass' => $password,
             'display_name' => $google_data['name'] ?: $username,
-            'role' => 'subscriber',
+            'role' => 'kg_parent',
         ]);
         
         if (is_wp_error($user_id)) {

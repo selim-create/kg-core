@@ -140,6 +140,13 @@ class UserController {
             'callback' => [ $this, 'get_public_profile' ],
             'permission_callback' => '__return_true',
         ]);
+        
+        // Expert public profile endpoint
+        register_rest_route( 'kg/v1', '/expert/public/(?P<username>[a-zA-Z0-9_-]+)', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_expert_public_profile' ],
+            'permission_callback' => '__return_true',
+        ]);
     }
 
     /**
@@ -216,6 +223,10 @@ class UserController {
             return $user_id;
         }
 
+        // Set user role to kg_parent
+        $user = get_user_by( 'id', $user_id );
+        $user->set_role( 'kg_parent' );
+
         if ( ! empty( $name ) ) {
             wp_update_user( [
                 'ID' => $user_id,
@@ -265,13 +276,22 @@ class UserController {
 
         // Also return user role
         $roles = $user->roles;
+        
+        // Check if user is expert
+        $is_expert = \KG_Core\Roles\RoleManager::is_expert( $user->ID );
+        
+        // Determine redirect URL based on role
+        $redirect_url = $is_expert ? '/dashboard/expert' : '/dashboard';
 
         return new \WP_REST_Response( [
             'token' => $token,
             'user_id' => $user->ID,
             'email' => $user->user_email,
             'name' => $user->display_name,
+            'username' => $user->user_login,
             'role' => ! empty( $roles ) ? $roles[0] : 'subscriber',
+            'is_expert' => $is_expert,
+            'redirect_url' => $redirect_url,
         ], 200 );
     }
 
@@ -326,6 +346,7 @@ class UserController {
             'id' => $user->ID,
             'email' => $user->user_email,
             'name' => $user->display_name,
+            'username' => $user->user_login,
             'display_name' => $display_name ?: $user->display_name,
             'parent_role' => $parent_role,
             'avatar_url' => $avatar_url,
@@ -453,11 +474,28 @@ class UserController {
      */
     public function update_profile( $request ) {
         $user_id = $this->get_authenticated_user_id( $request );
+        $user = get_user_by( 'id', $user_id );
+        
+        if ( ! $user ) {
+            return new \WP_Error( 'user_not_found', 'User not found', [ 'status' => 404 ] );
+        }
+        
+        // Check if user is expert
+        $is_expert = \KG_Core\Roles\RoleManager::is_expert( $user_id );
+        
         $name = sanitize_text_field( $request->get_param( 'name' ) );
         $phone = sanitize_text_field( $request->get_param( 'phone' ) );
         $display_name = sanitize_text_field( $request->get_param( 'display_name' ) );
         $parent_role = sanitize_text_field( $request->get_param( 'parent_role' ) );
         $avatar_id = absint( $request->get_param( 'avatar_id' ) );
+        
+        // New fields
+        $gender = sanitize_text_field( $request->get_param( 'gender' ) );
+        $birth_date = sanitize_text_field( $request->get_param( 'birth_date' ) );
+        $biography = sanitize_textarea_field( $request->get_param( 'biography' ) );
+        $social_links = $request->get_param( 'social_links' );
+        $show_email = $request->get_param( 'show_email' );
+        $expertise = $request->get_param( 'expertise' );
 
         if ( $name ) {
             wp_update_user( [
@@ -491,6 +529,74 @@ class UserController {
                 update_user_meta( $user_id, '_kg_avatar_id', $avatar_id );
             } else {
                 return new \WP_Error( 'invalid_avatar_id', 'Invalid avatar ID', [ 'status' => 400 ] );
+            }
+        }
+        
+        // Gender validation
+        if ( $gender !== null && $gender !== '' ) {
+            $allowed_genders = [ 'male', 'female', 'other' ];
+            if ( ! in_array( $gender, $allowed_genders ) ) {
+                return new \WP_Error( 'invalid_gender', 'Gender must be one of: male, female, other', [ 'status' => 400 ] );
+            }
+            update_user_meta( $user_id, '_kg_gender', $gender );
+        }
+        
+        // Birth date validation
+        if ( $birth_date !== null && $birth_date !== '' ) {
+            $birth_date_obj = \DateTime::createFromFormat( 'Y-m-d', $birth_date );
+            $now = new \DateTime();
+            if ( ! $birth_date_obj || $birth_date_obj > $now ) {
+                return new \WP_Error( 'invalid_birth_date', 'Birth date must be in YYYY-MM-DD format and cannot be in the future', [ 'status' => 400 ] );
+            }
+            update_user_meta( $user_id, '_kg_birth_date', $birth_date );
+        }
+        
+        // Biography (experts only)
+        if ( $biography !== null && $biography !== '' ) {
+            if ( ! $is_expert ) {
+                return new \WP_Error( 'not_expert', 'Only experts can set biography', [ 'status' => 403 ] );
+            }
+            update_user_meta( $user_id, '_kg_biography', $biography );
+        }
+        
+        // Social links validation (experts only)
+        if ( $social_links !== null ) {
+            if ( ! $is_expert ) {
+                return new \WP_Error( 'not_expert', 'Only experts can set social links', [ 'status' => 403 ] );
+            }
+            
+            if ( is_array( $social_links ) ) {
+                $allowed_platforms = [ 'instagram', 'twitter', 'linkedin', 'youtube', 'website' ];
+                $sanitized_links = [];
+                
+                foreach ( $social_links as $platform => $url ) {
+                    if ( in_array( $platform, $allowed_platforms ) ) {
+                        $sanitized_links[ $platform ] = esc_url_raw( $url );
+                    }
+                }
+                
+                update_user_meta( $user_id, '_kg_social_links', $sanitized_links );
+            }
+        }
+        
+        // Show email (boolean)
+        if ( $show_email !== null ) {
+            $show_email_bool = filter_var( $show_email, FILTER_VALIDATE_BOOLEAN );
+            update_user_meta( $user_id, '_kg_show_email', $show_email_bool );
+        }
+        
+        // Expertise (experts only)
+        if ( $expertise !== null ) {
+            if ( ! $is_expert ) {
+                return new \WP_Error( 'not_expert', 'Only experts can set expertise', [ 'status' => 403 ] );
+            }
+            
+            if ( is_array( $expertise ) ) {
+                $sanitized_expertise = [];
+                foreach ( $expertise as $item ) {
+                    $sanitized_expertise[] = sanitize_text_field( $item );
+                }
+                update_user_meta( $user_id, '_kg_expertise', $sanitized_expertise );
             }
         }
 
@@ -1016,6 +1122,9 @@ class UserController {
         if ( ! $user ) {
             return new \WP_Error( 'user_not_found', 'User not found', [ 'status' => 404 ] );
         }
+        
+        // Check if user is expert
+        $is_expert = \KG_Core\Roles\RoleManager::is_expert( $user_id );
 
         // Get user meta fields
         $display_name = get_user_meta( $user_id, '_kg_display_name', true );
@@ -1051,22 +1160,46 @@ class UserController {
         // Add user role
         $roles = $user->roles;
         $primary_role = ! empty( $roles ) ? $roles[0] : 'subscriber';
-
-        return new \WP_REST_Response( [
+        
+        // Get new fields
+        $gender = get_user_meta( $user_id, '_kg_gender', true );
+        $birth_date = get_user_meta( $user_id, '_kg_birth_date', true );
+        $show_email = get_user_meta( $user_id, '_kg_show_email', true );
+        
+        // Build base response
+        $response = [
             'id' => $user->ID,
             'email' => $user->user_email,
-            'name' => $user->display_name, // Add name field
+            'name' => $user->display_name,
+            'username' => $user->user_login,
             'display_name' => $display_name ?: $user->display_name,
             'parent_role' => $parent_role,
             'avatar_url' => $avatar_url,
             'children' => $children,
-            'role' => $primary_role, // WordPress role
+            'role' => $primary_role,
             'followed_circles' => $followed_circles,
             'stats' => [
                 'question_count' => $question_count,
                 'comment_count' => $comment_count,
             ],
-        ], 200 );
+            'gender' => $gender ?: '',
+            'birth_date' => $birth_date ?: '',
+            'show_email' => (bool) $show_email,
+            'is_expert' => $is_expert,
+        ];
+        
+        // Add expert-only fields
+        if ( $is_expert ) {
+            $biography = get_user_meta( $user_id, '_kg_biography', true );
+            $social_links = get_user_meta( $user_id, '_kg_social_links', true );
+            $expertise = get_user_meta( $user_id, '_kg_expertise', true );
+            
+            $response['biography'] = $biography ?: '';
+            $response['social_links'] = is_array( $social_links ) ? $social_links : [];
+            $response['expertise'] = is_array( $expertise ) ? $expertise : [];
+        }
+
+        return new \WP_REST_Response( $response, 200 );
     }
 
     /**
@@ -1116,6 +1249,7 @@ class UserController {
         // Build public profile data (NO children, birth_date, or email)
         $public_data = [
             'id' => $user->ID,
+            'username' => $user->user_login,
             'display_name' => $display_name ?: $user->display_name,
             'parent_role' => $parent_role,
             'avatar_url' => $avatar_url,
@@ -1412,5 +1546,306 @@ class UserController {
 
         // Mark as migrated
         update_user_meta( $user_id, '_kg_favorites_migrated', '1' );
+    }
+    
+    /**
+     * Get expert public profile by username
+     * Returns public profile for experts only
+     */
+    public function get_expert_public_profile( $request ) {
+        $username = $request->get_param( 'username' );
+        
+        // Get user by login or slug
+        $user = get_user_by( 'login', $username );
+        if ( ! $user ) {
+            $user = get_user_by( 'slug', $username );
+        }
+
+        if ( ! $user ) {
+            return new \WP_Error( 'user_not_found', 'User not found', [ 'status' => 404 ] );
+        }
+
+        $user_id = $user->ID;
+        
+        // Check if user is expert
+        if ( ! \KG_Core\Roles\RoleManager::is_expert( $user_id ) ) {
+            return new \WP_Error( 'not_expert', 'This profile is not available for non-expert users', [ 'status' => 403 ] );
+        }
+
+        // Get user meta fields
+        $avatar_id = get_user_meta( $user_id, '_kg_avatar_id', true );
+        $biography = get_user_meta( $user_id, '_kg_biography', true );
+        $social_links = get_user_meta( $user_id, '_kg_social_links', true );
+        $expertise = get_user_meta( $user_id, '_kg_expertise', true );
+        $show_email = get_user_meta( $user_id, '_kg_show_email', true );
+        
+        // Get avatar URL
+        $avatar_url = '';
+        if ( $avatar_id ) {
+            $avatar_url = wp_get_attachment_url( $avatar_id );
+        }
+        if ( ! $avatar_url ) {
+            $google_avatar = get_user_meta( $user_id, 'google_avatar', true );
+            $avatar_url = ! empty( $google_avatar ) ? $google_avatar : get_avatar_url( $user_id );
+        }
+
+        // Get statistics
+        $total_recipes = $this->count_user_recipes( $user_id );
+        $total_blog_posts = $this->count_user_blog_posts( $user_id );
+        $total_answers = $this->get_user_answer_count( $user_id );
+        $total_questions = $this->get_user_question_count( $user_id );
+        
+        // Get content
+        $recipes = $this->get_user_recipes( $user_id, 6 );
+        $blog_posts = $this->get_user_blog_posts( $user_id, 6 );
+        $answered_questions = $this->get_user_answered_questions( $user_id, 6 );
+        $asked_questions = $this->get_user_asked_questions( $user_id, 6 );
+        
+        // Get role display name
+        $role_display = $this->get_role_display_name( $user );
+
+        // Build public profile data
+        $public_data = [
+            'id' => $user->ID,
+            'username' => $user->user_login,
+            'display_name' => $user->display_name,
+            'avatar_url' => $avatar_url,
+            'biography' => $biography ?: '',
+            'expertise' => is_array( $expertise ) ? $expertise : [],
+            'social_links' => is_array( $social_links ) ? $social_links : [],
+            'role' => $role_display,
+            'stats' => [
+                'total_recipes' => $total_recipes,
+                'total_blog_posts' => $total_blog_posts,
+                'total_answers' => $total_answers,
+                'total_questions' => $total_questions,
+            ],
+            'recipes' => $recipes,
+            'blog_posts' => $blog_posts,
+            'answered_questions' => $answered_questions,
+            'asked_questions' => $asked_questions,
+        ];
+        
+        // Add email if show_email is enabled
+        if ( $show_email ) {
+            $public_data['email'] = $user->user_email;
+        }
+
+        return new \WP_REST_Response( $public_data, 200 );
+    }
+    
+    /**
+     * Get user's recipes
+     * 
+     * @param int $user_id User ID
+     * @param int $limit Number of recipes to return
+     * @return array Array of recipe data
+     */
+    private function get_user_recipes( $user_id, $limit = 6 ) {
+        $args = [
+            'post_type' => 'recipe',
+            'author' => $user_id,
+            'post_status' => 'publish',
+            'posts_per_page' => $limit,
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ];
+        
+        $query = new \WP_Query( $args );
+        $recipes = [];
+        
+        if ( $query->have_posts() ) {
+            while ( $query->have_posts() ) {
+                $query->the_post();
+                $post = get_post();
+                $recipes[] = $this->format_recipe_card( $post );
+            }
+            wp_reset_postdata();
+        }
+        
+        return $recipes;
+    }
+    
+    /**
+     * Get user's blog posts
+     * 
+     * @param int $user_id User ID
+     * @param int $limit Number of posts to return
+     * @return array Array of post data
+     */
+    private function get_user_blog_posts( $user_id, $limit = 6 ) {
+        $args = [
+            'post_type' => 'post',
+            'author' => $user_id,
+            'post_status' => 'publish',
+            'posts_per_page' => $limit,
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ];
+        
+        $query = new \WP_Query( $args );
+        $posts = [];
+        
+        if ( $query->have_posts() ) {
+            while ( $query->have_posts() ) {
+                $query->the_post();
+                $post = get_post();
+                $posts[] = $this->format_post_card( $post );
+            }
+            wp_reset_postdata();
+        }
+        
+        return $posts;
+    }
+    
+    /**
+     * Get questions answered by user
+     * 
+     * @param int $user_id User ID
+     * @param int $limit Number of questions to return
+     * @return array Array of discussion data
+     */
+    private function get_user_answered_questions( $user_id, $limit = 6 ) {
+        // Get discussion IDs where user has commented
+        $comments = get_comments([
+            'user_id' => $user_id,
+            'post_type' => 'discussion',
+            'status' => 'approve',
+            'number' => $limit * 3, // Get more to account for duplicates
+        ]);
+        
+        $discussion_ids = [];
+        foreach ( $comments as $comment ) {
+            if ( ! in_array( $comment->comment_post_ID, $discussion_ids ) ) {
+                $discussion_ids[] = $comment->comment_post_ID;
+            }
+            if ( count( $discussion_ids ) >= $limit ) {
+                break;
+            }
+        }
+        
+        $discussions = [];
+        foreach ( $discussion_ids as $discussion_id ) {
+            $post = get_post( $discussion_id );
+            if ( $post && $post->post_status === 'publish' ) {
+                $discussions[] = $this->format_discussion_card( $post );
+            }
+        }
+        
+        return $discussions;
+    }
+    
+    /**
+     * Get questions asked by user
+     * 
+     * @param int $user_id User ID
+     * @param int $limit Number of questions to return
+     * @return array Array of discussion data
+     */
+    private function get_user_asked_questions( $user_id, $limit = 6 ) {
+        $args = [
+            'post_type' => 'discussion',
+            'author' => $user_id,
+            'post_status' => 'publish',
+            'posts_per_page' => $limit,
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ];
+        
+        $query = new \WP_Query( $args );
+        $discussions = [];
+        
+        if ( $query->have_posts() ) {
+            while ( $query->have_posts() ) {
+                $query->the_post();
+                $post = get_post();
+                $discussions[] = $this->format_discussion_card( $post );
+            }
+            wp_reset_postdata();
+        }
+        
+        return $discussions;
+    }
+    
+    /**
+     * Count user's recipes
+     * 
+     * @param int $user_id User ID
+     * @return int Number of recipes
+     */
+    private function count_user_recipes( $user_id ) {
+        $args = [
+            'post_type' => 'recipe',
+            'author' => $user_id,
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+        ];
+        
+        $query = new \WP_Query( $args );
+        return $query->found_posts;
+    }
+    
+    /**
+     * Count user's blog posts
+     * 
+     * @param int $user_id User ID
+     * @return int Number of blog posts
+     */
+    private function count_user_blog_posts( $user_id ) {
+        $args = [
+            'post_type' => 'post',
+            'author' => $user_id,
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+        ];
+        
+        $query = new \WP_Query( $args );
+        return $query->found_posts;
+    }
+    
+    /**
+     * Get user's answer count
+     * 
+     * @param int $user_id User ID
+     * @return int Number of answers
+     */
+    private function get_user_answer_count( $user_id ) {
+        $args = [
+            'user_id' => $user_id,
+            'post_type' => 'discussion',
+            'status' => 'approve',
+            'count' => true,
+        ];
+        
+        return get_comments( $args );
+    }
+    
+    /**
+     * Get role display name in Turkish
+     * 
+     * @param WP_User $user User object
+     * @return string Turkish role name
+     */
+    private function get_role_display_name( $user ) {
+        $roles = $user->roles;
+        
+        if ( empty( $roles ) ) {
+            return 'Üye';
+        }
+        
+        $role_map = [
+            'administrator' => 'Yönetici',
+            'editor' => 'Editör',
+            'author' => 'Yazar',
+            'kg_expert' => 'Beslenme Uzmanı',
+            'kg_parent' => 'Ebeveyn',
+            'subscriber' => 'Üye',
+        ];
+        
+        $primary_role = $roles[0];
+        
+        return isset( $role_map[ $primary_role ] ) ? $role_map[ $primary_role ] : ucfirst( $primary_role );
     }
 }
