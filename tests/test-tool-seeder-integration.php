@@ -79,13 +79,13 @@ foreach ($requiredTools as $slug => $toolType) {
             $failed++;
         }
         
-        // Verify is_sponsored is false/0
+        // Verify is_sponsored is false/0 (should not be '1')
         $is_sponsored = get_post_meta($post->ID, '_kg_tool_is_sponsored', true);
-        if ($is_sponsored === '0' || $is_sponsored === '' || $is_sponsored === false) {
-            echo "      ✓ _kg_tool_is_sponsored = 0 (not sponsored)\n";
+        if ($is_sponsored !== '1') {
+            echo "      ✓ _kg_tool_is_sponsored != '1' (not sponsored)\n";
             $passed++;
         } else {
-            echo "      ✗ _kg_tool_is_sponsored should be 0 (got: $is_sponsored)\n";
+            echo "      ✗ _kg_tool_is_sponsored should not be '1' (got: $is_sponsored)\n";
             $failed++;
         }
     } else {

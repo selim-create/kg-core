@@ -8,7 +8,27 @@ class ToolSeeder {
     public function __construct() {
         $this->init_tools_data();
         add_action('admin_menu', [$this, 'add_seeder_page']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
         add_action('wp_ajax_kg_seed_tool', [$this, 'ajax_seed_tool']);
+    }
+    
+    /**
+     * Enqueue admin scripts
+     */
+    public function enqueue_admin_scripts($hook) {
+        // Only load on our seeder page
+        if ($hook !== 'tool_page_kg-tool-seeder') {
+            return;
+        }
+        
+        // Enqueue jQuery (already included in WordPress)
+        wp_enqueue_script('jquery');
+        
+        // Pass data to JavaScript
+        wp_localize_script('jquery', 'kgToolSeeder', [
+            'nonce' => wp_create_nonce('kg_tool_seed'),
+            'ajaxurl' => admin_url('admin-ajax.php'),
+        ]);
     }
     
     /**
@@ -372,11 +392,11 @@ class ToolSeeder {
             function seedSingleTool(slug, mode) {
                 return new Promise((resolve, reject) => {
                     $.ajax({
-                        url: ajaxurl,
+                        url: kgToolSeeder.ajaxurl,
                         type: 'POST',
                         data: {
                             action: 'kg_seed_tool',
-                            nonce: '<?php echo wp_create_nonce("kg_tool_seed"); ?>',
+                            nonce: kgToolSeeder.nonce,
                             slug: slug,
                             mode: mode
                         },
