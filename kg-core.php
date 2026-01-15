@@ -92,6 +92,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/SettingsPage.php' ) ) require_o
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/MigrationPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/MigrationPage.php';
+// Tool Seeder (Araç Oluşturma Sayfası)
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/ToolSeeder.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/ToolSeeder.php';
 // Discussion Admin (Moderasyon Sayfası)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/DiscussionAdmin.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/DiscussionAdmin.php';
 
@@ -181,6 +183,9 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\MigrationPage' ) ) {
         new \KG_Core\Admin\MigrationPage();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\ToolSeeder' ) ) {
+        new \KG_Core\Admin\ToolSeeder();
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\DiscussionAdmin' ) ) {
         new \KG_Core\Admin\DiscussionAdmin();
@@ -483,3 +488,10 @@ add_filter( 'rest_prepare_age-group', 'kg_decode_taxonomy_response', 10, 2 );
 add_filter( 'rest_prepare_meal-type', 'kg_decode_taxonomy_response', 10, 2 );
 add_filter( 'rest_prepare_diet-type', 'kg_decode_taxonomy_response', 10, 2 );
 add_filter( 'rest_prepare_category', 'kg_decode_taxonomy_response', 10, 2 );
+
+// 10. ACTIVATION HOOK - Seed tools on plugin activation
+register_activation_hook( __FILE__, function() {
+    if ( class_exists( '\KG_Core\Admin\ToolSeeder' ) ) {
+        \KG_Core\Admin\ToolSeeder::seed_on_activation();
+    }
+} );
