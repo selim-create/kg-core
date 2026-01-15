@@ -54,6 +54,9 @@ if ( file_exists( KG_CORE_PATH . 'includes/Services/RecipeSEOGenerator.php' ) ) 
 if ( file_exists( KG_CORE_PATH . 'includes/Services/MealPlanGenerator.php' ) ) require_once KG_CORE_PATH . 'includes/Services/MealPlanGenerator.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Services/ShoppingListAggregator.php' ) ) require_once KG_CORE_PATH . 'includes/Services/ShoppingListAggregator.php';
 
+// 2.9. TOOLS DAHİL ET
+if ( file_exists( KG_CORE_PATH . 'includes/Tools/WHOGrowthData.php' ) ) require_once KG_CORE_PATH . 'includes/Tools/WHOGrowthData.php';
+
 // 3. POST TYPE SINIFLARINI DAHİL ET (CPT)
 // Dosyalar mevcutsa dahil et
 if ( file_exists( KG_CORE_PATH . 'includes/PostTypes/Recipe.php' ) ) require_once KG_CORE_PATH . 'includes/PostTypes/Recipe.php';
@@ -113,6 +116,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/DiscussionController.php' ) ) req
 if ( file_exists( KG_CORE_PATH . 'includes/API/ExpertController.php' ) ) require_once KG_CORE_PATH . 'includes/API/ExpertController.php';
 // Meal Plan API Controller
 if ( file_exists( KG_CORE_PATH . 'includes/API/MealPlanController.php' ) ) require_once KG_CORE_PATH . 'includes/API/MealPlanController.php';
+// Percentile API Controller
+if ( file_exists( KG_CORE_PATH . 'includes/API/PercentileController.php' ) ) require_once KG_CORE_PATH . 'includes/API/PercentileController.php';
 
 // 7. SINIFLARI BAŞLAT (INIT HOOK)
 function kg_core_init() {
@@ -185,6 +190,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\DiscussionController' ) ) new \KG_Core\API\DiscussionController();
     if ( class_exists( '\KG_Core\API\ExpertController' ) ) new \KG_Core\API\ExpertController();
     if ( class_exists( '\KG_Core\API\MealPlanController' ) ) new \KG_Core\API\MealPlanController();
+    if ( class_exists( '\KG_Core\API\PercentileController' ) ) new \KG_Core\API\PercentileController();
 }
 add_action( 'plugins_loaded', 'kg_core_init' );
 
