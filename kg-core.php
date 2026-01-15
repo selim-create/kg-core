@@ -489,6 +489,7 @@ function kg_decode_taxonomy_response( $response, $term ) {
 add_filter( 'rest_prepare_age-group', 'kg_decode_taxonomy_response', 10, 2 );
 add_filter( 'rest_prepare_meal-type', 'kg_decode_taxonomy_response', 10, 2 );
 add_filter( 'rest_prepare_diet-type', 'kg_decode_taxonomy_response', 10, 2 );
+add_filter( 'rest_prepare_special-condition', 'kg_decode_taxonomy_response', 10, 2 );
 add_filter( 'rest_prepare_category', 'kg_decode_taxonomy_response', 10, 2 );
 
 // 10. ACTIVATION HOOK - Seed tools on plugin activation
