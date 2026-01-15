@@ -132,7 +132,13 @@ class IngredientController {
     private function prepare_ingredient_data( $post_id, $full_detail = false ) {
         // Use Helper class for HTML entity decoding
         $name = \KG_Core\Utils\Helper::decode_html_entities( get_the_title( $post_id ) );
-        $category = \KG_Core\Utils\Helper::decode_html_entities( get_post_meta( $post_id, '_kg_category', true ) );
+        
+        // Get category from taxonomy instead of meta field
+        $category_terms = wp_get_post_terms( $post_id, 'ingredient-category' );
+        $category = '';
+        if ( !is_wp_error($category_terms) && !empty($category_terms) ) {
+            $category = \KG_Core\Utils\Helper::decode_html_entities( $category_terms[0]->name );
+        }
         
         $data = [
             'id'          => $post_id,
@@ -155,17 +161,7 @@ class IngredientController {
             $prep_methods_raw = get_post_meta( $post_id, '_kg_prep_methods', true );
             $data['prep_methods'] = !empty($prep_methods_raw) ? maybe_unserialize($prep_methods_raw) : [];
             
-            // New fields: prep_methods_list
-            $prep_methods_list_raw = get_post_meta( $post_id, '_kg_prep_methods_list', true );
-            $data['prep_methods_list'] = !empty($prep_methods_list_raw) ? 
-                array_filter(array_map('trim', explode("\n", $prep_methods_list_raw))) : 
-                array();
-            
-            // Prep tips and cooking suggestions
-            $data['prep_tips'] = get_post_meta( $post_id, '_kg_prep_tips', true );
-            $data['cooking_suggestions'] = get_post_meta( $post_id, '_kg_cooking_suggestions', true );
-            
-            // New fields
+            // New fields: prep_by_age
             $prep_by_age_raw = get_post_meta( $post_id, '_kg_prep_by_age', true );
             $data['prep_by_age'] = !empty($prep_by_age_raw) ? maybe_unserialize($prep_by_age_raw) : [];
             
@@ -180,18 +176,8 @@ class IngredientController {
             $data['season'] = get_post_meta( $post_id, '_kg_season', true );
             $data['storage_tips'] = get_post_meta( $post_id, '_kg_storage_tips', true );
             
-            // Nutrition data (existing nutrition fields)
+            // Consolidated Nutrition data (100g per serving - primary source)
             $data['nutrition'] = [
-                'calories' => get_post_meta( $post_id, '_kg_calories', true ),
-                'protein' => get_post_meta( $post_id, '_kg_protein', true ),
-                'carbs' => get_post_meta( $post_id, '_kg_carbs', true ),
-                'fat' => get_post_meta( $post_id, '_kg_fat', true ),
-                'fiber' => get_post_meta( $post_id, '_kg_fiber', true ),
-                'vitamins' => get_post_meta( $post_id, '_kg_vitamins', true ),
-            ];
-            
-            // Nutrition per 100g
-            $data['nutrition_per_100g'] = [
                 'calories' => get_post_meta( $post_id, '_kg_ing_calories_100g', true ),
                 'protein' => get_post_meta( $post_id, '_kg_ing_protein_100g', true ),
                 'carbs' => get_post_meta( $post_id, '_kg_ing_carbs_100g', true ),
@@ -202,10 +188,8 @@ class IngredientController {
                 'minerals' => get_post_meta( $post_id, '_kg_ing_minerals', true ),
             ];
             
-            // Allergen info
+            // Allergen info (simplified - taxonomy-based)
             $data['allergen_info'] = [
-                'is_allergen' => get_post_meta( $post_id, '_kg_is_allergen', true ) === '1',
-                'allergen_type' => get_post_meta( $post_id, '_kg_allergen_type', true ),
                 'cross_contamination_risk' => get_post_meta( $post_id, '_kg_cross_contamination', true ),
                 'allergy_symptoms' => get_post_meta( $post_id, '_kg_allergy_symptoms', true ),
                 'alternative_ingredients' => get_post_meta( $post_id, '_kg_alternatives', true ),

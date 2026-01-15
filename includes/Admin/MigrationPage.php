@@ -3,18 +3,21 @@ namespace KG_Core\Admin;
 
 use KG_Core\Migration\AIRecipeMigrator;
 use KG_Core\Migration\MigrationLogger;
+use KG_Core\Migration\FieldConsolidation;
 
 /**
- * MigrationPage - Admin UI for recipe migration
+ * MigrationPage - Admin UI for recipe migration and field consolidation
  */
 class MigrationPage {
     
     private $migrator;
     private $logger;
+    private $fieldConsolidation;
     
     public function __construct() {
         $this->migrator = new AIRecipeMigrator();
         $this->logger = new MigrationLogger();
+        $this->fieldConsolidation = new FieldConsolidation();
         
         add_action('admin_menu', [$this, 'addMenuPage']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
@@ -25,6 +28,8 @@ class MigrationPage {
         add_action('wp_ajax_kg_migrate_all', [$this, 'ajaxMigrateAll']);
         add_action('wp_ajax_kg_migration_status', [$this, 'ajaxGetStatus']);
         add_action('wp_ajax_kg_clean_test_migrations', [$this, 'ajaxCleanTestMigrations']);
+        add_action('wp_ajax_kg_preview_field_consolidation', [$this, 'ajaxPreviewFieldConsolidation']);
+        add_action('wp_ajax_kg_run_field_consolidation', [$this, 'ajaxRunFieldConsolidation']);
     }
     
     /**
@@ -173,6 +178,42 @@ class MigrationPage {
                     </button>
                 </div>
                 <?php endif; ?>
+            </div>
+            
+            <!-- Ingredient Field Consolidation -->
+            <div class="kg-actions" style="margin-top: 40px; border-top: 3px solid #2271b1; padding-top: 30px;">
+                <h2>🧬 Malzeme (Ingredient) Alan Birleştirme</h2>
+                <p class="description">
+                    Ingredient CPT'daki mükerrer alanları birleştir ve eski verileri yeni formata taşı.
+                    Bu işlem kategori, besin değerleri ve diğer mükerrer alanları temizler.
+                </p>
+                
+                <div class="kg-action-section">
+                    <h3>🔍 Önizleme</h3>
+                    <p>Migrasyon etkilerini görüntüleyin (değişiklik yapmaz).</p>
+                    <button type="button" id="kg-preview-consolidation" class="button button-secondary">
+                        Önizleme Yap
+                    </button>
+                </div>
+                
+                <div id="kg-consolidation-preview" style="display:none; margin: 20px 0; padding: 15px; background: #f0f0f1; border-left: 4px solid #2271b1;">
+                    <!-- Preview results will be inserted here -->
+                </div>
+                
+                <div class="kg-action-section">
+                    <h3>▶️ Migrasyon Çalıştır</h3>
+                    <p class="warning">
+                        <strong>⚠️ Uyarı:</strong> Bu işlem tüm ingredient kayıtlarını güncelleyecek.
+                        Eski alanlar temizlenecek ve veriler yeni alanlara taşınacak.
+                    </p>
+                    <button type="button" id="kg-run-consolidation" class="button button-primary button-large">
+                        🚀 Migrasyon Başlat
+                    </button>
+                </div>
+                
+                <div id="kg-consolidation-result" style="display:none; margin: 20px 0; padding: 15px;">
+                    <!-- Migration results will be inserted here -->
+                </div>
             </div>
             
             <!-- Progress/Result Area -->
@@ -387,5 +428,37 @@ class MigrationPage {
         ]);
         
         return count($testRecipes);
+    }
+    
+    /**
+     * AJAX: Preview field consolidation
+     */
+    public function ajaxPreviewFieldConsolidation() {
+        check_ajax_referer('kg_migration_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Yetkiniz yok.');
+        }
+        
+        $preview = $this->fieldConsolidation->preview();
+        
+        wp_send_json_success($preview);
+    }
+    
+    /**
+     * AJAX: Run field consolidation
+     */
+    public function ajaxRunFieldConsolidation() {
+        check_ajax_referer('kg_migration_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Yetkiniz yok.');
+        }
+        
+        set_time_limit(300); // 5 minutes
+        
+        $results = $this->fieldConsolidation->run();
+        
+        wp_send_json_success($results);
     }
 }
