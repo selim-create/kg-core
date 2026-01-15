@@ -54,7 +54,13 @@ if ( file_exists( KG_CORE_PATH . 'includes/Services/RecipeSEOGenerator.php' ) ) 
 if ( file_exists( KG_CORE_PATH . 'includes/Services/MealPlanGenerator.php' ) ) require_once KG_CORE_PATH . 'includes/Services/MealPlanGenerator.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Services/ShoppingListAggregator.php' ) ) require_once KG_CORE_PATH . 'includes/Services/ShoppingListAggregator.php';
 
-// 2.9. TOOLS DAHİL ET
+// 2.9. SMART ASSISTANT TOOL SERVICES (NEW)
+if ( file_exists( KG_CORE_PATH . 'includes/Services/WaterCalculator.php' ) ) require_once KG_CORE_PATH . 'includes/Services/WaterCalculator.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Services/AllergenPlanner.php' ) ) require_once KG_CORE_PATH . 'includes/Services/AllergenPlanner.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Services/FoodSuitabilityChecker.php' ) ) require_once KG_CORE_PATH . 'includes/Services/FoodSuitabilityChecker.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Services/SolidFoodReadinessChecker.php' ) ) require_once KG_CORE_PATH . 'includes/Services/SolidFoodReadinessChecker.php';
+
+// 2.10. TOOLS DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Tools/WHOGrowthData.php' ) ) require_once KG_CORE_PATH . 'includes/Tools/WHOGrowthData.php';
 
 // 3. POST TYPE SINIFLARINI DAHİL ET (CPT)
@@ -118,6 +124,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/ExpertController.php' ) ) require
 if ( file_exists( KG_CORE_PATH . 'includes/API/MealPlanController.php' ) ) require_once KG_CORE_PATH . 'includes/API/MealPlanController.php';
 // Percentile API Controller
 if ( file_exists( KG_CORE_PATH . 'includes/API/PercentileController.php' ) ) require_once KG_CORE_PATH . 'includes/API/PercentileController.php';
+// Food Trial API Controller (NEW)
+if ( file_exists( KG_CORE_PATH . 'includes/API/FoodTrialController.php' ) ) require_once KG_CORE_PATH . 'includes/API/FoodTrialController.php';
 
 // 7. SINIFLARI BAŞLAT (INIT HOOK)
 function kg_core_init() {
@@ -191,6 +199,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\ExpertController' ) ) new \KG_Core\API\ExpertController();
     if ( class_exists( '\KG_Core\API\MealPlanController' ) ) new \KG_Core\API\MealPlanController();
     if ( class_exists( '\KG_Core\API\PercentileController' ) ) new \KG_Core\API\PercentileController();
+    if ( class_exists( '\KG_Core\API\FoodTrialController' ) ) new \KG_Core\API\FoodTrialController();
 }
 add_action( 'plugins_loaded', 'kg_core_init' );
 
