@@ -303,6 +303,7 @@ class RecipeMetaBox {
         $unit = isset( $ingredient['unit'] ) ? $ingredient['unit'] : 'adet';
         $name = isset( $ingredient['name'] ) ? $ingredient['name'] : '';
         $ingredient_id = isset( $ingredient['ingredient_id'] ) ? $ingredient['ingredient_id'] : '';
+        $note = isset( $ingredient['note'] ) ? $ingredient['note'] : '';
         ?>
         <div class="kg-repeater-item">
             <div class="kg-drag-handle"></div>
@@ -332,6 +333,10 @@ class RecipeMetaBox {
                         <input type="text" name="kg_ingredients[<?php echo $index; ?>][name]" class="kg-ingredient-name" value="<?php echo esc_attr( $name ); ?>" placeholder="Un" autocomplete="off">
                         <input type="hidden" name="kg_ingredients[<?php echo $index; ?>][ingredient_id]" class="kg-ingredient-id" value="<?php echo esc_attr( $ingredient_id ); ?>">
                     </div>
+                </div>
+                <div class="kg-ingredient-note-row" style="margin-top: 8px;">
+                    <label>Not <small>(opsiyonel - kullanıcıya gösterilecek ipucu)</small></label>
+                    <input type="text" name="kg_ingredients[<?php echo $index; ?>][note]" class="kg-ingredient-note" value="<?php echo esc_attr( $note ); ?>" placeholder="Örn: Oda sıcaklığında olmalı, taze sıkılmış tercih edin" style="width: 100%;">
                 </div>
             </div>
         </div>
@@ -451,6 +456,7 @@ class RecipeMetaBox {
                         'unit' => sanitize_text_field( $ingredient['unit'] ),
                         'name' => sanitize_text_field( $ingredient['name'] ),
                         'ingredient_id' => ! empty( $ingredient['ingredient_id'] ) ? intval( $ingredient['ingredient_id'] ) : null,
+                        'note' => isset( $ingredient['note'] ) ? sanitize_text_field( $ingredient['note'] ) : '',
                     ];
                 }
             }
