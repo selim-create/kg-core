@@ -88,6 +88,19 @@ class IngredientGenerator {
             update_post_meta($post_id, '_kg_allergy_risk', sanitize_text_field($data['allergy_risk']));
         }
         
+        // Alerjen bilgileri (opsiyonel - sadece alerjen malzemeler için)
+        if (isset($data['cross_contamination']) && !empty($data['cross_contamination'])) {
+            update_post_meta($post_id, '_kg_cross_contamination', sanitize_text_field($data['cross_contamination']));
+        }
+        
+        if (isset($data['allergy_symptoms']) && !empty($data['allergy_symptoms'])) {
+            update_post_meta($post_id, '_kg_allergy_symptoms', sanitize_textarea_field($data['allergy_symptoms']));
+        }
+        
+        if (isset($data['alternatives']) && !empty($data['alternatives'])) {
+            update_post_meta($post_id, '_kg_alternatives', sanitize_textarea_field($data['alternatives']));
+        }
+        
         if (isset($data['season'])) {
             update_post_meta($post_id, '_kg_season', sanitize_text_field($data['season']));
         }

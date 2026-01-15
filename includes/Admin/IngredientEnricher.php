@@ -5,6 +5,7 @@ class IngredientEnricher {
     public function __construct() {
         add_action('add_meta_boxes', [$this, 'add_enrichment_metabox']);
         add_action('wp_ajax_kg_enrich_ingredient', [$this, 'ajax_enrich_ingredient']);
+        add_action('wp_ajax_kg_full_enrich_ingredient', [$this, 'ajax_full_enrich_ingredient']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
     }
 
@@ -40,15 +41,17 @@ class IngredientEnricher {
                         <li>... ve <?php echo ($missing_count - 5); ?> alan daha</li>
                     <?php endif; ?>
                 </ul>
-                <button type="button" id="kg-enrich-btn" class="button button-primary" style="width: 100%; margin-top: 10px;" data-mode="missing">
-                    🤖 Eksik Alanları Doldur
-                </button>
             <?php else: ?>
                 <p style="color: #00a32a;">✅ Tüm alanlar dolu</p>
-                <button type="button" id="kg-enrich-btn" class="button" style="width: 100%; margin-top: 10px;" data-mode="all">
-                    🔄 Yeniden Oluştur
-                </button>
             <?php endif; ?>
+            
+            <button type="button" id="kg-enrich-missing-btn" class="button button-primary" style="width: 100%; margin-top: 10px;">
+                🤖 Eksik Alanları Doldur
+            </button>
+            <button type="button" id="kg-enrich-all-btn" class="button" style="width: 100%; margin-top: 5px;">
+                ✨ Zenginleştir
+            </button>
+            
             <div id="kg-enrich-status" style="margin-top: 10px;"></div>
         </div>
         <?php
@@ -57,19 +60,37 @@ class IngredientEnricher {
     // Eksik alanları tespit et
     private function get_missing_fields($post_id) {
         $required_fields = [
+            // Temel
             '_kg_start_age' => 'Başlangıç Yaşı',
             '_kg_benefits' => 'Faydaları',
             '_kg_allergy_risk' => 'Alerji Riski',
-            '_kg_season' => 'Mevsim',
-            '_kg_storage_tips' => 'Saklama Koşulları',
+            
+            // Alerjen Bilgileri (opsiyonel - sadece alerjen malzemeler için)
+            '_kg_cross_contamination' => 'Çapraz Bulaşma Riski',
+            '_kg_allergy_symptoms' => 'Alerji Semptomları',
+            '_kg_alternatives' => 'Alternatif Malzemeler',
+            
+            // Besin Değerleri (100g)
+            '_kg_ing_calories_100g' => 'Kalori (100g)',
+            '_kg_ing_protein_100g' => 'Protein (100g)',
+            '_kg_ing_carbs_100g' => 'Karbonhidrat (100g)',
+            '_kg_ing_fat_100g' => 'Yağ (100g)',
+            '_kg_ing_fiber_100g' => 'Lif (100g)',
+            '_kg_ing_sugar_100g' => 'Şeker (100g)',
+            '_kg_ing_vitamins' => 'Vitaminler',
+            '_kg_ing_minerals' => 'Mineraller',
+            
+            // Hazırlama
+            '_kg_prep_methods' => 'Hazırlama Yöntemleri',
             '_kg_preparation_tips' => 'Hazırlama İpuçları',
             '_kg_selection_tips' => 'Seçim İpuçları',
             '_kg_pro_tips' => 'Püf Noktaları',
-            '_kg_prep_methods' => 'Hazırlama Yöntemleri',
             '_kg_prep_by_age' => 'Yaşa Göre Hazırlama',
+            
+            // Diğer
             '_kg_pairings' => 'Uyumlu İkililer',
-            '_kg_ing_calories_100g' => 'Kalori (100g)',
-            '_kg_ing_protein_100g' => 'Protein (100g)',
+            '_kg_season' => 'Mevsim',
+            '_kg_storage_tips' => 'Saklama Koşulları',
             '_kg_faq' => 'SSS',
         ];
 
@@ -99,7 +120,6 @@ class IngredientEnricher {
         }
 
         $post_id = intval($_POST['post_id']);
-        $force_all = isset($_POST['force_all']) && $_POST['force_all'] === 'true';
 
         if (!$post_id) {
             wp_send_json_error(['message' => 'Geçersiz post ID']);
@@ -122,21 +142,75 @@ class IngredientEnricher {
         $updated_fields = [];
         $missing_fields = $this->get_missing_fields($post_id);
 
-        // Sadece eksik alanları güncelle (force_all değilse)
-        if (!$force_all) {
-            foreach ($missing_fields as $key => $label) {
-                $updated = $this->update_single_field($post_id, $key, $ai_data);
-                if ($updated) {
-                    $updated_fields[] = $label;
-                }
+        // Sadece eksik alanları güncelle
+        foreach ($missing_fields as $key => $label) {
+            $updated = $this->update_single_field($post_id, $key, $ai_data);
+            if ($updated) {
+                $updated_fields[] = $label;
             }
-        } else {
-            // Tüm alanları güncelle
-            $updated_fields = $this->update_all_fields($post_id, $ai_data);
         }
 
         wp_send_json_success([
             'message' => count($updated_fields) . ' alan güncellendi',
+            'updated_fields' => $updated_fields
+        ]);
+    }
+    
+    // AJAX: Tüm alanları zenginleştir (Title hariç)
+    public function ajax_full_enrich_ingredient() {
+        check_ajax_referer('kg_enrich_ingredient', 'nonce');
+
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Yetkiniz yok']);
+        }
+
+        $post_id = intval($_POST['post_id']);
+
+        if (!$post_id) {
+            wp_send_json_error(['message' => 'Geçersiz post ID']);
+        }
+
+        $ingredient_name = get_the_title($post_id);
+        
+        // AI Service'i çağır
+        if (!class_exists('\KG_Core\Services\AIService')) {
+            wp_send_json_error(['message' => 'AI Service bulunamadı']);
+        }
+
+        $ai_service = new \KG_Core\Services\AIService();
+        $ai_data = $ai_service->generateIngredientContent($ingredient_name);
+
+        if (is_wp_error($ai_data)) {
+            wp_send_json_error(['message' => $ai_data->get_error_message()]);
+        }
+
+        // Update post content (description) - Title stays the same
+        if (isset($ai_data['content'])) {
+            wp_update_post([
+                'ID' => $post_id,
+                'post_content' => wp_kses_post($ai_data['content']),
+                'post_excerpt' => isset($ai_data['excerpt']) ? sanitize_text_field($ai_data['excerpt']) : ''
+            ]);
+        }
+
+        // Update all meta fields using IngredientGenerator's logic
+        $updated_fields = $this->update_all_fields($post_id, $ai_data);
+
+        // Update RankMath SEO fields
+        if (isset($ai_data['seo'])) {
+            if (!empty($ai_data['seo']['title'])) {
+                update_post_meta($post_id, 'rank_math_title', sanitize_text_field($ai_data['seo']['title']));
+            }
+            if (!empty($ai_data['seo']['description'])) {
+                update_post_meta($post_id, 'rank_math_description', sanitize_text_field($ai_data['seo']['description']));
+            }
+            if (!empty($ai_data['seo']['focus_keyword'])) {
+                update_post_meta($post_id, 'rank_math_focus_keyword', sanitize_text_field($ai_data['seo']['focus_keyword']));
+            }
+        }
+
+        wp_send_json_success([
+            'message' => 'İçerik başarıyla zenginleştirildi',
             'updated_fields' => $updated_fields
         ]);
     }
@@ -152,6 +226,13 @@ class IngredientEnricher {
             '_kg_preparation_tips' => 'preparation_tips',
             '_kg_selection_tips' => 'selection_tips',
             '_kg_pro_tips' => 'pro_tips',
+            
+            // Alerjen bilgileri
+            '_kg_cross_contamination' => 'cross_contamination',
+            '_kg_allergy_symptoms' => 'allergy_symptoms',
+            '_kg_alternatives' => 'alternatives',
+            
+            // Array/JSON alanları
             '_kg_prep_methods' => 'prep_methods',
             '_kg_prep_by_age' => 'prep_by_age',
             '_kg_pairings' => 'pairings',
@@ -194,6 +275,11 @@ class IngredientEnricher {
         // Handle regular fields
         if (isset($mapping[$key]) && isset($ai_data[$mapping[$key]])) {
             $value = $ai_data[$mapping[$key]];
+            
+            // Skip empty allergen fields (normal for non-allergen ingredients)
+            if (in_array($key, ['_kg_cross_contamination', '_kg_allergy_symptoms', '_kg_alternatives']) && empty($value)) {
+                return false;
+            }
             
             // Sanitize based on type
             if (is_array($value)) {
@@ -239,14 +325,15 @@ class IngredientEnricher {
 
         wp_add_inline_script('jquery', "
             jQuery(document).ready(function($) {
-                $('#kg-enrich-btn').on('click', function() {
+                // Eksik Alanları Doldur butonu
+                $('#kg-enrich-missing-btn').on('click', function() {
                     var btn = $(this);
                     var statusDiv = $('#kg-enrich-status');
                     var originalText = btn.text();
-                    var mode = btn.data('mode');
                     
                     btn.prop('disabled', true).text('İşleniyor...');
-                    statusDiv.html('<span style=\"color: #2271b1;\">⏳ AI içerik oluşturuluyor...</span>');
+                    $('#kg-enrich-all-btn').prop('disabled', true);
+                    statusDiv.html('<span style=\"color: #2271b1;\">⏳ Eksik alanlar AI ile doldruluyor...</span>');
                     
                     $.ajax({
                         url: ajaxurl,
@@ -254,21 +341,84 @@ class IngredientEnricher {
                         data: {
                             action: 'kg_enrich_ingredient',
                             nonce: $('#kg_enrich_nonce').val(),
-                            post_id: $('#post_ID').val(),
-                            force_all: mode === 'all' ? 'true' : 'false'
+                            post_id: $('#post_ID').val()
                         },
                         success: function(response) {
-                            if (response.success) {
-                                statusDiv.html('<span style=\"color: #00a32a;\">✅ ' + response.data.message + '</span>');
+                            if (response && response.success && response.data) {
+                                var message = response.data.message || 'Güncellendi';
+                                statusDiv.html('<span style=\"color: #00a32a;\">✅ ' + message + '</span>');
                                 setTimeout(function() { location.reload(); }, 1500);
                             } else {
-                                statusDiv.html('<span style=\"color: #d63638;\">❌ ' + response.data.message + '</span>');
+                                var errorMsg = (response && response.data && response.data.message) ? response.data.message : 'Bilinmeyen hata';
+                                statusDiv.html('<span style=\"color: #d63638;\">❌ ' + errorMsg + '</span>');
                                 btn.prop('disabled', false).text(originalText);
+                                $('#kg-enrich-all-btn').prop('disabled', false);
                             }
                         },
-                        error: function() {
-                            statusDiv.html('<span style=\"color: #d63638;\">❌ Bağlantı hatası</span>');
+                        error: function(xhr, status, error) {
+                            var errorMsg = 'Bağlantı hatası';
+                            if (xhr && xhr.responseText) {
+                                try {
+                                    var resp = JSON.parse(xhr.responseText);
+                                    if (resp.data && resp.data.message) {
+                                        errorMsg = resp.data.message;
+                                    }
+                                } catch (e) {
+                                    // Ignore parse error
+                                }
+                            }
+                            statusDiv.html('<span style=\"color: #d63638;\">❌ ' + errorMsg + '</span>');
                             btn.prop('disabled', false).text(originalText);
+                            $('#kg-enrich-all-btn').prop('disabled', false);
+                        }
+                    });
+                });
+                
+                // Zenginleştir butonu
+                $('#kg-enrich-all-btn').on('click', function() {
+                    var btn = $(this);
+                    var statusDiv = $('#kg-enrich-status');
+                    var originalText = btn.text();
+                    
+                    btn.prop('disabled', true).text('İşleniyor...');
+                    $('#kg-enrich-missing-btn').prop('disabled', true);
+                    statusDiv.html('<span style=\"color: #2271b1;\">⏳ İçerik AI ile zenginleştiriliyor...</span>');
+                    
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'kg_full_enrich_ingredient',
+                            nonce: $('#kg_enrich_nonce').val(),
+                            post_id: $('#post_ID').val()
+                        },
+                        success: function(response) {
+                            if (response && response.success && response.data) {
+                                var message = response.data.message || 'Zenginleştirildi';
+                                statusDiv.html('<span style=\"color: #00a32a;\">✅ ' + message + '</span>');
+                                setTimeout(function() { location.reload(); }, 1500);
+                            } else {
+                                var errorMsg = (response && response.data && response.data.message) ? response.data.message : 'Bilinmeyen hata';
+                                statusDiv.html('<span style=\"color: #d63638;\">❌ ' + errorMsg + '</span>');
+                                btn.prop('disabled', false).text(originalText);
+                                $('#kg-enrich-missing-btn').prop('disabled', false);
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            var errorMsg = 'Bağlantı hatası';
+                            if (xhr && xhr.responseText) {
+                                try {
+                                    var resp = JSON.parse(xhr.responseText);
+                                    if (resp.data && resp.data.message) {
+                                        errorMsg = resp.data.message;
+                                    }
+                                } catch (e) {
+                                    // Ignore parse error
+                                }
+                            }
+                            statusDiv.html('<span style=\"color: #d63638;\">❌ ' + errorMsg + '</span>');
+                            btn.prop('disabled', false).text(originalText);
+                            $('#kg-enrich-missing-btn').prop('disabled', false);
                         }
                     });
                 });
