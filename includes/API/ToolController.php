@@ -315,10 +315,58 @@ class ToolController {
                 ] );
             }
 
+            // Create child profile if child_name provided
+            $child_name = sanitize_text_field( $request->get_param( 'child_name' ) );
+            $child_birth_date = sanitize_text_field( $request->get_param( 'child_birth_date' ) );
+            $created_child_id = null;
+            
+            if ( ! empty( $child_name ) ) {
+                $children = get_user_meta( $user_id, '_kg_children', true );
+                if ( ! is_array( $children ) ) {
+                    $children = [];
+                }
+                
+                // Generate UUID for child
+                if ( function_exists( 'wp_generate_uuid4' ) ) {
+                    $created_child_id = wp_generate_uuid4();
+                } else {
+                    $created_child_id = sprintf(
+                        '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+                        mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
+                        mt_rand( 0, 0xffff ),
+                        mt_rand( 0, 0x0fff ) | 0x4000,
+                        mt_rand( 0, 0x3fff ) | 0x8000,
+                        mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff )
+                    );
+                }
+
+                $new_child = [
+                    'id' => $created_child_id,
+                    'name' => $child_name,
+                    'birth_date' => $child_birth_date ?: '',
+                    'gender' => 'unspecified',
+                    'allergies' => [],
+                    'feeding_style' => 'mixed',
+                    'created_at' => current_time( 'c' ),
+                ];
+
+                $children[] = $new_child;
+                update_user_meta( $user_id, '_kg_children', $children );
+                
+                // Use created child_id for BLW result
+                $child_id = $created_child_id;
+            }
+
             // Generate token
             $new_token = JWTHandler::generate_token( $user_id );
             $result['token'] = $new_token;
             $result['user_id'] = $user_id;
+            
+            // Include created child info in response
+            if ( $created_child_id ) {
+                $result['child_id'] = $created_child_id;
+                $result['child_name'] = $child_name;
+            }
         }
 
         // Save result if user is authenticated
