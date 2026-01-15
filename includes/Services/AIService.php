@@ -68,7 +68,7 @@ class AIService {
             'title' => 'Malzeme Adı (Türkçe)',
             'excerpt' => 'SEO için 150-160 karakter meta açıklama',
             'content' => '3-4 paragraf detaylı açıklama (HTML <p> etiketleri ile)',
-            'category' => 'Meyveler|Sebzeler|Proteinler|Tahıllar|Süt Ürünleri|Baklagiller|Yağlar|Sıvılar|Baharatlar|Özel Ürünler',
+            'category' => 'Meyveler|Sebzeler|Proteinler|Tahıllar|Süt Ürünleri|Baklagiller|Yağlar|Sıvılar|Baharatlar|Özel Ürünler (Bu alan ingredient-category taxonomy olarak atanacak)',
             'start_age' => 6,
             'benefits' => 'Sağlık faydaları detaylı açıklama (HTML formatında)',
             'allergy_risk' => 'Düşük|Orta|Yüksek',
@@ -100,13 +100,16 @@ class AIService {
                 ['emoji' => '🥛', 'name' => 'Yoğurt']
             ],
             
+            // Besin Değerleri (100g başına)
             'nutrition' => [
-                'calories' => '100g için kalori değeri',
-                'protein' => 'gram cinsinden protein',
-                'carbs' => 'gram cinsinden karbonhidrat',
-                'fat' => 'gram cinsinden yağ',
-                'fiber' => 'gram cinsinden lif',
-                'vitamins' => 'A, C, D, E, K vb.'
+                'calories' => '100g için kalori değeri (sayı)',
+                'protein' => '100g için gram cinsinden protein (sayı)',
+                'carbs' => '100g için gram cinsinden karbonhidrat (sayı)',
+                'fat' => '100g için gram cinsinden yağ (sayı)',
+                'fiber' => '100g için gram cinsinden lif (sayı)',
+                'sugar' => '100g için gram cinsinden şeker (sayı)',
+                'vitamins' => 'Başlıca vitaminler (örn: A, C, K)',
+                'minerals' => 'Başlıca mineraller (örn: Potasyum, Kalsiyum)'
             ],
             
             'faq' => [
@@ -132,8 +135,9 @@ class AIService {
         $prompt .= "1. 'pairings' alanını MUTLAKA 4-6 uyumlu malzeme ile doldur. Gerçekten bu malzeme ile iyi giden besinleri yaz.\n";
         $prompt .= "2. 'seo' alanındaki 'focus_keyword' malzeme adını içermeli.\n";
         $prompt .= "3. 'prep_by_age' alanında her yaş grubu için spesifik ve pratik tavsiyeler ver.\n";
-        $prompt .= "4. Tüm içerik Türkçe olmalı, sadece emoji'ler evrensel.\n";
-        $prompt .= "5. Bilimsel ve güvenilir bilgiler ver, abartılı ifadelerden kaçın.\n";
+        $prompt .= "4. 'nutrition' alanındaki tüm değerler 100g başına olmalı.\n";
+        $prompt .= "5. Tüm içerik Türkçe olmalı, sadece emoji'ler evrensel.\n";
+        $prompt .= "6. Bilimsel ve güvenilir bilgiler ver, abartılı ifadelerden kaçın.\n";
         
         return $prompt;
     }

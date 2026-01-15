@@ -80,10 +80,6 @@ class IngredientGenerator {
             update_post_meta($post_id, '_kg_start_age', intval($data['start_age']));
         }
         
-        if (isset($data['category'])) {
-            update_post_meta($post_id, '_kg_category', sanitize_text_field($data['category']));
-        }
-        
         if (isset($data['benefits'])) {
             update_post_meta($post_id, '_kg_benefits', wp_kses_post($data['benefits']));
         }
@@ -146,27 +142,33 @@ class IngredientGenerator {
             update_post_meta($post_id, '_kg_pairings', $sanitized_pairings);
         }
         
-        // Nutrition
+        // Nutrition (100g per serving format)
         if (isset($data['nutrition']) && is_array($data['nutrition'])) {
             $nutrition = $data['nutrition'];
             
             if (isset($nutrition['calories'])) {
-                update_post_meta($post_id, '_kg_calories', sanitize_text_field($nutrition['calories']));
+                update_post_meta($post_id, '_kg_ing_calories_100g', sanitize_text_field($nutrition['calories']));
             }
             if (isset($nutrition['protein'])) {
-                update_post_meta($post_id, '_kg_protein', sanitize_text_field($nutrition['protein']));
+                update_post_meta($post_id, '_kg_ing_protein_100g', sanitize_text_field($nutrition['protein']));
             }
             if (isset($nutrition['carbs'])) {
-                update_post_meta($post_id, '_kg_carbs', sanitize_text_field($nutrition['carbs']));
+                update_post_meta($post_id, '_kg_ing_carbs_100g', sanitize_text_field($nutrition['carbs']));
             }
             if (isset($nutrition['fat'])) {
-                update_post_meta($post_id, '_kg_fat', sanitize_text_field($nutrition['fat']));
+                update_post_meta($post_id, '_kg_ing_fat_100g', sanitize_text_field($nutrition['fat']));
             }
             if (isset($nutrition['fiber'])) {
-                update_post_meta($post_id, '_kg_fiber', sanitize_text_field($nutrition['fiber']));
+                update_post_meta($post_id, '_kg_ing_fiber_100g', sanitize_text_field($nutrition['fiber']));
+            }
+            if (isset($nutrition['sugar'])) {
+                update_post_meta($post_id, '_kg_ing_sugar_100g', sanitize_text_field($nutrition['sugar']));
             }
             if (isset($nutrition['vitamins'])) {
-                update_post_meta($post_id, '_kg_vitamins', sanitize_text_field($nutrition['vitamins']));
+                update_post_meta($post_id, '_kg_ing_vitamins', sanitize_text_field($nutrition['vitamins']));
+            }
+            if (isset($nutrition['minerals'])) {
+                update_post_meta($post_id, '_kg_ing_minerals', sanitize_text_field($nutrition['minerals']));
             }
         }
         

@@ -92,6 +92,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/ToolSponsorMetaBox.php' ) ) req
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/SettingsPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/SettingsPage.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientEnricher.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/IngredientEnricher.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/MigrationPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/MigrationPage.php';
 // Tool Seeder (Araç Oluşturma Sayfası)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/ToolSeeder.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/ToolSeeder.php';
@@ -99,6 +100,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/ToolSeeder.php' ) ) require_onc
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/DiscussionAdmin.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/DiscussionAdmin.php';
 
 // 5.6. MIGRATION SINIFLARINI DAHİL ET
+if ( file_exists( KG_CORE_PATH . 'includes/Migration/FieldConsolidation.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/FieldConsolidation.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/ContentParser.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/ContentParser.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/IngredientParser.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/IngredientParser.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/AgeGroupMapper.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/AgeGroupMapper.php';
@@ -182,6 +184,9 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\AIEnrichButton' ) ) {
         new \KG_Core\Admin\AIEnrichButton();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\IngredientEnricher' ) ) {
+        new \KG_Core\Admin\IngredientEnricher();
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\MigrationPage' ) ) {
         new \KG_Core\Admin\MigrationPage();

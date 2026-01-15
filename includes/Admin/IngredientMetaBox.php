@@ -54,7 +54,6 @@ class IngredientMetaBox {
             }
         }
         
-        $category = get_post_meta( $post->ID, '_kg_category', true );
         $benefits = get_post_meta( $post->ID, '_kg_benefits', true );
         $allergy_risk = get_post_meta( $post->ID, '_kg_allergy_risk', true );
         $season = get_post_meta( $post->ID, '_kg_season', true );
@@ -62,14 +61,6 @@ class IngredientMetaBox {
         $selection_tips = get_post_meta( $post->ID, '_kg_selection_tips', true );
         $pro_tips = get_post_meta( $post->ID, '_kg_pro_tips', true );
         $preparation_tips = get_post_meta( $post->ID, '_kg_preparation_tips', true );
-        
-        // Nutrition values
-        $calories = get_post_meta( $post->ID, '_kg_calories', true );
-        $protein = get_post_meta( $post->ID, '_kg_protein', true );
-        $carbs = get_post_meta( $post->ID, '_kg_carbs', true );
-        $fat = get_post_meta( $post->ID, '_kg_fat', true );
-        $fiber = get_post_meta( $post->ID, '_kg_fiber', true );
-        $vitamins = get_post_meta( $post->ID, '_kg_vitamins', true );
         
         // Get all allergen terms
         $allergen_terms = get_terms( [
@@ -93,18 +84,7 @@ class IngredientMetaBox {
                 </label>
             </p>
             
-            <p>
-                <label for="kg_category"><strong>Kategori:</strong></label><br>
-                <select id="kg_category" name="kg_category" style="width:100%;">
-                    <option value="">Seçiniz</option>
-                    <option value="Meyveler" <?php selected( $category, 'Meyveler' ); ?>>🍎 Meyveler</option>
-                    <option value="Sebzeler" <?php selected( $category, 'Sebzeler' ); ?>>🥦 Sebzeler</option>
-                    <option value="Proteinler" <?php selected( $category, 'Proteinler' ); ?>>🍗 Proteinler</option>
-                    <option value="Tahıllar" <?php selected( $category, 'Tahıllar' ); ?>>🌾 Tahıllar</option>
-                    <option value="Süt Ürünleri" <?php selected( $category, 'Süt Ürünleri' ); ?>>🥛 Süt Ürünleri</option>
-                </select>
-            </p>
-            
+
             <p>
                 <label for="kg_start_age"><strong>Başlangıç Yaşı (Ay):</strong></label><br>
                 <select id="kg_start_age" name="kg_start_age" style="width:100%;">
@@ -132,15 +112,6 @@ class IngredientMetaBox {
 
             <h3>Alerjen Bilgileri</h3>
             <div style="background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 4px;">
-                <p>
-                    <label for="kg_is_allergen"><strong>Alerjen mi?:</strong></label>
-                    <input type="checkbox" id="kg_is_allergen" name="kg_is_allergen" value="1" <?php checked( get_post_meta( $post->ID, '_kg_is_allergen', true ), 1 ); ?>>
-                </p>
-                <p>
-                    <label for="kg_allergen_type"><strong>Alerjen Tipi:</strong></label><br>
-                    <input type="text" id="kg_allergen_type" name="kg_allergen_type" value="<?php echo esc_attr( get_post_meta( $post->ID, '_kg_allergen_type', true ) ); ?>" style="width:100%;">
-                    <small>Örnek: Süt, Yumurta, Gluten, Fındık vb.</small>
-                </p>
                 <p>
                     <label for="kg_cross_contamination"><strong>Çapraz Bulaşma Riski:</strong></label><br>
                     <input type="text" id="kg_cross_contamination" name="kg_cross_contamination" value="<?php echo esc_attr( get_post_meta( $post->ID, '_kg_cross_contamination', true ) ); ?>" style="width:100%;">
@@ -215,35 +186,6 @@ class IngredientMetaBox {
                 </p>
             </div>
 
-            <h3>Besin Değerleri (Genel - Mevcut Sistem)</h3>
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-                <p>
-                    <label for="kg_calories"><strong>Kalori (kcal):</strong></label><br>
-                    <input type="text" id="kg_calories" name="kg_calories" value="<?php echo esc_attr( $calories ); ?>" style="width:100%;">
-                </p>
-                <p>
-                    <label for="kg_protein"><strong>Protein (g):</strong></label><br>
-                    <input type="text" id="kg_protein" name="kg_protein" value="<?php echo esc_attr( $protein ); ?>" style="width:100%;">
-                </p>
-                <p>
-                    <label for="kg_carbs"><strong>Karbonhidrat (g):</strong></label><br>
-                    <input type="text" id="kg_carbs" name="kg_carbs" value="<?php echo esc_attr( $carbs ); ?>" style="width:100%;">
-                </p>
-                <p>
-                    <label for="kg_fat"><strong>Yağ (g):</strong></label><br>
-                    <input type="text" id="kg_fat" name="kg_fat" value="<?php echo esc_attr( $fat ); ?>" style="width:100%;">
-                </p>
-                <p>
-                    <label for="kg_fiber"><strong>Lif (g):</strong></label><br>
-                    <input type="text" id="kg_fiber" name="kg_fiber" value="<?php echo esc_attr( $fiber ); ?>" style="width:100%;">
-                </p>
-                <p>
-                    <label for="kg_vitamins"><strong>Vitaminler:</strong></label><br>
-                    <input type="text" id="kg_vitamins" name="kg_vitamins" value="<?php echo esc_attr( $vitamins ); ?>" style="width:100%;">
-                    <small>Örnek: A, C, D, E, K</small>
-                </p>
-            </div>
-
             <h3>Faydalar ve Kullanım</h3>
             <p>
                 <label for="kg_benefits"><strong>Faydaları:</strong></label><br>
@@ -260,24 +202,6 @@ class IngredientMetaBox {
                 <small>Örnek: Püre, Haşlama, Buhar, Fırında</small>
             </p>
             
-            <p>
-                <label for="kg_prep_methods_list"><strong>Hazırlama Yöntemleri Listesi (Her satıra bir tane - API için):</strong></label><br>
-                <textarea id="kg_prep_methods_list" name="kg_prep_methods_list" rows="4" style="width:100%;"><?php echo esc_textarea( get_post_meta( $post->ID, '_kg_prep_methods_list', true ) ); ?></textarea>
-                <small>Örnek: Buharda pişirme (en sağlıklı)<br>Haşlama<br>Fırında kavurma</small>
-            </p>
-
-            <p>
-                <label for="kg_prep_tips"><strong>Hazırlama İpuçları:</strong></label><br>
-                <textarea id="kg_prep_tips" name="kg_prep_tips" rows="3" style="width:100%;"><?php echo esc_textarea( get_post_meta( $post->ID, '_kg_prep_tips', true ) ); ?></textarea>
-                <small>Malzemeyi bebeklere hazırlarken dikkat edilmesi gerekenler</small>
-            </p>
-            
-            <p>
-                <label for="kg_cooking_suggestions"><strong>Pişirme Önerileri:</strong></label><br>
-                <textarea id="kg_cooking_suggestions" name="kg_cooking_suggestions" rows="3" style="width:100%;"><?php echo esc_textarea( get_post_meta( $post->ID, '_kg_cooking_suggestions', true ) ); ?></textarea>
-                <small>Bu malzeme ile ilgili özel pişirme önerileri</small>
-            </p>
-
             <p>
                 <label for="kg_preparation_tips"><strong>Hazırlama İpuçları:</strong></label><br>
                 <textarea id="kg_preparation_tips" name="kg_preparation_tips" rows="3" style="width:100%;"><?php echo esc_textarea( $preparation_tips ); ?></textarea>
@@ -369,10 +293,6 @@ class IngredientMetaBox {
         if ( isset( $_POST['kg_start_age'] ) ) {
             update_post_meta( $post_id, '_kg_start_age', sanitize_text_field( $_POST['kg_start_age'] ) );
         }
-        
-        if ( isset( $_POST['kg_category'] ) ) {
-            update_post_meta( $post_id, '_kg_category', sanitize_text_field( $_POST['kg_category'] ) );
-        }
 
         if ( isset( $_POST['kg_allergy_risk'] ) ) {
             update_post_meta( $post_id, '_kg_allergy_risk', sanitize_text_field( $_POST['kg_allergy_risk'] ) );
@@ -385,26 +305,6 @@ class IngredientMetaBox {
         } else {
             // If no allergens selected, clear the taxonomy
             wp_set_post_terms( $post_id, [], 'allergen' );
-        }
-
-        // Save nutrition values
-        if ( isset( $_POST['kg_calories'] ) ) {
-            update_post_meta( $post_id, '_kg_calories', sanitize_text_field( $_POST['kg_calories'] ) );
-        }
-        if ( isset( $_POST['kg_protein'] ) ) {
-            update_post_meta( $post_id, '_kg_protein', sanitize_text_field( $_POST['kg_protein'] ) );
-        }
-        if ( isset( $_POST['kg_carbs'] ) ) {
-            update_post_meta( $post_id, '_kg_carbs', sanitize_text_field( $_POST['kg_carbs'] ) );
-        }
-        if ( isset( $_POST['kg_fat'] ) ) {
-            update_post_meta( $post_id, '_kg_fat', sanitize_text_field( $_POST['kg_fat'] ) );
-        }
-        if ( isset( $_POST['kg_fiber'] ) ) {
-            update_post_meta( $post_id, '_kg_fiber', sanitize_text_field( $_POST['kg_fiber'] ) );
-        }
-        if ( isset( $_POST['kg_vitamins'] ) ) {
-            update_post_meta( $post_id, '_kg_vitamins', sanitize_text_field( $_POST['kg_vitamins'] ) );
         }
         
         // Save nutrition per 100g fields
@@ -434,12 +334,6 @@ class IngredientMetaBox {
         }
         
         // Save allergen info fields
-        $is_allergen = isset( $_POST['kg_is_allergen'] ) ? '1' : '0';
-        update_post_meta( $post_id, '_kg_is_allergen', $is_allergen );
-        
-        if ( isset( $_POST['kg_allergen_type'] ) ) {
-            update_post_meta( $post_id, '_kg_allergen_type', sanitize_text_field( $_POST['kg_allergen_type'] ) );
-        }
         if ( isset( $_POST['kg_cross_contamination'] ) ) {
             update_post_meta( $post_id, '_kg_cross_contamination', sanitize_text_field( $_POST['kg_cross_contamination'] ) );
         }
@@ -448,19 +342,6 @@ class IngredientMetaBox {
         }
         if ( isset( $_POST['kg_alternatives'] ) ) {
             update_post_meta( $post_id, '_kg_alternatives', sanitize_textarea_field( $_POST['kg_alternatives'] ) );
-        }
-        
-        // Save prep methods list
-        if ( isset( $_POST['kg_prep_methods_list'] ) ) {
-            update_post_meta( $post_id, '_kg_prep_methods_list', sanitize_textarea_field( $_POST['kg_prep_methods_list'] ) );
-        }
-        
-        // Save prep tips and cooking suggestions
-        if ( isset( $_POST['kg_prep_tips'] ) ) {
-            update_post_meta( $post_id, '_kg_prep_tips', sanitize_textarea_field( $_POST['kg_prep_tips'] ) );
-        }
-        if ( isset( $_POST['kg_cooking_suggestions'] ) ) {
-            update_post_meta( $post_id, '_kg_cooking_suggestions', sanitize_textarea_field( $_POST['kg_cooking_suggestions'] ) );
         }
 
         // Save benefits
