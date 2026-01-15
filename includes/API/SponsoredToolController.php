@@ -311,7 +311,7 @@ class SponsoredToolController {
         // Get recommendations based on AQI and child conditions
         $recommendations = $this->get_air_quality_recommendations( $aqi, $has_newborn, $respiratory_issues );
 
-        $tool = $this->get_tool_by_slug( 'air-quality-guide' );
+        $tool = $this->get_tool_by_slug( 'air-quality' );
         $sponsor_data = ! is_wp_error( $tool ) ? $this->get_sponsor_data( $tool->ID ) : null;
 
         $result = [
