@@ -77,6 +77,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/Allergen.php' ) ) require_
 if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/DietType.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/DietType.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/MealType.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/MealType.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/IngredientCategory.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/IngredientCategory.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/SpecialCondition.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/SpecialCondition.php';
 // Community Circle (Çemberler) Taxonomy
 if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/CommunityCircle.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/CommunityCircle.php';
 
@@ -152,6 +153,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\Taxonomies\DietType' ) ) new \KG_Core\Taxonomies\DietType();
     if ( class_exists( '\KG_Core\Taxonomies\MealType' ) ) new \KG_Core\Taxonomies\MealType();
     if ( class_exists( '\KG_Core\Taxonomies\IngredientCategory' ) ) new \KG_Core\Taxonomies\IngredientCategory();
+    if ( class_exists( '\KG_Core\Taxonomies\SpecialCondition' ) ) new \KG_Core\Taxonomies\SpecialCondition();
     if ( class_exists( '\KG_Core\Taxonomies\CommunityCircle' ) ) new \KG_Core\Taxonomies\CommunityCircle();
 
     // Admin Meta Boxes (Sadece Admin panelinde çalışsın)
@@ -487,6 +489,7 @@ function kg_decode_taxonomy_response( $response, $term ) {
 add_filter( 'rest_prepare_age-group', 'kg_decode_taxonomy_response', 10, 2 );
 add_filter( 'rest_prepare_meal-type', 'kg_decode_taxonomy_response', 10, 2 );
 add_filter( 'rest_prepare_diet-type', 'kg_decode_taxonomy_response', 10, 2 );
+add_filter( 'rest_prepare_special-condition', 'kg_decode_taxonomy_response', 10, 2 );
 add_filter( 'rest_prepare_category', 'kg_decode_taxonomy_response', 10, 2 );
 
 // 10. ACTIVATION HOOK - Seed tools on plugin activation

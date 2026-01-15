@@ -106,19 +106,75 @@ class RecipeController {
         // Use Helper class for HTML entity decoding
         $title = \KG_Core\Utils\Helper::decode_html_entities( get_the_title( $post_id ) );
         
+        // Age group bilgisini detaylı al (renk kodu dahil)
+        $age_group_terms = wp_get_post_terms( $post_id, 'age-group', ['fields' => 'all'] );
+        $age_group = '';
+        $age_group_color = '';
+        if ( ! empty( $age_group_terms ) && ! is_wp_error( $age_group_terms ) ) {
+            $first_term = $age_group_terms[0];
+            $age_group = \KG_Core\Utils\Helper::decode_html_entities( $first_term->name );
+            $age_group_color = get_term_meta( $first_term->term_id, '_kg_color_code', true );
+        }
+        
+        // Meal type taxonomy'den al
+        $meal_type_terms = wp_get_post_terms( $post_id, 'meal-type', ['fields' => 'names'] );
+        $meal_type = ! empty( $meal_type_terms ) && ! is_wp_error( $meal_type_terms ) 
+            ? \KG_Core\Utils\Helper::decode_html_entities( $meal_type_terms[0] ) 
+            : '';
+        
+        // Diet types
+        $diet_type_terms = wp_get_post_terms( $post_id, 'diet-type', ['fields' => 'names'] );
+        $diet_types = [];
+        if ( ! empty( $diet_type_terms ) && ! is_wp_error( $diet_type_terms ) ) {
+            foreach ( $diet_type_terms as $dt ) {
+                $diet_types[] = \KG_Core\Utils\Helper::decode_html_entities( $dt );
+            }
+        }
+        
+        // Author bilgisi
+        $post = get_post( $post_id );
+        $author_id = $post->post_author;
+        $author_data = null;
+        if ( $author_id ) {
+            $author = get_userdata( $author_id );
+            if ( $author ) {
+                $author_data = [
+                    'id' => $author_id,
+                    'name' => $author->display_name,
+                    'avatar' => get_avatar_url( $author_id, ['size' => 48] ),
+                ];
+            }
+        }
+        
+        // Expert bilgisi (her zaman döndür, sadece full_detail'de değil)
+        $expert_data = [
+            'name' => get_post_meta( $post_id, '_kg_expert_name', true ),
+            'title' => get_post_meta( $post_id, '_kg_expert_title', true ),
+            'approved' => get_post_meta( $post_id, '_kg_expert_approved', true ) === '1',
+        ];
+        
         $data = [
-            'id'            => $post_id,
-            'title'         => $title,
-            'slug'          => get_post_field( 'post_name', $post_id ),
-            'excerpt'       => get_the_excerpt( $post_id ),
-            'image'         => get_the_post_thumbnail_url( $post_id, 'large' ),
-            'prep_time'     => $prep_time,
-            'ingredients'   => $ingredients,
-            'instructions'  => $instructions,
-            'age_groups'    => wp_get_post_terms( $post_id, 'age-group', ['fields' => 'names'] ),
-            'allergens'     => wp_get_post_terms( $post_id, 'allergen', ['fields' => 'names'] ),
-            'diet_types'    => wp_get_post_terms( $post_id, 'diet-type', ['fields' => 'names'] ),
-            'is_featured'   => get_post_meta( $post_id, '_kg_is_featured', true ) === '1',
+            'id'              => $post_id,
+            'title'           => $title,
+            'slug'            => get_post_field( 'post_name', $post_id ),
+            'excerpt'         => get_the_excerpt( $post_id ),
+            'image'           => get_the_post_thumbnail_url( $post_id, 'large' ),
+            'prep_time'       => $prep_time,
+            'ingredients'     => $ingredients,
+            'instructions'    => $instructions,
+            
+            // YENİ ALANLAR (Card görünümü için)
+            'age_group'       => $age_group,
+            'age_group_color' => $age_group_color,
+            'meal_type'       => $meal_type,
+            'diet_types'      => $diet_types,
+            'author'          => $author_data,
+            'expert'          => $expert_data,
+            
+            // Mevcut alanlar
+            'age_groups'      => wp_get_post_terms( $post_id, 'age-group', ['fields' => 'names'] ),
+            'allergens'       => wp_get_post_terms( $post_id, 'allergen', ['fields' => 'names'] ),
+            'is_featured'     => get_post_meta( $post_id, '_kg_is_featured', true ) === '1',
         ];
 
         // Add full details if requested
@@ -139,7 +195,6 @@ class RecipeController {
             ];
             
             // New fields as per requirements
-            $data['meal_type'] = get_post_meta( $post_id, '_kg_meal_type', true );
             $data['cook_time'] = get_post_meta( $post_id, '_kg_cook_time', true );
             $data['serving_size'] = get_post_meta( $post_id, '_kg_serving_size', true );
             $data['difficulty'] = get_post_meta( $post_id, '_kg_difficulty', true );
@@ -151,22 +206,11 @@ class RecipeController {
             $substitutes_raw = get_post_meta( $post_id, '_kg_substitutes', true );
             $data['substitutes'] = !empty($substitutes_raw) ? maybe_unserialize($substitutes_raw) : [];
             
-            $data['expert'] = [
-                'name'     => get_post_meta( $post_id, '_kg_expert_name', true ),
-                'title'    => get_post_meta( $post_id, '_kg_expert_title', true ),
-                'approved' => get_post_meta( $post_id, '_kg_expert_approved', true ) === '1',
-            ];
-            
             $data['related_recipes'] = $this->get_related_recipes( $post_id );
             $data['cross_sell'] = $this->get_cross_sell_suggestion( $post_id );
             
             // Add SEO data
             $data['seo'] = $this->get_seo_data( $post_id );
-        } else {
-            $data['expert'] = [
-                'name'     => get_post_meta( $post_id, '_kg_expert_name', true ),
-                'approved' => get_post_meta( $post_id, '_kg_expert_approved', true ) === '1',
-            ];
         }
         
         return $data;
@@ -179,13 +223,28 @@ class RecipeController {
 
     /**
      * Get all recipes with pagination and filtering
+     * 
+     * NOTE: API parameter names use hyphens (age-group, diet-type, etc.)
+     * This is consistent with REST API conventions and WordPress taxonomy slugs
      */
     public function get_recipes( $request ) {
         $page = $request->get_param( 'page' ) ?: 1;
-        $per_page = $request->get_param( 'per_page' ) ?: 10;
-        $age_group = $request->get_param( 'age_group' );
-        $diet_type = $request->get_param( 'diet_type' );
+        $per_page = $request->get_param( 'per_page' ) ?: 12;
+        
+        // Existing filters (using hyphenated parameter names)
+        $age_group = $request->get_param( 'age-group' );
+        $diet_type = $request->get_param( 'diet-type' );
         $allergen = $request->get_param( 'allergen' );
+        
+        // NEW FILTERS
+        $meal_type = $request->get_param( 'meal-type' );
+        $special_condition = $request->get_param( 'special-condition' );
+        $ingredient = $request->get_param( 'ingredient' );
+        $search = $request->get_param( 'search' );
+        
+        // Sıralama
+        $orderby = $request->get_param( 'orderby' ) ?: 'date';
+        $order = $request->get_param( 'order' ) ?: 'DESC';
         
         $args = [
             'post_type'      => 'recipe',
@@ -193,35 +252,100 @@ class RecipeController {
             'paged'          => $page,
             'post_status'    => 'publish',
         ];
+        
+        // Sıralama
+        switch ( $orderby ) {
+            case 'popular':
+                $args['meta_key'] = '_kg_rating_count';
+                $args['orderby'] = 'meta_value_num';
+                $args['order'] = 'DESC';
+                break;
+            case 'prep_time':
+                $args['meta_key'] = '_kg_prep_time';
+                $args['orderby'] = 'meta_value';
+                $args['order'] = $order;
+                break;
+            case 'date':
+            default:
+                $args['orderby'] = 'date';
+                $args['order'] = $order;
+                break;
+        }
+        
+        // Arama
+        if ( ! empty( $search ) ) {
+            $args['s'] = sanitize_text_field( $search );
+        }
 
-        // Add tax query if filters provided
+        // Taxonomy query
         $tax_query = [];
+        
         if ( $age_group ) {
+            // Birden fazla yaş grubu virgülle ayrılmış olabilir
+            $age_groups = array_map( 'trim', explode( ',', $age_group ) );
             $tax_query[] = [
                 'taxonomy' => 'age-group',
                 'field'    => 'slug',
-                'terms'    => $age_group,
+                'terms'    => $age_groups,
+                'operator' => 'IN',
             ];
         }
+        
         if ( $diet_type ) {
+            $diet_types = array_map( 'trim', explode( ',', $diet_type ) );
             $tax_query[] = [
                 'taxonomy' => 'diet-type',
                 'field'    => 'slug',
-                'terms'    => $diet_type,
+                'terms'    => $diet_types,
+                'operator' => 'IN',
             ];
         }
+        
+        if ( $meal_type ) {
+            $meal_types = array_map( 'trim', explode( ',', $meal_type ) );
+            $tax_query[] = [
+                'taxonomy' => 'meal-type',
+                'field'    => 'slug',
+                'terms'    => $meal_types,
+                'operator' => 'IN',
+            ];
+        }
+        
+        if ( $special_condition ) {
+            $conditions = array_map( 'trim', explode( ',', $special_condition ) );
+            $tax_query[] = [
+                'taxonomy' => 'special-condition',
+                'field'    => 'slug',
+                'terms'    => $conditions,
+                'operator' => 'IN',
+            ];
+        }
+        
         if ( $allergen ) {
+            // Alerjen filtresi NOT IN olmalı (bu alerjeni İÇERMEYENLER)
+            $allergens = array_map( 'trim', explode( ',', $allergen ) );
             $tax_query[] = [
                 'taxonomy' => 'allergen',
                 'field'    => 'slug',
-                'terms'    => $allergen,
+                'terms'    => $allergens,
                 'operator' => 'NOT IN',
             ];
         }
         
-        if ( !empty( $tax_query ) ) {
+        if ( ! empty( $tax_query ) ) {
             $tax_query['relation'] = 'AND';
             $args['tax_query'] = $tax_query;
+        }
+        
+        // Malzeme araması (meta query)
+        if ( ! empty( $ingredient ) ) {
+            $args['meta_query'] = [
+                [
+                    'key'     => '_kg_ingredients',
+                    'value'   => sanitize_text_field( $ingredient ),
+                    'compare' => 'LIKE',
+                ],
+            ];
         }
 
         $query = new \WP_Query( $args );
@@ -235,10 +359,13 @@ class RecipeController {
         }
         wp_reset_postdata();
 
+        // DÜZGÜN PAGİNATİON RESPONSE
         return new \WP_REST_Response( [
-            'recipes' => $recipes,
-            'total'   => $query->found_posts,
-            'pages'   => $query->max_num_pages,
+            'recipes'     => $recipes,
+            'total'       => $query->found_posts,
+            'page'        => (int) $page,
+            'per_page'    => (int) $per_page,
+            'total_pages' => $query->max_num_pages,
         ], 200 );
     }
 

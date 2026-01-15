@@ -172,14 +172,27 @@ class Helper {
     }
 
     /**
-     * Decode HTML entities in text
-     * @param string $text Text with HTML entities
+     * Decode HTML entities safely
+     * Handles double-encoded entities like &amp;amp;
+     * 
+     * We run html_entity_decode twice because some WordPress functions
+     * or database imports may double-encode entities. For example:
+     * - First decode: &amp;amp; → &amp;
+     * - Second decode: &amp; → &
+     * This ensures clean output regardless of encoding depth.
+     * 
+     * @param string $text Text to decode
      * @return string Decoded text
      */
     public static function decode_html_entities( $text ) {
         if ( empty( $text ) ) {
-            return $text;
+            return '';
         }
-        return html_entity_decode( $text, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+        
+        // Run html_entity_decode twice to handle double-encoded entities
+        $decoded = html_entity_decode( $text, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+        $decoded = html_entity_decode( $decoded, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+        
+        return $decoded;
     }
 }
