@@ -281,7 +281,7 @@ class ToolController {
                 return new \WP_Error( 'registration_failed', 'Email and password are required for registration', [ 'status' => 400 ] );
             }
 
-            // Validate email format
+            // Validate email format first
             if ( ! is_email( $email ) ) {
                 return new \WP_Error( 'invalid_email', 'Please provide a valid email address', [ 'status' => 400 ] );
             }

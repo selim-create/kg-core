@@ -324,12 +324,6 @@ class Tool {
                         'operator' => '==',
                         'value' => 'tool',
                     ],
-                    [
-                        'param' => 'post_meta',
-                        'operator' => '==',
-                        'key' => 'tool_type',
-                        'value' => 'blw_test',
-                    ],
                 ],
             ],
         ]);
