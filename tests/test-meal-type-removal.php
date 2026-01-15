@@ -40,7 +40,10 @@ if (file_exists($metaboxFile)) {
     }
     
     // Check that meal type save logic is NOT present
-    if (strpos($content, 'kg_meal_type') === false || strpos($content, "isset( \$_POST['kg_meal_type']") === false) {
+    $has_kg_meal_type_reference = strpos($content, 'kg_meal_type') !== false;
+    $has_save_logic = strpos($content, "isset( \$_POST['kg_meal_type']") !== false;
+    
+    if (!$has_kg_meal_type_reference && !$has_save_logic) {
         echo "   ✓ Meal type save logic successfully removed\n";
         $passed++;
     } else {
@@ -95,7 +98,8 @@ if (file_exists($controllerFile)) {
     }
     
     // Check for expert user lookup logic
-    if (strpos($content, 'get_user_by( \'login\', sanitize_title( $expert_name )') !== false) {
+    if (strpos($content, 'get_user_by( \'login\', $expert_name )') !== false ||
+        strpos($content, 'get_user_by( \'slug\', sanitize_title( $expert_name )') !== false) {
         echo "   ✓ Expert user lookup logic added\n";
         $passed++;
     } else {

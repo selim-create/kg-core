@@ -209,11 +209,14 @@ class RecipeController {
             
             // Extended expert data with note and image
             $expert_note = get_post_meta( $post_id, '_kg_expert_note', true );
-            $expert_image = ''; // Gravatar or custom field can be used
+            $expert_image = '';
             $expert_name = get_post_meta( $post_id, '_kg_expert_name', true );
             if ( ! empty( $expert_name ) ) {
-                // Try to find user by name for avatar
-                $expert_user = get_user_by( 'login', sanitize_title( $expert_name ) );
+                // Try to find user by multiple methods for avatar
+                $expert_user = get_user_by( 'login', $expert_name );
+                if ( ! $expert_user ) {
+                    $expert_user = get_user_by( 'slug', sanitize_title( $expert_name ) );
+                }
                 if ( $expert_user ) {
                     $expert_image = get_avatar_url( $expert_user->ID, ['size' => 96] );
                 }
