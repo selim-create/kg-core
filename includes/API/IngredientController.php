@@ -29,6 +29,13 @@ class IngredientController {
             ]
         ]);
 
+        // GET /wp-json/kg/v1/ingredient-categories
+        register_rest_route( 'kg/v1', '/ingredient-categories', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_ingredient_categories' ],
+            'permission_callback' => '__return_true',
+        ]);
+
         // GET /wp-json/kg/v1/ingredients/{slug} (Single ingredient by slug) - Exclude 'search' keyword
         register_rest_route( 'kg/v1', '/ingredients/(?P<slug>(?!search)[a-zA-Z0-9-]+)', [
             'methods'  => 'GET',
@@ -127,6 +134,44 @@ class IngredientController {
     }
 
     /**
+     * Get all ingredient categories from taxonomy
+     * 
+     * @param WP_REST_Request $request REST API request object
+     * @return WP_REST_Response Response containing categories array
+     */
+    public function get_ingredient_categories( $request ) {
+        $terms = get_terms([
+            'taxonomy' => 'ingredient-category',
+            'hide_empty' => false,
+            'orderby' => 'name',
+            'order' => 'ASC',
+        ]);
+
+        if ( is_wp_error( $terms ) ) {
+            return new \WP_REST_Response( [
+                'terms' => [],
+                'total' => 0,
+            ], 200 );
+        }
+
+        $categories = [];
+        foreach ( $terms as $term ) {
+            $categories[] = [
+                'id'    => $term->term_id,
+                'name'  => \KG_Core\Utils\Helper::decode_html_entities( $term->name ),
+                'slug'  => $term->slug,
+                'count' => $term->count,
+                'description' => $term->description,
+            ];
+        }
+
+        return new \WP_REST_Response( [
+            'terms' => $categories,
+            'total' => count( $categories ),
+        ], 200 );
+    }
+
+    /**
      * Prepare ingredient data for API response
      */
     private function prepare_ingredient_data( $post_id, $full_detail = false ) {
@@ -140,14 +185,20 @@ class IngredientController {
             $category = \KG_Core\Utils\Helper::decode_html_entities( $category_terms[0]->name );
         }
         
+        // Get allergy_risk and season for both list and detail views
+        $allergy_risk = get_post_meta( $post_id, '_kg_allergy_risk', true );
+        $season = get_post_meta( $post_id, '_kg_season', true );
+        
         $data = [
-            'id'          => $post_id,
-            'name'        => $name,
-            'slug'        => get_post_field( 'post_name', $post_id ),
-            'description' => get_the_excerpt( $post_id ),
-            'image'       => get_the_post_thumbnail_url( $post_id, 'large' ),
-            'start_age'   => get_post_meta( $post_id, '_kg_start_age', true ),
-            'category'    => $category,
+            'id'           => $post_id,
+            'name'         => $name,
+            'slug'         => get_post_field( 'post_name', $post_id ),
+            'description'  => get_the_excerpt( $post_id ),
+            'image'        => get_the_post_thumbnail_url( $post_id, 'large' ),
+            'start_age'    => get_post_meta( $post_id, '_kg_start_age', true ),
+            'category'     => $category,
+            'allergy_risk' => $allergy_risk ?: 'Düşük',
+            'season'       => $season ?: 'Tüm Yıl',
         ];
 
         if ( $full_detail ) {
@@ -171,9 +222,6 @@ class IngredientController {
             $data['selection_tips'] = get_post_meta( $post_id, '_kg_selection_tips', true );
             $data['pro_tips'] = get_post_meta( $post_id, '_kg_pro_tips', true );
             $data['preparation_tips'] = get_post_meta( $post_id, '_kg_preparation_tips', true );
-            
-            $data['allergy_risk'] = get_post_meta( $post_id, '_kg_allergy_risk', true );
-            $data['season'] = get_post_meta( $post_id, '_kg_season', true );
             $data['storage_tips'] = get_post_meta( $post_id, '_kg_storage_tips', true );
             
             // Consolidated Nutrition data (100g per serving - primary source)
