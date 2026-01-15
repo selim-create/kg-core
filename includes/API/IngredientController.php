@@ -135,6 +135,9 @@ class IngredientController {
 
     /**
      * Get all ingredient categories from taxonomy
+     * 
+     * @param WP_REST_Request $request REST API request object
+     * @return WP_REST_Response Response containing categories array
      */
     public function get_ingredient_categories( $request ) {
         $terms = get_terms([
