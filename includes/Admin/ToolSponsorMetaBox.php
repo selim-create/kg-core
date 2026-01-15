@@ -121,19 +121,6 @@ class ToolSponsorMetaBox {
                 </p>
             </div>
         </div>
-
-        <script type="text/javascript">
-        jQuery(document).ready(function($) {
-            // Toggle sponsor fields visibility
-            $('#kg_tool_is_sponsored').on('change', function() {
-                if ($(this).is(':checked')) {
-                    $('#kg-tool-sponsor-fields').show();
-                } else {
-                    $('#kg-tool-sponsor-fields').hide();
-                }
-            });
-        });
-        </script>
         <?php
     }
 
