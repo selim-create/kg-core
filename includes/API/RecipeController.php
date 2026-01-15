@@ -141,6 +141,7 @@ class RecipeController {
                 $author_data = [
                     'id' => $author_id,
                     'name' => $author->display_name,
+                    'slug' => $author->user_nicename,
                     'avatar' => get_avatar_url( $author_id, ['size' => 48] ),
                 ];
             }
@@ -202,6 +203,30 @@ class RecipeController {
             $data['storage_info'] = get_post_meta( $post_id, '_kg_storage_info', true );
             
             $data['video_url'] = get_post_meta( $post_id, '_kg_video_url', true );
+            
+            // Special Notes
+            $data['special_notes'] = get_post_meta( $post_id, '_kg_special_notes', true );
+            
+            // Extended expert data with note and image
+            $expert_note = get_post_meta( $post_id, '_kg_expert_note', true );
+            $expert_image = ''; // Gravatar veya custom field kullanılabilir
+            $expert_name = get_post_meta( $post_id, '_kg_expert_name', true );
+            if ( ! empty( $expert_name ) ) {
+                // Try to find user by name for avatar
+                $expert_user = get_user_by( 'login', sanitize_title( $expert_name ) );
+                if ( $expert_user ) {
+                    $expert_image = get_avatar_url( $expert_user->ID, ['size' => 96] );
+                }
+            }
+            
+            // Update expert data with additional fields
+            $data['expert'] = [
+                'name' => $expert_name,
+                'title' => get_post_meta( $post_id, '_kg_expert_title', true ),
+                'note' => $expert_note,
+                'image' => $expert_image,
+                'approved' => get_post_meta( $post_id, '_kg_expert_approved', true ) === '1',
+            ];
             
             $substitutes_raw = get_post_meta( $post_id, '_kg_substitutes', true );
             $data['substitutes'] = !empty($substitutes_raw) ? maybe_unserialize($substitutes_raw) : [];

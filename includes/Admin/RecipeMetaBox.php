@@ -41,7 +41,6 @@ class RecipeMetaBox {
         $cross_sell_title = get_post_meta( $post->ID, '_kg_cross_sell_title', true );
         
         // New fields
-        $meal_type = get_post_meta( $post->ID, '_kg_meal_type', true );
         $cook_time = get_post_meta( $post->ID, '_kg_cook_time', true );
         $serving_size = get_post_meta( $post->ID, '_kg_serving_size', true );
         $difficulty = get_post_meta( $post->ID, '_kg_difficulty', true );
@@ -93,16 +92,6 @@ class RecipeMetaBox {
             <p>
                 <label for="kg_cook_time"><strong>Pişirme Süresi (dk):</strong></label><br>
                 <input type="text" id="kg_cook_time" name="kg_cook_time" value="<?php echo esc_attr( $cook_time ); ?>" style="width:100%;">
-            </p>
-            <p>
-                <label for="kg_meal_type"><strong>Öğün Tipi:</strong></label><br>
-                <select id="kg_meal_type" name="kg_meal_type" style="width:100%;">
-                    <option value="">Seçiniz</option>
-                    <option value="Kahvaltı" <?php selected( $meal_type, 'Kahvaltı' ); ?>>Kahvaltı</option>
-                    <option value="Öğle" <?php selected( $meal_type, 'Öğle' ); ?>>Öğle</option>
-                    <option value="Akşam" <?php selected( $meal_type, 'Akşam' ); ?>>Akşam</option>
-                    <option value="Ara Öğün" <?php selected( $meal_type, 'Ara Öğün' ); ?>>Ara Öğün</option>
-                </select>
             </p>
             <p>
                 <label for="kg_serving_size"><strong>Porsiyon Bilgisi:</strong></label><br>
@@ -435,9 +424,6 @@ class RecipeMetaBox {
         // New fields
         if ( isset( $_POST['kg_cook_time'] ) ) {
             update_post_meta( $post_id, '_kg_cook_time', sanitize_text_field( $_POST['kg_cook_time'] ) );
-        }
-        if ( isset( $_POST['kg_meal_type'] ) ) {
-            update_post_meta( $post_id, '_kg_meal_type', sanitize_text_field( $_POST['kg_meal_type'] ) );
         }
         if ( isset( $_POST['kg_serving_size'] ) ) {
             update_post_meta( $post_id, '_kg_serving_size', sanitize_text_field( $_POST['kg_serving_size'] ) );
