@@ -353,8 +353,10 @@ class ToolController {
                 $children[] = $new_child;
                 update_user_meta( $user_id, '_kg_children', $children );
                 
-                // Use created child_id for BLW result
-                $child_id = $created_child_id;
+                // Use created child_id for BLW result if no child_id was provided
+                if ( empty( $child_id ) ) {
+                    $child_id = $created_child_id;
+                }
             }
 
             // Generate token
