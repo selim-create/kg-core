@@ -24,8 +24,12 @@ class ToolSeeder {
         // Enqueue jQuery (already included in WordPress)
         wp_enqueue_script('jquery');
         
+        // Register and enqueue our custom script handle
+        wp_register_script('kg-tool-seeder-js', '', ['jquery'], KG_CORE_VERSION, true);
+        wp_enqueue_script('kg-tool-seeder-js');
+        
         // Pass data to JavaScript
-        wp_localize_script('jquery', 'kgToolSeeder', [
+        wp_localize_script('kg-tool-seeder-js', 'kgToolSeeder', [
             'nonce' => wp_create_nonce('kg_tool_seed'),
             'ajaxurl' => admin_url('admin-ajax.php'),
         ]);
