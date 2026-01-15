@@ -74,7 +74,7 @@ class IngredientGenerator {
      * @param int $post_id Post ID
      * @param array $data AI-generated data
      */
-    private function saveMetaFields($post_id, $data) {
+    public function saveMetaFields($post_id, $data) {
         // Basic info
         if (isset($data['start_age'])) {
             update_post_meta($post_id, '_kg_start_age', intval($data['start_age']));
@@ -86,6 +86,19 @@ class IngredientGenerator {
         
         if (isset($data['allergy_risk'])) {
             update_post_meta($post_id, '_kg_allergy_risk', sanitize_text_field($data['allergy_risk']));
+        }
+        
+        // Alerjen bilgileri (opsiyonel - sadece alerjen malzemeler için)
+        if (isset($data['cross_contamination']) && !empty($data['cross_contamination'])) {
+            update_post_meta($post_id, '_kg_cross_contamination', sanitize_text_field($data['cross_contamination']));
+        }
+        
+        if (isset($data['allergy_symptoms']) && !empty($data['allergy_symptoms'])) {
+            update_post_meta($post_id, '_kg_allergy_symptoms', sanitize_textarea_field($data['allergy_symptoms']));
+        }
+        
+        if (isset($data['alternatives']) && !empty($data['alternatives'])) {
+            update_post_meta($post_id, '_kg_alternatives', sanitize_textarea_field($data['alternatives']));
         }
         
         if (isset($data['season'])) {
@@ -317,7 +330,7 @@ class IngredientGenerator {
      * @param int $post_id Post ID
      * @param string $category Category name
      */
-    private function assignCategory($post_id, $category) {
+    public function assignCategory($post_id, $category) {
         $category = sanitize_text_field($category);
         
         // Check if term exists

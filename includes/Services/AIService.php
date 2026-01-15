@@ -73,6 +73,9 @@ class AIService {
             'benefits' => 'Sağlık faydaları detaylı açıklama (HTML formatında)',
             'allergy_risk' => 'Düşük|Orta|Yüksek',
             'allergens' => ['varsa alerjen listesi'],
+            'cross_contamination' => 'Düşük|Orta|Yüksek (alerjen değilse boş bırak)',
+            'allergy_symptoms' => 'Alerji belirtileri ve semptomları detaylı açıklama (alerjen değilse boş bırak)',
+            'alternatives' => 'Alternatif malzemeler listesi ve açıklama (alerjen değilse boş bırak)',
             'season' => 'İlkbahar|Yaz|Sonbahar|Kış|Tüm Yıl',
             'storage_tips' => 'Saklama koşulları',
             'selection_tips' => 'Nasıl seçilir? Olgunluk belirtileri',
@@ -118,12 +121,12 @@ class AIService {
                 ['question' => 'Nasıl saklanmalı?', 'answer' => 'Detaylı cevap']
             ],
             
-            // YENİ: SEO Meta (RankMath için)
+            // YENİ: SEO Meta (RankMath için - %80+ skor hedefi)
             'seo' => [
-                'title' => 'SEO başlığı - Bebeklere [Malzeme] Ne Zaman Verilir? | KidsGourmet',
-                'description' => '150-160 karakter SEO açıklaması',
-                'focus_keyword' => 'bebeklere [malzeme]',
-                'keywords' => ['bebek beslenmesi', 'ek gıda', '[malzeme]', 'bebeklere [malzeme]']
+                'title' => 'Bebeklere [Malzeme] Ne Zaman Verilir? Faydaları ve Hazırlama | KidsGourmet - 60 karakter civarında olmalı',
+                'description' => 'Bebeklere [malzeme] kaç ayda verilir, faydaları nelerdir, nasıl hazırlanır? Uzman önerileri ve püf noktaları ile tam rehber. - 150-160 karakter arasında, odak kelimeyi içermeli',
+                'focus_keyword' => 'bebeklere [malzeme] ne zaman verilir',
+                'keywords' => ['bebek beslenmesi', 'ek gıda', '[malzeme]', 'bebeklere [malzeme]', '[malzeme] faydaları']
             ],
             
             'image_search_query' => 'İngilizce görsel arama terimi (örn: "fresh carrots baby food")'
@@ -133,11 +136,15 @@ class AIService {
         
         $prompt .= "\n\nÖNEMLİ KURALLAR:\n";
         $prompt .= "1. 'pairings' alanını MUTLAKA 4-6 uyumlu malzeme ile doldur. Gerçekten bu malzeme ile iyi giden besinleri yaz.\n";
-        $prompt .= "2. 'seo' alanındaki 'focus_keyword' malzeme adını içermeli.\n";
-        $prompt .= "3. 'prep_by_age' alanında her yaş grubu için spesifik ve pratik tavsiyeler ver.\n";
-        $prompt .= "4. 'nutrition' alanındaki tüm değerler 100g başına olmalı.\n";
-        $prompt .= "5. Tüm içerik Türkçe olmalı, sadece emoji'ler evrensel.\n";
-        $prompt .= "6. Bilimsel ve güvenilir bilgiler ver, abartılı ifadelerden kaçın.\n";
+        $prompt .= "2. 'seo' alanındaki 'focus_keyword' malzeme adını içermeli ve doğal bir soru formatında olmalı.\n";
+        $prompt .= "3. 'seo' alanındaki 'title' 50-60 karakter arasında, çekici ve bilgilendirici olmalı, odak kelimeyi başta içermeli.\n";
+        $prompt .= "4. 'seo' alanındaki 'description' tam 150-160 karakter olmalı, odak kelimeyi ve harekete geçirici bir çağrı içermeli.\n";
+        $prompt .= "5. 'prep_by_age' alanında her yaş grubu için spesifik ve pratik tavsiyeler ver.\n";
+        $prompt .= "6. 'nutrition' alanındaki tüm değerler 100g başına olmalı.\n";
+        $prompt .= "7. Tüm içerik Türkçe olmalı, sadece emoji'ler evrensel.\n";
+        $prompt .= "8. Bilimsel ve güvenilir bilgiler ver, abartılı ifadelerden kaçın.\n";
+        $prompt .= "9. Alerjen olmayan malzemeler için 'cross_contamination', 'allergy_symptoms' ve 'alternatives' alanlarını boş bırak.\n";
+        $prompt .= "10. Content alanı için en az 3-4 paragraf detaylı, SEO-dostu, bilgilendirici içerik yaz. Her paragraf <p> etiketi ile sarılmalı.\n";
         
         return $prompt;
     }
