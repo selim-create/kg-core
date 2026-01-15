@@ -1,12 +1,21 @@
 jQuery(document).ready(function($) {
     'use strict';
 
-    // Toggle sponsor fields visibility based on checkbox
+    // Toggle sponsor fields visibility based on checkbox (for posts)
     $('#kg_is_sponsored').on('change', function() {
         if ($(this).is(':checked')) {
             $('#kg-sponsor-fields').slideDown();
         } else {
             $('#kg-sponsor-fields').slideUp();
+        }
+    });
+
+    // Toggle sponsor fields visibility based on checkbox (for tools)
+    $('#kg_tool_is_sponsored').on('change', function() {
+        if ($(this).is(':checked')) {
+            $('#kg-tool-sponsor-fields').slideDown();
+        } else {
+            $('#kg-tool-sponsor-fields').slideUp();
         }
     });
 
