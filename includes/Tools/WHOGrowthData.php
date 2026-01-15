@@ -238,7 +238,8 @@ class WHOGrowthData {
      * Calculate z-score using WHO LMS method
      */
     private function calculate_z_score( $value, $L, $M, $S ) {
-        if ( $L != 0 ) {
+        // Use epsilon for float comparison to avoid precision issues
+        if ( abs( $L ) > PHP_FLOAT_EPSILON ) {
             return ( pow( $value / $M, $L ) - 1 ) / ( $L * $S );
         } else {
             return log( $value / $M ) / $S;

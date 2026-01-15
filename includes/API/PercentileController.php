@@ -179,7 +179,7 @@ class PercentileController {
             }
         }
 
-        // Handle registration if requested
+        // Handle registration if requested and user not already authenticated
         if ( $register && ! $user_id ) {
             $email = sanitize_email( $request->get_param( 'email' ) );
             $password = $request->get_param( 'password' );
@@ -272,7 +272,8 @@ class PercentileController {
             }
         }
 
-        // Save result if user is authenticated
+        // At this point, user must be authenticated (either was already logged in or just registered)
+        // If not authenticated, return error
         if ( ! $user_id ) {
             return new \WP_Error( 'unauthorized', 'Sonuç kaydetmek için giriş yapmalısınız', [ 'status' => 401 ] );
         }
