@@ -15,6 +15,8 @@
             $('#kg-migrate-batch').on('click', this.migrateBatch.bind(this));
             $('#kg-migrate-all').on('click', this.migrateAll.bind(this));
             $('#kg-clean-test').on('click', this.cleanTestMigrations.bind(this));
+            $('#kg-preview-consolidation').on('click', this.previewConsolidation.bind(this));
+            $('#kg-run-consolidation').on('click', this.runConsolidation.bind(this));
         },
         
         /**
@@ -226,6 +228,121 @@
                 error: (xhr) => {
                     this.setLoading($btn, false);
                     this.showResult('error', '❌ AJAX hatası: ' + xhr.statusText);
+                }
+            });
+        },
+        
+        /**
+         * Preview field consolidation
+         */
+        previewConsolidation: function(e) {
+            e.preventDefault();
+            
+            const $btn = $(e.currentTarget);
+            const $preview = $('#kg-consolidation-preview');
+            
+            this.setLoading($btn, true);
+            $preview.html('<p>Önizleme yükleniyor...</p>').show();
+            
+            $.ajax({
+                url: kgMigration.ajaxUrl,
+                method: 'POST',
+                data: {
+                    action: 'kg_preview_field_consolidation',
+                    nonce: kgMigration.nonce
+                },
+                success: (response) => {
+                    this.setLoading($btn, false);
+                    
+                    if (response.success) {
+                        const data = response.data;
+                        let html = '<h4>📊 Migrasyon Önizlemesi</h4>';
+                        html += '<ul style="list-style: disc; margin-left: 20px;">';
+                        html += `<li><strong>Toplam Ingredient:</strong> ${data.total_ingredients}</li>`;
+                        html += `<li><strong>Kategori Migrate Edilecek:</strong> ${data.will_migrate_category}</li>`;
+                        html += `<li><strong>Besin Değerleri Migrate Edilecek:</strong> ${data.will_migrate_nutrition}</li>`;
+                        html += `<li><strong>Temizlenecek Alan Bulunduran:</strong> ${data.has_deprecated_fields}</li>`;
+                        html += '</ul>';
+                        
+                        $preview.html(html);
+                    } else {
+                        $preview.html('<p style="color: red;">❌ Hata: ' + response.data + '</p>');
+                    }
+                },
+                error: (xhr) => {
+                    this.setLoading($btn, false);
+                    $preview.html('<p style="color: red;">❌ AJAX hatası: ' + xhr.statusText + '</p>');
+                }
+            });
+        },
+        
+        /**
+         * Run field consolidation
+         */
+        runConsolidation: function(e) {
+            e.preventDefault();
+            
+            const confirmMsg = 'Ingredient field consolidation işlemini başlatmak istediğinize emin misiniz?\n\n' +
+                             'Bu işlem:\n' +
+                             '- Kategori meta field\'larını taxonomy\'ye taşıyacak\n' +
+                             '- Eski besin değerlerini 100g formatına migrate edecek\n' +
+                             '- Mükerrer alanları temizleyecek\n\n' +
+                             'Devam etmek istiyor musunuz?';
+            
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+            
+            const $btn = $(e.currentTarget);
+            const $result = $('#kg-consolidation-result');
+            
+            this.setLoading($btn, true);
+            $result.html('<p style="color: #2271b1;">⏳ Migrasyon işlemi başlatılıyor...</p>').show();
+            
+            $.ajax({
+                url: kgMigration.ajaxUrl,
+                method: 'POST',
+                data: {
+                    action: 'kg_run_field_consolidation',
+                    nonce: kgMigration.nonce
+                },
+                timeout: 300000, // 5 minutes
+                success: (response) => {
+                    this.setLoading($btn, false);
+                    
+                    if (response.success) {
+                        const data = response.data;
+                        let html = '<div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 4px;">';
+                        html += '<h4 style="color: #155724; margin-top: 0;">✅ Migrasyon Başarıyla Tamamlandı</h4>';
+                        html += '<ul style="list-style: disc; margin-left: 20px; color: #155724;">';
+                        html += `<li><strong>İşlenen Ingredient:</strong> ${data.processed}</li>`;
+                        html += `<li><strong>Kategori Migrate Edildi:</strong> ${data.category_migrated}</li>`;
+                        html += `<li><strong>Besin Değerleri Migrate Edildi:</strong> ${data.nutrition_migrated}</li>`;
+                        
+                        if (data.errors && data.errors.length > 0) {
+                            html += '</ul>';
+                            html += '<h5 style="color: #721c24; margin-top: 10px;">⚠️ Hatalar:</h5>';
+                            html += '<ul style="list-style: disc; margin-left: 20px; color: #721c24;">';
+                            data.errors.forEach(err => {
+                                html += `<li>${this.escapeHtml(err)}</li>`;
+                            });
+                        }
+                        
+                        html += '</ul></div>';
+                        
+                        $result.html(html);
+                        
+                        // Reload page after 3 seconds
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 3000);
+                    } else {
+                        $result.html('<div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 4px; color: #721c24;">❌ Hata: ' + response.data + '</div>');
+                    }
+                },
+                error: (xhr) => {
+                    this.setLoading($btn, false);
+                    $result.html('<div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 4px; color: #721c24;">❌ AJAX hatası: ' + xhr.statusText + '</div>');
                 }
             });
         },
