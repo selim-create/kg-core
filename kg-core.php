@@ -85,6 +85,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/RecipeMetaBox.php' ) ) require_
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/IngredientMetaBox.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/PostMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/PostMetaBox.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/DiscussionMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/DiscussionMetaBox.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/ToolSponsorMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/ToolSponsorMetaBox.php';
 
 // 5.5. AI ADMIN SAYFALARI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/SettingsPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/SettingsPage.php';
@@ -126,6 +127,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/MealPlanController.php' ) ) requi
 if ( file_exists( KG_CORE_PATH . 'includes/API/PercentileController.php' ) ) require_once KG_CORE_PATH . 'includes/API/PercentileController.php';
 // Food Trial API Controller (NEW)
 if ( file_exists( KG_CORE_PATH . 'includes/API/FoodTrialController.php' ) ) require_once KG_CORE_PATH . 'includes/API/FoodTrialController.php';
+// Sponsored Tool API Controller
+if ( file_exists( KG_CORE_PATH . 'includes/API/SponsoredToolController.php' ) ) require_once KG_CORE_PATH . 'includes/API/SponsoredToolController.php';
 
 // 7. SINIFLARI BAŞLAT (INIT HOOK)
 function kg_core_init() {
@@ -161,6 +164,9 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\DiscussionMetaBox' ) ) {
         new \KG_Core\Admin\DiscussionMetaBox();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\ToolSponsorMetaBox' ) ) {
+        new \KG_Core\Admin\ToolSponsorMetaBox();
     }
     
     // AI Admin Pages (Sadece Admin panelinde çalışsın)
@@ -200,6 +206,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\MealPlanController' ) ) new \KG_Core\API\MealPlanController();
     if ( class_exists( '\KG_Core\API\PercentileController' ) ) new \KG_Core\API\PercentileController();
     if ( class_exists( '\KG_Core\API\FoodTrialController' ) ) new \KG_Core\API\FoodTrialController();
+    if ( class_exists( '\KG_Core\API\SponsoredToolController' ) ) new \KG_Core\API\SponsoredToolController();
 }
 add_action( 'plugins_loaded', 'kg_core_init' );
 
@@ -265,6 +272,21 @@ function kg_core_enqueue_admin_assets( $hook ) {
             true 
         );
     }
+    
+    // Load on post edit screens for tool (Tool Post Type)
+    if ( ( $hook === 'post.php' || $hook === 'post-new.php' ) && $post_type === 'tool' ) {
+        // Enqueue WordPress Media Uploader
+        wp_enqueue_media();
+        
+        // Enqueue sponsor media JS (reuse the same script for tool sponsors)
+        wp_enqueue_script( 
+            'kg-tool-sponsor-media-js', 
+            KG_CORE_URL . 'assets/admin/js/sponsor-media.js', 
+            [ 'jquery' ], 
+            KG_CORE_VERSION, 
+            true 
+        );
+    }
 }
 add_action( 'admin_enqueue_scripts', 'kg_core_enqueue_admin_assets' );
 
@@ -306,6 +328,51 @@ add_action( 'rest_api_init', function() {
         },
         'schema' => [
             'description' => __( 'Sponsor data for the post', 'kg-core' ),
+            'type' => [ 'object', 'null' ],
+        ],
+    ]);
+    
+    // Register sponsor_data field for tool post type
+    register_rest_field( 'tool', 'sponsor_data', [
+        'get_callback' => function( $tool ) {
+            $is_sponsored = get_post_meta( $tool['id'], '_kg_tool_is_sponsored', true );
+            
+            // Return null if not sponsored
+            if ( $is_sponsored !== '1' ) {
+                return null;
+            }
+            
+            // Get all sponsor meta data
+            $sponsor_logo_id = get_post_meta( $tool['id'], '_kg_tool_sponsor_logo', true );
+            $sponsor_light_logo_id = get_post_meta( $tool['id'], '_kg_tool_sponsor_light_logo', true );
+            
+            // Convert attachment IDs to URLs
+            $sponsor_logo_url = $sponsor_logo_id ? wp_get_attachment_url( $sponsor_logo_id ) : null;
+            $sponsor_light_logo_url = $sponsor_light_logo_id ? wp_get_attachment_url( $sponsor_light_logo_id ) : null;
+            
+            return [
+                'is_sponsored' => true,
+                'sponsor_name' => get_post_meta( $tool['id'], '_kg_tool_sponsor_name', true ),
+                'sponsor_url' => get_post_meta( $tool['id'], '_kg_tool_sponsor_url', true ),
+                'sponsor_logo' => [
+                    'id' => $sponsor_logo_id ? absint( $sponsor_logo_id ) : null,
+                    'url' => $sponsor_logo_url,
+                ],
+                'sponsor_light_logo' => [
+                    'id' => $sponsor_light_logo_id ? absint( $sponsor_light_logo_id ) : null,
+                    'url' => $sponsor_light_logo_url,
+                ],
+                'sponsor_tagline' => get_post_meta( $tool['id'], '_kg_tool_sponsor_tagline', true ),
+                'sponsor_cta' => [
+                    'text' => get_post_meta( $tool['id'], '_kg_tool_sponsor_cta_text', true ),
+                    'url' => get_post_meta( $tool['id'], '_kg_tool_sponsor_cta_url', true ),
+                ],
+                'gam_impression_url' => get_post_meta( $tool['id'], '_kg_tool_gam_impression_url', true ),
+                'gam_click_url' => get_post_meta( $tool['id'], '_kg_tool_gam_click_url', true ),
+            ];
+        },
+        'schema' => [
+            'description' => __( 'Sponsor data for the tool', 'kg-core' ),
             'type' => [ 'object', 'null' ],
         ],
     ]);
