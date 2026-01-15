@@ -15,17 +15,24 @@ class IngredientController {
             'permission_callback' => '__return_true',
         ]);
 
-        // GET /wp-json/kg/v1/ingredients/{slug} (Single ingredient by slug)
-        register_rest_route( 'kg/v1', '/ingredients/(?P<slug>[a-zA-Z0-9-]+)', [
-            'methods'  => 'GET',
-            'callback' => [ $this, 'get_ingredient_by_slug' ],
-            'permission_callback' => '__return_true',
-        ]);
-
-        // GET /wp-json/kg/v1/ingredients/search (Search ingredients)
+        // GET /wp-json/kg/v1/ingredients/search (Search ingredients) - Register BEFORE slug route
         register_rest_route( 'kg/v1', '/ingredients/search', [
             'methods'  => 'GET',
             'callback' => [ $this, 'search_ingredients' ],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'q' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ]
+            ]
+        ]);
+
+        // GET /wp-json/kg/v1/ingredients/{slug} (Single ingredient by slug) - Exclude 'search' keyword
+        register_rest_route( 'kg/v1', '/ingredients/(?P<slug>(?!search)[a-zA-Z0-9-]+)', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_ingredient_by_slug' ],
             'permission_callback' => '__return_true',
         ]);
     }
