@@ -544,10 +544,18 @@ class UserController {
         // Birth date validation
         if ( $birth_date !== null && $birth_date !== '' ) {
             $birth_date_obj = \DateTime::createFromFormat( 'Y-m-d', $birth_date );
-            $now = new \DateTime();
-            if ( ! $birth_date_obj || $birth_date_obj > $now ) {
-                return new \WP_Error( 'invalid_birth_date', 'Birth date must be in YYYY-MM-DD format and cannot be in the future', [ 'status' => 400 ] );
+            
+            // Check if date format is valid
+            if ( ! $birth_date_obj ) {
+                return new \WP_Error( 'invalid_birth_date', 'Birth date must be in YYYY-MM-DD format', [ 'status' => 400 ] );
             }
+            
+            // Check if date is not in the future
+            $now = new \DateTime();
+            if ( $birth_date_obj > $now ) {
+                return new \WP_Error( 'invalid_birth_date', 'Birth date cannot be in the future', [ 'status' => 400 ] );
+            }
+            
             update_user_meta( $user_id, '_kg_birth_date', $birth_date );
         }
         
@@ -1706,28 +1714,29 @@ class UserController {
      * @return array Array of discussion data
      */
     private function get_user_answered_questions( $user_id, $limit = 6 ) {
-        // Get discussion IDs where user has commented
-        $comments = get_comments([
-            'user_id' => $user_id,
-            'post_type' => 'discussion',
-            'status' => 'approve',
-            'number' => $limit * 3, // Get more to account for duplicates
-        ]);
+        global $wpdb;
         
-        $discussion_ids = [];
-        foreach ( $comments as $comment ) {
-            if ( ! in_array( $comment->comment_post_ID, $discussion_ids ) ) {
-                $discussion_ids[] = $comment->comment_post_ID;
-            }
-            if ( count( $discussion_ids ) >= $limit ) {
-                break;
-            }
-        }
+        // Get unique discussion IDs where user has commented, ordered by most recent comment
+        $query = $wpdb->prepare(
+            "SELECT DISTINCT c.comment_post_ID 
+            FROM {$wpdb->comments} c
+            INNER JOIN {$wpdb->posts} p ON c.comment_post_ID = p.ID
+            WHERE c.user_id = %d 
+            AND c.comment_approved = '1'
+            AND p.post_type = 'discussion'
+            AND p.post_status = 'publish'
+            ORDER BY c.comment_date DESC
+            LIMIT %d",
+            $user_id,
+            $limit
+        );
+        
+        $discussion_ids = $wpdb->get_col( $query );
         
         $discussions = [];
         foreach ( $discussion_ids as $discussion_id ) {
             $post = get_post( $discussion_id );
-            if ( $post && $post->post_status === 'publish' ) {
+            if ( $post ) {
                 $discussions[] = $this->format_discussion_card( $post );
             }
         }
@@ -1774,16 +1783,16 @@ class UserController {
      * @return int Number of recipes
      */
     private function count_user_recipes( $user_id ) {
-        $args = [
-            'post_type' => 'recipe',
-            'author' => $user_id,
-            'post_status' => 'publish',
-            'posts_per_page' => -1,
-            'fields' => 'ids',
-        ];
+        $count = wp_count_posts( 'recipe' );
         
-        $query = new \WP_Query( $args );
-        return $query->found_posts;
+        // Get count for this specific author
+        global $wpdb;
+        $count = $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'recipe' AND post_status = 'publish' AND post_author = %d",
+            $user_id
+        ) );
+        
+        return (int) $count;
     }
     
     /**
@@ -1793,16 +1802,13 @@ class UserController {
      * @return int Number of blog posts
      */
     private function count_user_blog_posts( $user_id ) {
-        $args = [
-            'post_type' => 'post',
-            'author' => $user_id,
-            'post_status' => 'publish',
-            'posts_per_page' => -1,
-            'fields' => 'ids',
-        ];
+        global $wpdb;
+        $count = $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'post' AND post_status = 'publish' AND post_author = %d",
+            $user_id
+        ) );
         
-        $query = new \WP_Query( $args );
-        return $query->found_posts;
+        return (int) $count;
     }
     
     /**
