@@ -16,19 +16,46 @@ class RoleManager {
      * Register custom WordPress roles
      */
     public function register_custom_roles() {
-        // Check if kg_expert role already exists
-        if ( ! get_role( 'kg_expert' ) ) {
-            add_role( 'kg_expert', 'KG Uzman', [
-                'read' => true,
-                'edit_posts' => false,
-                'delete_posts' => false,
-                'publish_posts' => false,
-                'upload_files' => true,
-                'kg_answer_questions' => true,
-                'kg_moderate_comments' => true,
-                'kg_view_expert_dashboard' => true,
-            ]);
-        }
+        // Remove existing kg_expert role if it exists (for update)
+        remove_role( 'kg_expert' );
+        
+        // KG Expert role with Editor-like capabilities
+        add_role( 'kg_expert', 'KG Uzman', [
+            // Standard post capabilities (same as Editor)
+            'read' => true,
+            'edit_posts' => true,
+            'edit_others_posts' => true,
+            'edit_published_posts' => true,
+            'publish_posts' => true,
+            'delete_posts' => true,
+            'delete_others_posts' => true,
+            'delete_published_posts' => true,
+            'delete_private_posts' => true,
+            'edit_private_posts' => true,
+            'read_private_posts' => true,
+            
+            // Page capabilities (same as Editor)
+            'edit_pages' => true,
+            'edit_others_pages' => true,
+            'edit_published_pages' => true,
+            'publish_pages' => true,
+            'delete_pages' => true,
+            'delete_others_pages' => true,
+            'delete_published_pages' => true,
+            'delete_private_pages' => true,
+            'edit_private_pages' => true,
+            'read_private_pages' => true,
+            
+            // Media & other capabilities
+            'upload_files' => true,
+            'moderate_comments' => true,
+            'manage_categories' => true,
+            
+            // KG-specific custom capabilities
+            'kg_answer_questions' => true,
+            'kg_moderate_comments' => true,
+            'kg_view_expert_dashboard' => true,
+        ]);
         
         // Add kg_parent role
         if ( ! get_role( 'kg_parent' ) ) {
@@ -53,6 +80,21 @@ class RoleManager {
      */
     public function set_default_role( $default_role ) {
         return 'kg_parent';
+    }
+    
+    /**
+     * Update existing kg_expert users' capabilities
+     * Call this on plugin activation or update
+     */
+    public static function update_expert_capabilities() {
+        $experts = get_users([
+            'role' => 'kg_expert',
+        ]);
+        
+        foreach ( $experts as $user ) {
+            // Re-assign role to apply new capabilities
+            $user->set_role( 'kg_expert' );
+        }
     }
     
     /**

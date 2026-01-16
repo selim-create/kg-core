@@ -499,7 +499,20 @@ add_filter( 'rest_prepare_category', 'kg_decode_taxonomy_response', 10, 2 );
 
 // 10. ACTIVATION HOOK - Seed tools on plugin activation
 register_activation_hook( __FILE__, function() {
+    // Register roles first
+    if ( class_exists( '\KG_Core\Roles\RoleManager' ) ) {
+        $role_manager = new \KG_Core\Roles\RoleManager();
+        $role_manager->register_custom_roles();
+        
+        // Update existing expert users
+        \KG_Core\Roles\RoleManager::update_expert_capabilities();
+    }
+    
+    // Seed tools on plugin activation
     if ( class_exists( '\KG_Core\Admin\ToolSeeder' ) ) {
         \KG_Core\Admin\ToolSeeder::seed_on_activation();
     }
+    
+    // Flush rewrite rules
+    flush_rewrite_rules();
 } );

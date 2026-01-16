@@ -17,6 +17,13 @@ class ExpertController {
             'callback' => [ $this, 'get_dashboard' ],
             'permission_callback' => [ $this, 'check_expert_permission' ],
         ]);
+        
+        // Expert list endpoint (Public)
+        register_rest_route( 'kg/v1', '/experts', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_experts_list' ],
+            'permission_callback' => '__return_true', // Public endpoint
+        ]);
     }
     
     /**
@@ -61,6 +68,104 @@ class ExpertController {
      */
     private function get_authenticated_user_id( $request ) {
         return $request->get_param( 'authenticated_user_id' );
+    }
+    
+    /**
+     * Get list of all expert users
+     * Public endpoint - no authentication required
+     */
+    public function get_experts_list( $request ) {
+        // Get users with expert roles
+        $expert_roles = [ 'kg_expert', 'author', 'editor' ];
+        
+        $users = get_users([
+            'role__in' => $expert_roles,
+            'orderby' => 'display_name',
+            'order' => 'ASC',
+        ]);
+        
+        $experts = [];
+        
+        foreach ( $users as $user ) {
+            $user_id = $user->ID;
+            
+            // Get user meta
+            $biography = get_user_meta( $user_id, '_kg_biography', true );
+            $expertise = get_user_meta( $user_id, '_kg_expertise', true );
+            $social_links = get_user_meta( $user_id, '_kg_social_links', true );
+            $show_email = get_user_meta( $user_id, '_kg_show_email', true );
+            
+            // Get avatar URL
+            $avatar_url = get_avatar_url( $user_id, [ 'size' => 256 ] );
+            
+            // Get user statistics
+            $stats = $this->get_expert_stats( $user_id );
+            
+            $expert_data = [
+                'id' => $user_id,
+                'username' => $user->user_login,
+                'display_name' => $user->display_name,
+                'avatar_url' => $avatar_url,
+                'biography' => $biography ?: '',
+                'expertise' => is_array( $expertise ) ? $expertise : [],
+                'social_links' => is_array( $social_links ) ? $social_links : [],
+                'stats' => $stats,
+            ];
+            
+            // Include email only if user opted in
+            if ( $show_email ) {
+                $expert_data['email'] = $user->user_email;
+            }
+            
+            $experts[] = $expert_data;
+        }
+        
+        return new \WP_REST_Response( $experts, 200 );
+    }
+    
+    /**
+     * Get statistics for an expert user
+     */
+    private function get_expert_stats( $user_id ) {
+        // Count user's recipes
+        $recipes_query = new \WP_Query([
+            'post_type' => 'recipe',
+            'author' => $user_id,
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+        ]);
+        $total_recipes = $recipes_query->found_posts;
+        
+        // Count user's blog posts
+        $posts_query = new \WP_Query([
+            'post_type' => 'post',
+            'author' => $user_id,
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+        ]);
+        $total_posts = $posts_query->found_posts;
+        
+        // Count approved recipes (where user is expert approver)
+        $approved_recipes = new \WP_Query([
+            'post_type' => 'recipe',
+            'post_status' => 'publish',
+            'meta_query' => [
+                [
+                    'key' => '_kg_expert_id',
+                    'value' => $user_id,
+                ],
+            ],
+            'posts_per_page' => -1,
+            'fields' => 'ids',
+        ]);
+        
+        return [
+            'total_recipes' => $total_recipes,
+            'total_posts' => $total_posts,
+            'approved_recipes' => $approved_recipes->found_posts,
+        ];
     }
     
     /**
