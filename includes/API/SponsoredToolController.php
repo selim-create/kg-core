@@ -9,6 +9,23 @@ class SponsoredToolController {
      */
     private const DIAPERS_PER_PACK = 50;
 
+    /**
+     * Air Quality Analysis Constants
+     */
+    private const DEFAULT_HOME_TYPE = 'apartment';
+    private const DEFAULT_HEATING_TYPE = 'central';
+    private const DEFAULT_VENTILATION = 'daily';
+    private const DEFAULT_COOKING_FREQUENCY = 'medium';
+    private const DEFAULT_HOME_RISK_SCORE = 15;
+    private const DEFAULT_HEATING_RISK_SCORE = 15;
+    private const MIN_RECOMMENDATIONS_COUNT = 3;
+    
+    private const VALID_HOME_TYPES = ['apartment', 'ground_floor', 'house', 'villa'];
+    private const VALID_HEATING_TYPES = ['stove', 'natural_gas', 'central', 'electric', 'air_conditioner'];
+    private const VALID_SEASONS = ['winter', 'spring', 'summer', 'autumn'];
+    private const VALID_VENTILATION_FREQUENCIES = ['multiple_daily', 'daily', 'rarely'];
+    private const VALID_COOKING_FREQUENCIES = ['high', 'medium', 'low'];
+
     public function __construct() {
         add_action( 'rest_api_init', [ $this, 'register_routes' ] );
     }
@@ -512,32 +529,99 @@ class SponsoredToolController {
      * Analyze air quality
      */
     public function analyze_air_quality( $request ) {
-        $aqi = (int) $request->get_param( 'aqi' );
+        // Çocuk bilgileri
+        $child_age_months = (int) $request->get_param( 'child_age_months' );
         $has_newborn = (bool) $request->get_param( 'has_newborn' );
-        $respiratory_issues = (bool) $request->get_param( 'respiratory_issues' );
-
-        if ( $aqi < 0 || $aqi > 500 ) {
-            return new \WP_Error( 'invalid_aqi', 'Geçerli bir AQI değeri giriniz (0-500)', [ 'status' => 400 ] );
+        if ( ! $has_newborn && $child_age_months > 0 && $child_age_months < 3 ) {
+            $has_newborn = true;
         }
-
-        // Determine air quality level
-        $quality_level = $this->get_air_quality_level( $aqi );
+        $has_respiratory_issues = (bool) $request->get_param( 'respiratory_issues' );
         
-        // Get recommendations based on AQI and child conditions
-        $recommendations = $this->get_air_quality_recommendations( $aqi, $has_newborn, $respiratory_issues );
-
-        $tool = $this->get_tool_by_slug( 'air-quality' );
+        // Ev ortamı parametreleri (Frontend'in gönderdiği) with validation
+        $home_type = sanitize_text_field( $request->get_param( 'home_type' ) );
+        if ( ! in_array( $home_type, self::VALID_HOME_TYPES, true ) ) {
+            $home_type = self::DEFAULT_HOME_TYPE;
+        }
+        
+        $heating_type = sanitize_text_field( $request->get_param( 'heating_type' ) );
+        if ( ! in_array( $heating_type, self::VALID_HEATING_TYPES, true ) ) {
+            $heating_type = self::DEFAULT_HEATING_TYPE;
+        }
+        
+        $has_pets = (bool) $request->get_param( 'has_pets' );
+        $has_smoker = (bool) $request->get_param( 'has_smoker' );
+        
+        $season = sanitize_text_field( $request->get_param( 'season' ) );
+        if ( ! in_array( $season, self::VALID_SEASONS, true ) ) {
+            $season = $this->get_current_season();
+        }
+        
+        // Ek parametreler (opsiyonel) with validation
+        $ventilation_frequency = sanitize_text_field( $request->get_param( 'ventilation_frequency' ) );
+        if ( ! in_array( $ventilation_frequency, self::VALID_VENTILATION_FREQUENCIES, true ) ) {
+            $ventilation_frequency = self::DEFAULT_VENTILATION;
+        }
+        
+        $cooking_frequency = sanitize_text_field( $request->get_param( 'cooking_frequency' ) );
+        if ( ! in_array( $cooking_frequency, self::VALID_COOKING_FREQUENCIES, true ) ) {
+            $cooking_frequency = self::DEFAULT_COOKING_FREQUENCY;
+        }
+        
+        // Opsiyonel: Dış mekan AQI (geriye dönük uyumluluk)
+        $external_aqi = $request->get_param( 'aqi' );
+        
+        // İç mekan risk skoru hesapla
+        $indoor_risk = $this->calculate_indoor_air_risk(
+            $home_type, $heating_type, $has_pets, $has_smoker,
+            $season, $ventilation_frequency, $cooking_frequency,
+            $has_newborn, $has_respiratory_issues
+        );
+        
+        // Risk faktörlerini topla
+        $risk_factors = $this->get_indoor_risk_factors(
+            $home_type, $heating_type, $has_pets, $has_smoker,
+            $season, $ventilation_frequency, $cooking_frequency
+        );
+        
+        // Çocuk yaşına ve duruma göre öneriler
+        $recommendations = $this->get_child_air_quality_recommendations(
+            $child_age_months, $indoor_risk['risk_level'],
+            $has_respiratory_issues, $season, $has_pets, $has_smoker
+        );
+        
+        // Mevsimsel uyarılar
+        $seasonal_alerts = $this->get_air_quality_seasonal_alerts(
+            $season, $child_age_months, $has_respiratory_issues, $heating_type
+        );
+        
+        $tool = $this->get_tool_by_slug( 'hava-kalitesi' );
+        if ( is_wp_error( $tool ) ) {
+            $tool = $this->get_tool_by_slug( 'air-quality' );
+        }
         $sponsor_data = ! is_wp_error( $tool ) ? $this->get_sponsor_data( $tool->ID ) : null;
-
+        
         $result = [
-            'aqi' => $aqi,
-            'quality_level' => $quality_level,
-            'is_safe_for_outdoor' => $this->is_safe_outdoor( $aqi, $has_newborn, $respiratory_issues ),
+            'risk_level' => $indoor_risk['risk_level'],
+            'risk_score' => $indoor_risk['score'],
+            'risk_factors' => $risk_factors,
             'recommendations' => $recommendations,
+            'seasonal_alerts' => $seasonal_alerts,
             'indoor_tips' => $this->get_indoor_air_tips(),
             'sponsor' => $sponsor_data,
         ];
-
+        
+        // Geriye dönük uyumluluk: Eğer AQI gönderildiyse dış mekan verilerini de ekle
+        if ( $external_aqi !== null && $external_aqi !== '' ) {
+            $aqi = (int) $external_aqi;
+            if ( $aqi >= 0 && $aqi <= 500 ) {
+                $result['external_aqi'] = [
+                    'aqi' => $aqi,
+                    'quality_level' => $this->get_air_quality_level( $aqi ),
+                    'is_safe_for_outdoor' => $this->is_safe_outdoor( $aqi, $has_newborn, $has_respiratory_issues ),
+                ];
+            }
+        }
+        
         return new \WP_REST_Response( $result, 200 );
     }
 
@@ -948,11 +1032,16 @@ class SponsoredToolController {
 
     private function get_indoor_air_tips() {
         return [
-            'Düzenli havalandırma yapın (hava kalitesi iyiyken)',
-            'Hava temizleyici kullanın',
+            'Günde en az 2-3 kez 10-15 dakika havalandırma yapın',
+            'Hava temizleyici kullanın (HEPA filtreli tercih edin)',
             'İç mekanda sigara içilmemesini sağlayın',
-            'Ev bitkilerini kullanın',
+            'Ev bitkileri hava kalitesini doğal yoldan iyileştirir',
             'Nem oranını %40-60 arasında tutun',
+            'Kimyasal temizlik ürünleri yerine doğal alternatifler tercih edin',
+            'Halı ve tekstil ürünlerini düzenli temizleyin',
+            'Yatak ve yastıkları düzenli havalandırın',
+            'Mutfakta aspiratör kullanmayı unutmayın',
+            'Banyo ve nemli alanları iyi havalandırın',
         ];
     }
 
@@ -1349,5 +1438,319 @@ class SponsoredToolController {
         }
         
         return null;
+    }
+
+    /**
+     * Mevcut mevsimi belirle
+     */
+    private function get_current_season() {
+        $month = (int) date( 'n' );
+        if ( $month >= 3 && $month <= 5 ) {
+            return 'spring';
+        } elseif ( $month >= 6 && $month <= 8 ) {
+            return 'summer';
+        } elseif ( $month >= 9 && $month <= 11 ) {
+            return 'autumn';
+        } else {
+            return 'winter';
+        }
+    }
+
+    /**
+     * İç mekan hava kalitesi risk skoru hesapla
+     */
+    private function calculate_indoor_air_risk( $home_type, $heating_type, $has_pets, $has_smoker, $season, $ventilation, $cooking, $has_newborn, $has_respiratory ) {
+        $score = 0;
+        
+        // Ev tipi risk puanları
+        $home_scores = [
+            'apartment' => 15,
+            'ground_floor' => 25,
+            'house' => 10,
+            'villa' => 5,
+        ];
+        $score += $home_scores[$home_type] ?? self::DEFAULT_HOME_RISK_SCORE;
+        
+        // Isıtma sistemi risk puanları
+        $heating_scores = [
+            'stove' => 35,
+            'natural_gas' => 20,
+            'central' => 10,
+            'electric' => 5,
+            'air_conditioner' => 15,
+        ];
+        $score += $heating_scores[$heating_type] ?? self::DEFAULT_HEATING_RISK_SCORE;
+        
+        // Evcil hayvan riski
+        if ( $has_pets ) {
+            $score += 15;
+        }
+        
+        // Sigara riski (en yüksek risk faktörü)
+        if ( $has_smoker ) {
+            $score += 30;
+        }
+        
+        // Mevsimsel risk
+        $season_scores = [
+            'winter' => 15,
+            'autumn' => 10,
+            'spring' => 10,
+            'summer' => 5,
+        ];
+        $score += $season_scores[$season] ?? 10;
+        
+        // Havalandırma etkisi (azaltıcı)
+        $ventilation_reduction = [
+            'multiple_daily' => -15,
+            'daily' => -10,
+            'rarely' => 0,
+        ];
+        $score += $ventilation_reduction[$ventilation] ?? -10;
+        
+        // Mutfak aktivitesi
+        $cooking_scores = [
+            'high' => 10,
+            'medium' => 5,
+            'low' => 0,
+        ];
+        $score += $cooking_scores[$cooking] ?? 5;
+        
+        // Hassas gruplar için ek risk
+        if ( $has_newborn ) {
+            $score += 10;
+        }
+        if ( $has_respiratory ) {
+            $score += 10;
+        }
+        
+        // Skoru 0-100 arasında normalize et
+        $score = max( 0, min( 100, $score ) );
+        
+        // Risk seviyesini belirle
+        if ( $score <= 30 ) {
+            $risk_level = 'low';
+        } elseif ( $score <= 60 ) {
+            $risk_level = 'medium';
+        } else {
+            $risk_level = 'high';
+        }
+        
+        return [
+            'score' => $score,
+            'risk_level' => $risk_level,
+        ];
+    }
+
+    /**
+     * İç mekan risk faktörlerini topla
+     */
+    private function get_indoor_risk_factors( $home_type, $heating_type, $has_pets, $has_smoker, $season, $ventilation, $cooking ) {
+        $factors = [];
+        
+        // Sigara - en kritik faktör
+        if ( $has_smoker ) {
+            $factors[] = [
+                'factor' => 'Sigara Dumanı',
+                'impact' => 'Çocukların solunum sistemine ciddi zarar verir. Pasif içicilik riski çok yüksektir.',
+                'severity' => 'high',
+                'category' => 'lifestyle',
+            ];
+        }
+        
+        // Isıtma sistemi riskleri
+        if ( $heating_type === 'stove' ) {
+            $factors[] = [
+                'factor' => 'Soba Isıtma',
+                'impact' => 'Karbonmonoksit ve partikül madde salınımı riski. Düzenli havalandırma şarttır.',
+                'severity' => 'high',
+                'category' => 'heating',
+            ];
+        } elseif ( $heating_type === 'natural_gas' ) {
+            $factors[] = [
+                'factor' => 'Doğalgaz Kombi',
+                'impact' => 'Yanma ürünleri ve nem dengesini etkileyebilir. Düzenli bakım önemlidir.',
+                'severity' => 'medium',
+                'category' => 'heating',
+            ];
+        }
+        
+        // Evcil hayvan
+        if ( $has_pets ) {
+            $factors[] = [
+                'factor' => 'Evcil Hayvan',
+                'impact' => 'Tüy ve toz akarı alerjisi riski. Düzenli temizlik ve havalandırma gerekir.',
+                'severity' => 'medium',
+                'category' => 'environment',
+            ];
+        }
+        
+        // Ev tipi
+        if ( $home_type === 'ground_floor' ) {
+            $factors[] = [
+                'factor' => 'Zemin Kat',
+                'impact' => 'Nem ve küf riski daha yüksektir. Düzenli nem kontrolü yapın.',
+                'severity' => 'medium',
+                'category' => 'environment',
+            ];
+        } elseif ( $home_type === 'apartment' ) {
+            $factors[] = [
+                'factor' => 'Apartman Dairesi',
+                'impact' => 'Havalandırma sınırlı olabilir. Pencere açma imkanı değerlendirin.',
+                'severity' => 'low',
+                'category' => 'environment',
+            ];
+        }
+        
+        // Mevsimsel
+        if ( $season === 'winter' ) {
+            $factors[] = [
+                'factor' => 'Kış Mevsimi',
+                'impact' => 'Kapalı ortamda geçirilen süre artar, hava kalitesi düşebilir.',
+                'severity' => 'medium',
+                'category' => 'external',
+            ];
+        } elseif ( $season === 'spring' ) {
+            $factors[] = [
+                'factor' => 'İlkbahar Polenleri',
+                'impact' => 'Polen alerjisi riski. Pencere açarken dikkatli olun.',
+                'severity' => 'low',
+                'category' => 'external',
+            ];
+        }
+        
+        // Havalandırma
+        if ( $ventilation === 'rarely' ) {
+            $factors[] = [
+                'factor' => 'Yetersiz Havalandırma',
+                'impact' => 'Kirli hava birikimi ve nem problemi. Günde en az 2-3 kez havalandırın.',
+                'severity' => 'medium',
+                'category' => 'lifestyle',
+            ];
+        }
+        
+        // Mutfak
+        if ( $cooking === 'high' ) {
+            $factors[] = [
+                'factor' => 'Yoğun Mutfak Aktivitesi',
+                'impact' => 'Pişirme dumanı ve nem. Aspiratör kullanımı ve havalandırma önemli.',
+                'severity' => 'low',
+                'category' => 'lifestyle',
+            ];
+        }
+        
+        return $factors;
+    }
+
+    /**
+     * Çocuk yaşına ve duruma göre hava kalitesi önerileri
+     */
+    private function get_child_air_quality_recommendations( $child_age_months, $risk_level, $has_respiratory, $season, $has_pets, $has_smoker ) {
+        $recommendations = [];
+        
+        // Sigara varsa en öncelikli uyarı
+        if ( $has_smoker ) {
+            $recommendations[] = 'Evde sigara içilmemesi çocuğunuzun sağlığı için kritik öneme sahiptir';
+            $recommendations[] = 'Sigara içildikten sonra en az 30 dakika odaya girmemesini sağlayın';
+            $recommendations[] = 'Sigara içen kişi ellerini ve yüzünü yıkamadan çocuğa yaklaşmamalıdır';
+        }
+        
+        // Risk seviyesine göre öneriler
+        if ( $risk_level === 'high' ) {
+            $recommendations[] = 'Hava temizleyici cihaz kullanmayı düşünün (HEPA filtreli)';
+            $recommendations[] = 'Günde en az 3-4 kez 10-15 dakika havalandırma yapın';
+            $recommendations[] = 'Nem oranını %40-60 arasında tutun';
+        } elseif ( $risk_level === 'medium' ) {
+            $recommendations[] = 'Günde en az 2-3 kez havalandırma yapın';
+            $recommendations[] = 'Çocuğun odasında hava kalitesini özellikle takip edin';
+        }
+        
+        // Yaşa göre öneriler
+        if ( $child_age_months < 6 ) {
+            $recommendations[] = 'Yenidoğan ve küçük bebekler hava kirliliğine çok hassastır';
+            $recommendations[] = 'Bebeğin odasını her zaman temiz ve iyi havalandırılmış tutun';
+            $recommendations[] = 'Parfümlü ürünler ve oda spreyleri kullanmaktan kaçının';
+        } elseif ( $child_age_months < 12 ) {
+            $recommendations[] = 'Bebeğin emeklemeye başlamasıyla zemin temizliği daha önemli hale gelir';
+            $recommendations[] = 'Toz toplayan eşyaları minimize edin';
+        } elseif ( $child_age_months < 36 ) {
+            $recommendations[] = 'Çocuğunuzun aktif olduğu alanlarda düzenli temizlik yapın';
+            $recommendations[] = 'Oyuncakları düzenli olarak temizleyin';
+        }
+        
+        // Solunum sorunu varsa
+        if ( $has_respiratory ) {
+            $recommendations[] = 'Doktorunuzla düzenli takip yapın';
+            $recommendations[] = 'Ani hava kalitesi değişikliklerinde dikkatli olun';
+            $recommendations[] = 'Acil durum ilaçlarını her zaman ulaşılabilir tutun';
+        }
+        
+        // Evcil hayvan varsa
+        if ( $has_pets ) {
+            $recommendations[] = 'Evcil hayvanları çocuğun yatak odasına sokmayın';
+            $recommendations[] = 'Evcil hayvanları düzenli olarak tımar edin';
+            $recommendations[] = 'HEPA filtreli elektrikli süpürge kullanın';
+        }
+        
+        // Mevsimsel öneriler
+        if ( $season === 'winter' ) {
+            $recommendations[] = 'Kış aylarında ısıtma sistemini düzenli kontrol ettirin';
+            $recommendations[] = 'Odaları aşırı ısıtmaktan kaçının, ideal oda sıcaklığı 20-22°C';
+        } elseif ( $season === 'summer' ) {
+            $recommendations[] = 'Klima filtrelerini düzenli temizleyin';
+            $recommendations[] = 'Sabah erken ve akşam geç saatlerde havalandırın';
+        }
+        
+        // Genel öneriler
+        if ( empty( $recommendations ) || count( $recommendations ) < self::MIN_RECOMMENDATIONS_COUNT ) {
+            $recommendations[] = 'Düzenli havalandırma yapın';
+            $recommendations[] = 'Toz ve nem kontrolünü sağlayın';
+            $recommendations[] = 'Doğal temizlik ürünleri tercih edin';
+        }
+        
+        return array_unique( $recommendations );
+    }
+
+    /**
+     * Mevsimsel hava kalitesi uyarıları
+     */
+    private function get_air_quality_seasonal_alerts( $season, $child_age_months, $has_respiratory, $heating_type ) {
+        $alerts = [];
+        
+        switch ( $season ) {
+            case 'winter':
+                $alerts[] = 'Kış aylarında kapalı ortamda geçirilen süre arttığından hava kalitesine dikkat edin';
+                if ( $heating_type === 'stove' || $heating_type === 'natural_gas' ) {
+                    $alerts[] = 'Isıtma sisteminizden kaynaklı karbonmonoksit riski için dedektör kullanın';
+                }
+                $alerts[] = 'Soğuk havalarda kısa süreli ama sık havalandırma yapın';
+                break;
+                
+            case 'spring':
+                $alerts[] = 'İlkbahar aylarında polen seviyesi yüksektir, alerji belirtilerini takip edin';
+                $alerts[] = 'Polen yoğunluğu yüksek saatlerde (10:00-16:00) pencere açmaktan kaçının';
+                if ( $has_respiratory || $child_age_months < 12 ) {
+                    $alerts[] = 'Hassas çocuklar için antihistaminik ilaç bulundurun (doktor onaylı)';
+                }
+                break;
+                
+            case 'summer':
+                $alerts[] = 'Yaz aylarında ozon seviyesi artabilir, sıcak saatlerde dışarı çıkmayı sınırlayın';
+                $alerts[] = 'Klima kullanıyorsanız filtreleri ayda bir kontrol edin';
+                $alerts[] = 'Sivrisinek kovucu spreyleri çocuğun yakınında kullanmaktan kaçının';
+                break;
+                
+            case 'autumn':
+                $alerts[] = 'Sonbahar aylarında nem kontrolü önemlidir, küf oluşumuna dikkat edin';
+                $alerts[] = 'Isıtma sezonuna geçmeden sistemlerinizi kontrol ettirin';
+                break;
+        }
+        
+        // Yaşa özel mevsimsel uyarılar
+        if ( $child_age_months < 6 ) {
+            $alerts[] = 'Küçük bebekler mevsim geçişlerinde daha hassastır, oda sıcaklığını sabit tutun';
+        }
+        
+        return $alerts;
     }
 }
