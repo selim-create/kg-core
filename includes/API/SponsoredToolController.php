@@ -78,6 +78,12 @@ class SponsoredToolController {
             'permission_callback' => '__return_true',
         ]);
 
+        register_rest_route( 'kg/v1', '/tools/stain-encyclopedia/popular', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_popular_stains' ],
+            'permission_callback' => '__return_true',
+        ]);
+
         register_rest_route( 'kg/v1', '/tools/stain-encyclopedia/(?P<slug>[a-zA-Z0-9_-]+)', [
             'methods'  => 'GET',
             'callback' => [ $this, 'get_stain_detail' ],
@@ -635,11 +641,17 @@ class SponsoredToolController {
         // For now, return mock data. In a real implementation, this would query a stain database
         $stains = $this->get_stain_database();
 
-        // Filter by query
+        // Filter by query with Turkish character normalization
         if ( ! empty( $query ) ) {
-            $stains = array_filter( $stains, function( $stain ) use ( $query ) {
+            $normalized_query = $this->normalize_turkish( $query );
+            $stains = array_filter( $stains, function( $stain ) use ( $query, $normalized_query ) {
+                $normalized_name = $this->normalize_turkish( $stain['name'] );
+                $normalized_desc = isset( $stain['description'] ) ? $this->normalize_turkish( $stain['description'] ) : '';
+                
                 return stripos( $stain['name'], $query ) !== false || 
-                       stripos( $stain['description'], $query ) !== false;
+                       stripos( $normalized_name, $normalized_query ) !== false ||
+                       ( isset( $stain['description'] ) && stripos( $stain['description'], $query ) !== false ) ||
+                       stripos( $normalized_desc, $normalized_query ) !== false;
             });
         }
 
@@ -658,6 +670,42 @@ class SponsoredToolController {
             'stains' => array_values( $stains ),
             'categories' => $this->get_stain_categories(),
             'sponsor' => $sponsor_data,
+        ];
+
+        return new \WP_REST_Response( $result, 200 );
+    }
+
+    /**
+     * Get popular stains
+     */
+    public function get_popular_stains( $request ) {
+        // Popular stains as defined in frontend
+        $popular_slugs = [
+            'domates-lekesi',
+            'cikolata-lekesi',
+            'muz-lekesi',
+            'havuc-lekesi',
+            'cim-lekesi',
+            'kaka-lekesi',
+            'kusmuk-lekesi',
+            'anne-sutu-lekesi',
+        ];
+
+        $all_stains = $this->get_stain_database();
+        $popular_stains = [];
+
+        foreach ( $all_stains as $stain ) {
+            if ( in_array( $stain['slug'], $popular_slugs ) ) {
+                $popular_stains[] = [
+                    'slug' => $stain['slug'],
+                    'name' => $stain['name'],
+                    'emoji' => $stain['emoji'],
+                ];
+            }
+        }
+
+        $result = [
+            'stains' => $popular_stains,
         ];
 
         return new \WP_REST_Response( $result, 200 );
@@ -1046,74 +1094,1455 @@ class SponsoredToolController {
     }
 
     private function get_stain_database() {
-        // Mock stain database - in real implementation this would come from a database
+        // Comprehensive stain database with 40+ stains
         return [
+            // FOOD STAINS (20 stains)
             [
+                'id' => 1,
+                'slug' => 'domates-lekesi',
+                'name' => 'Domates Lekesi',
+                'emoji' => '🍅',
+                'category' => 'food',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla domatesi hemen kazıyarak temizleyin.',
+                        'tip' => 'Lekeyi ovuşturmayın, daha fazla yayılmasına neden olur.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Lekeyi ters taraftan soğuk su ile durulayın.',
+                        'tip' => 'Sıcak su lekeyi sabitler, mutlaka soğuk su kullanın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Bulaşık deterjanı veya sıvı çamaşır deterjanı uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => '15-30 dakika bekletin, sonra normal yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Sıcak su veya kurutucu kullanmayın, leke kalıcı hale gelir.',
+                    'Beyaz kumaşlarda limon suyu dikkatli kullanılmalıdır.',
+                ],
+                'related_ingredients' => [
+                    'Bulaşık deterjanı',
+                    'Beyaz sirke',
+                    'Oksijenli leke çıkarıcı',
+                ],
+            ],
+            [
+                'id' => 2,
+                'slug' => 'cikolata-lekesi',
+                'name' => 'Çikolata Lekesi',
+                'emoji' => '🍫',
+                'category' => 'food',
+                'difficulty' => 'medium',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla çikolatayı plastik bir kaşıkla kazıyın.',
+                        'tip' => 'Metal kullanmayın, kumaşa zarar verebilir.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Soğuk suyla lekeyi durulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Sıvı deterjan veya leke çıkarıcı uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => '30 dakika bekletin.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Yağ içerdiği için tam çıkmayabilir, ısrarcı olun.',
+                    'İlk yıkamada çıkmazsa tekrarlayın, kurutucuya atmayın.',
+                ],
+                'related_ingredients' => [
+                    'Sıvı çamaşır deterjanı',
+                    'Bulaşık deterjanı',
+                    'Oksijenli leke çıkarıcı',
+                ],
+            ],
+            [
+                'id' => 3,
+                'slug' => 'muz-lekesi',
+                'name' => 'Muz Lekesi',
+                'emoji' => '🍌',
+                'category' => 'food',
+                'difficulty' => 'hard',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla muzu hemen kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Limon suyu veya beyaz sirke uygulayın.',
+                        'tip' => 'Muz okside olarak kararır, asit yardımcı olur.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => '10-15 dakika bekletin.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Leke çıkarıcı ile yıkayın ve güneşte kurutun.',
+                        'tip' => 'Güneş ışığı doğal ağartıcı görevi görür.',
+                    ],
+                ],
+                'warnings' => [
+                    'Muz lekeleri zamanla koyulaşır, hemen müdahale edin.',
+                    'Tamamen kurumuş muz lekeleri çıkması çok zordur.',
+                ],
+                'related_ingredients' => [
+                    'Limon suyu',
+                    'Beyaz sirke',
+                    'Oksijenli leke çıkarıcı',
+                ],
+            ],
+            [
+                'id' => 4,
+                'slug' => 'havuc-lekesi',
+                'name' => 'Havuç Lekesi',
+                'emoji' => '🥕',
+                'category' => 'food',
+                'difficulty' => 'hard',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla havucu kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Soğuk suyla lekeyi durulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Gliserin veya sıvı deterjan uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => '30 dakika bekletin.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Oksijenli leke çıkarıcı ile yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Beta-karoten içerir, çıkması zor olabilir.',
+                    'Birden fazla yıkama gerekebilir.',
+                ],
+                'related_ingredients' => [
+                    'Gliserin',
+                    'Sıvı deterjan',
+                    'Oksijenli leke çıkarıcı',
+                ],
+            ],
+            [
+                'id' => 5,
                 'slug' => 'mama-lekesi',
                 'name' => 'Mama Lekesi',
+                'emoji' => '🥣',
                 'category' => 'food',
-                'description' => 'Sebze veya meyve bazlı mama lekeleri',
                 'difficulty' => 'easy',
-                'removal_steps' => [
-                    'Fazla mamayı kazıyın',
-                    'Soğuk suyla durulayın',
-                    'Leke çıkarıcı sprey uygulayın',
-                    '30 dakika bekleyin',
-                    'Normal yıkama programında yıkayın',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla mamayı kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Bebek deterjanı ile ön yıkama yapın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
                 ],
-                'products' => [
-                    'Leke çıkarıcı sprey',
+                'warnings' => [
+                    'Sebze mamaları renk bırakabilir.',
+                ],
+                'related_ingredients' => [
                     'Bebek deterjanı',
-                ],
-                'tips' => [
-                    'Hemen müdahale edin',
-                    'Sıcak su kullanmayın',
+                    'Leke çıkarıcı sprey',
                 ],
             ],
             [
+                'id' => 6,
+                'slug' => 'sut-lekesi',
+                'name' => 'Süt Lekesi',
+                'emoji' => '🥛',
+                'category' => 'food',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Soğuk suyla hemen durulayın.',
+                        'tip' => 'Sıcak su protein pıhtılaşmasına neden olur.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Sıvı deterjan uygulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Mutlaka soğuk su kullanın.',
+                    'Süt lekeleri zamanla koku yapar, hemen temizleyin.',
+                ],
+                'related_ingredients' => [
+                    'Sıvı deterjan',
+                    'Bebek deterjanı',
+                ],
+            ],
+            [
+                'id' => 7,
+                'slug' => 'yumurta-lekesi',
+                'name' => 'Yumurta Lekesi',
+                'emoji' => '🥚',
+                'category' => 'food',
+                'difficulty' => 'medium',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla yumurtayı kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                        'tip' => 'Sıcak su proteini pıhtılaştırır.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Amonyak solüsyonu veya enzimli deterjan uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => '30 dakika bekletin ve normal yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Asla sıcak su kullanmayın.',
+                ],
+                'related_ingredients' => [
+                    'Enzimli deterjan',
+                    'Amonyak',
+                ],
+            ],
+            [
+                'id' => 8,
+                'slug' => 'bal-lekesi',
+                'name' => 'Bal Lekesi',
+                'emoji' => '🍯',
+                'category' => 'food',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla balı kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Ilık suyla durulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Sıvı deterjan uygulayıp ovalayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Yapışkandır, hemen temizleyin.',
+                ],
+                'related_ingredients' => [
+                    'Sıvı deterjan',
+                ],
+            ],
+            [
+                'id' => 9,
+                'slug' => 'yogurt-lekesi',
+                'name' => 'Yoğurt Lekesi',
+                'emoji' => '🥛',
+                'category' => 'food',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla yoğurdu kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Enzimli deterjan uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Soğuk su kullanın.',
+                ],
+                'related_ingredients' => [
+                    'Enzimli deterjan',
+                    'Bebek deterjanı',
+                ],
+            ],
+            [
+                'id' => 10,
+                'slug' => 'kirmizi-meyve-lekesi',
+                'name' => 'Kırmızı Meyve Lekesi',
+                'emoji' => '🍓',
+                'category' => 'food',
+                'difficulty' => 'hard',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla meyveyi temizleyin.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Kaynar su dökmeyin, sabitler.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Limon suyu veya sirke uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => '15 dakika bekleyin.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Soğuk suyla durulayın ve leke çıkarıcı ile yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Tanin içerir, çıkması zordur.',
+                    'Hemen müdahale edin.',
+                ],
+                'related_ingredients' => [
+                    'Limon suyu',
+                    'Beyaz sirke',
+                    'Oksijenli leke çıkarıcı',
+                ],
+            ],
+            [
+                'id' => 11,
+                'slug' => 'uzum-suyu-lekesi',
+                'name' => 'Üzüm Suyu Lekesi',
+                'emoji' => '🍇',
+                'category' => 'food',
+                'difficulty' => 'hard',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Lekeyi hemen emici bir bezle silin.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Soğuk suyla bolca durulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Beyaz sirke veya limon suyu uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => '20 dakika bekletin.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Oksijenli leke çıkarıcı ile yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Koyu renkli meyve suları kalıcıdır.',
+                    'Erken müdahale kritiktir.',
+                ],
+                'related_ingredients' => [
+                    'Beyaz sirke',
+                    'Limon suyu',
+                    'Oksijenli leke çıkarıcı',
+                ],
+            ],
+            [
+                'id' => 12,
+                'slug' => 'ispanak-lekesi',
+                'name' => 'Ispanak Lekesi',
+                'emoji' => '🥬',
+                'category' => 'food',
+                'difficulty' => 'medium',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla ıspanağı kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Sıvı deterjan veya gliserin uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => '30 dakika bekletin ve yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Yeşil pigment kalıcı olabilir.',
+                ],
+                'related_ingredients' => [
+                    'Gliserin',
+                    'Sıvı deterjan',
+                    'Oksijenli leke çıkarıcı',
+                ],
+            ],
+            [
+                'id' => 13,
+                'slug' => 'bezelye-lekesi',
+                'name' => 'Bezelye Lekesi',
+                'emoji' => '🫛',
+                'category' => 'food',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla bezelyeyi temizleyin.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Sıvı deterjan uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [],
+                'related_ingredients' => [
+                    'Sıvı deterjan',
+                    'Bebek deterjanı',
+                ],
+            ],
+            [
+                'id' => 14,
+                'slug' => 'kabak-lekesi',
+                'name' => 'Kabak Lekesi',
+                'emoji' => '🎃',
+                'category' => 'food',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla kabağı kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Bebek deterjanı ile yıkayın.',
+                    ],
+                ],
+                'warnings' => [],
+                'related_ingredients' => [
+                    'Bebek deterjanı',
+                    'Sıvı deterjan',
+                ],
+            ],
+            [
+                'id' => 15,
+                'slug' => 'patates-lekesi',
+                'name' => 'Patates Lekesi',
+                'emoji' => '🥔',
+                'category' => 'food',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla patates püresini kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Sıvı deterjan ile yıkayın.',
+                    ],
+                ],
+                'warnings' => [],
+                'related_ingredients' => [
+                    'Sıvı deterjan',
+                ],
+            ],
+            [
+                'id' => 16,
+                'slug' => 'yag-lekesi',
+                'name' => 'Yağ Lekesi',
+                'emoji' => '🫒',
+                'category' => 'food',
+                'difficulty' => 'medium',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla yağı emici kağıtla silin.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Talk pudrası veya mısır nişastası serpin.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => '30 dakika bekleyin ve tozu fırçalayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Bulaşık deterjanı uygulayıp ovalayın.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Sıcak suyla yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Kurutmadan önce lekenin çıktığından emin olun.',
+                ],
+                'related_ingredients' => [
+                    'Bulaşık deterjanı',
+                    'Talk pudrası',
+                    'Mısır nişastası',
+                ],
+            ],
+            [
+                'id' => 17,
+                'slug' => 'ketcap-lekesi',
+                'name' => 'Ketçap Lekesi',
+                'emoji' => '🍅',
+                'category' => 'food',
+                'difficulty' => 'medium',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla ketçabı kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Beyaz sirke uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => '15 dakika bekleyin.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Leke çıkarıcı ile yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Sıcak su kullanmayın.',
+                ],
+                'related_ingredients' => [
+                    'Beyaz sirke',
+                    'Oksijenli leke çıkarıcı',
+                ],
+            ],
+            [
+                'id' => 18,
+                'slug' => 'zerdecal-lekesi',
+                'name' => 'Zerdeçal/Curry Lekesi',
+                'emoji' => '🟡',
+                'category' => 'food',
+                'difficulty' => 'hard',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla baharatı kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Gliserin veya alkol uygulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => '1 saat bekletin.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Güneşte 2-3 saat bekletin.',
+                        'tip' => 'Güneş ışığı zerdeçal pigmentini parçalar.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Oksijenli leke çıkarıcı ile yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'En zor lekelerden biridir.',
+                    'Birden fazla işlem gerekebilir.',
+                ],
+                'related_ingredients' => [
+                    'Gliserin',
+                    'Alkol',
+                    'Oksijenli leke çıkarıcı',
+                ],
+            ],
+            [
+                'id' => 19,
+                'slug' => 'nar-lekesi',
+                'name' => 'Nar Lekesi',
+                'emoji' => '🍎',
+                'category' => 'food',
+                'difficulty' => 'hard',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Lekeyi hemen emici bezle silin.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Soğuk suyla bol miktarda durulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Beyaz sirke veya limon suyu uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => '30 dakika bekletin.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Oksijenli leke çıkarıcı ile yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Nar suyu çok kalıcıdır.',
+                    'Anında müdahale şarttır.',
+                ],
+                'related_ingredients' => [
+                    'Beyaz sirke',
+                    'Limon suyu',
+                    'Oksijenli leke çıkarıcı',
+                ],
+            ],
+            [
+                'id' => 20,
+                'slug' => 'avokado-lekesi',
+                'name' => 'Avokado Lekesi',
+                'emoji' => '🥑',
+                'category' => 'food',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla avokadoyu kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Sıvı deterjan uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Yağlı olabilir, gerekirse tekrarlayın.',
+                ],
+                'related_ingredients' => [
+                    'Sıvı deterjan',
+                    'Bulaşık deterjanı',
+                ],
+            ],
+
+            // BODILY FLUID STAINS (8 stains)
+            [
+                'id' => 21,
                 'slug' => 'kaka-lekesi',
                 'name' => 'Kaka Lekesi',
+                'emoji' => '💩',
                 'category' => 'bodily',
-                'description' => 'Bebek dışkısı lekeleri',
-                'difficulty' => 'moderate',
-                'removal_steps' => [
-                    'Katı kısmı temizleyin',
-                    'Soğuk suyla bol miktarda durulayın',
-                    'Oksijen bazlı leke çıkarıcı uygulayın',
-                    '1-2 saat bekleyin',
-                    '60°C\'de yıkayın',
-                    'Güneşte kurutun',
+                'difficulty' => 'medium',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Katı kısmı plastik kaşık veya spatula ile kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Soğuk suyla bol miktarda durulayın.',
+                        'tip' => 'Sıcak su protein pıhtılaşmasına neden olur.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Oksijen bazlı leke çıkarıcı veya enzimli deterjan uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => '1-2 saat bekletin.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => '60°C\'de yıkayın.',
+                    ],
+                    [
+                        'step' => 6,
+                        'instruction' => 'Güneşte kurutun.',
+                        'tip' => 'Güneş ışığı doğal ağartıcı ve dezenfektan görevi görür.',
+                    ],
                 ],
-                'products' => [
+                'warnings' => [
+                    'Asla sıcak suyla başlamayın, leke sabitlenir.',
+                    'Kuru temizlemeye vermeyin, profesyonel temizlik gerekebilir.',
+                ],
+                'related_ingredients' => [
                     'Oksijen bazlı leke çıkarıcı',
-                    'Bebek deterjanı',
-                ],
-                'tips' => [
-                    'Asla sıcak suyla başlamayın',
-                    'Güneş ışığı doğal ağartıcıdır',
+                    'Enzimli bebek deterjanı',
+                    'Karbonat',
                 ],
             ],
             [
-                'slug' => 'kirmizi-meyve',
-                'name' => 'Kırmızı Meyve Lekesi',
-                'category' => 'food',
-                'description' => 'Çilek, ahududu gibi kırmızı meyveler',
+                'id' => 22,
+                'slug' => 'kusmuk-lekesi',
+                'name' => 'Kusmuk Lekesi',
+                'emoji' => '🤮',
+                'category' => 'bodily',
+                'difficulty' => 'medium',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Katı kısmı dikkatlice kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Karbonat serperek kokuyu nötralize edin.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => '15 dakika bekleyin ve karbonatı vakumlayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Enzimli deterjan uygulayın ve 30 dakika bekletin.',
+                    ],
+                    [
+                        'step' => 6,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Koku kalıcı olabilir, iyi havalandırın.',
+                    'Soğuk su kullanın.',
+                ],
+                'related_ingredients' => [
+                    'Karbonat',
+                    'Enzimli deterjan',
+                    'Beyaz sirke',
+                ],
+            ],
+            [
+                'id' => 23,
+                'slug' => 'anne-sutu-lekesi',
+                'name' => 'Anne Sütü Lekesi',
+                'emoji' => '🍼',
+                'category' => 'bodily',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Soğuk suyla hemen durulayın.',
+                        'tip' => 'Sıcak su protein pıhtılaşmasına neden olur.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Bebek deterjanı uygulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Hafifçe ovalayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Mutlaka soğuk su kullanın.',
+                    'Zamanla koku ve renk değişimi olabilir, hemen temizleyin.',
+                ],
+                'related_ingredients' => [
+                    'Bebek deterjanı',
+                    'Enzimli deterjan',
+                ],
+            ],
+            [
+                'id' => 24,
+                'slug' => 'tukuruk-lekesi',
+                'name' => 'Tükürük Lekesi',
+                'emoji' => '💧',
+                'category' => 'bodily',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Sıvı deterjan uygulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [],
+                'related_ingredients' => [
+                    'Bebek deterjanı',
+                    'Sıvı deterjan',
+                ],
+            ],
+            [
+                'id' => 25,
+                'slug' => 'idrar-lekesi',
+                'name' => 'İdrar Lekesi',
+                'emoji' => '💧',
+                'category' => 'bodily',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Soğuk suyla bol miktarda durulayın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Beyaz sirke ve su karışımı (1:2) uygulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => '15 dakika bekletin.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Enzimli deterjan ile yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Koku kalıcı olabilir, sirke kullanımı önemli.',
+                ],
+                'related_ingredients' => [
+                    'Beyaz sirke',
+                    'Enzimli deterjan',
+                    'Karbonat',
+                ],
+            ],
+            [
+                'id' => 26,
+                'slug' => 'kan-lekesi',
+                'name' => 'Kan Lekesi',
+                'emoji' => '🩸',
+                'category' => 'bodily',
+                'difficulty' => 'medium',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Soğuk suyla hemen durulayın.',
+                        'tip' => 'Sıcak su kanı pıhtılaştırır ve çıkması imkansız hale gelir.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Tuzlu soğuk su içinde bekletin (30 dakika).',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Oksijenli su veya hidrojen peroksit uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Köpürme bitince durulayın.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Kesinlikle sıcak su kullanmayın.',
+                    'Kurutmadan önce lekenin çıktığından emin olun.',
+                ],
+                'related_ingredients' => [
+                    'Tuz',
+                    'Hidrojen peroksit',
+                    'Oksijenli leke çıkarıcı',
+                ],
+            ],
+            [
+                'id' => 27,
+                'slug' => 'ter-lekesi',
+                'name' => 'Ter Lekesi',
+                'emoji' => '💦',
+                'category' => 'bodily',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Beyaz sirke uygulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => '15 dakika bekletin.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Sararmış ter lekeleri için limon suyu ve güneş yardımcı olur.',
+                ],
+                'related_ingredients' => [
+                    'Beyaz sirke',
+                    'Limon suyu',
+                ],
+            ],
+            [
+                'id' => 28,
+                'slug' => 'goz-yasi-lekesi',
+                'name' => 'Gözyaşı Lekesi',
+                'emoji' => '😢',
+                'category' => 'bodily',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [],
+                'related_ingredients' => [
+                    'Bebek deterjanı',
+                ],
+            ],
+
+            // OUTDOOR STAINS (4 stains)
+            [
+                'id' => 29,
+                'slug' => 'cim-lekesi',
+                'name' => 'Çim Lekesi',
+                'emoji' => '🌿',
+                'category' => 'outdoor',
                 'difficulty' => 'hard',
-                'removal_steps' => [
-                    'Fazla meyveyi temizleyin',
-                    'Kaynar su dökülerek sabitlemeyin',
-                    'Limon suyu veya sirke uygulayın',
-                    '15 dakika bekleyin',
-                    'Soğuk suyla durulayın',
-                    'Leke çıkarıcı ile yıkayın',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Kuru fırça ile fazla çim kalıntılarını temizleyin.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Alkol veya beyaz sirke uygulayın.',
+                        'tip' => 'Alkol klorofili çözer.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => '30 dakika bekletin.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Enzimli deterjan ile ovalayın.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Sıcak suyla yıkayın.',
+                    ],
                 ],
-                'products' => [
-                    'Limon suyu veya beyaz sirke',
-                    'Oksijen bazlı leke çıkarıcı',
+                'warnings' => [
+                    'En zor lekelerden biridir.',
+                    'Birden fazla işlem gerekebilir.',
                 ],
-                'tips' => [
-                    'Hemen müdahale edin',
-                    'Tanin içerir, zordur',
+                'related_ingredients' => [
+                    'Alkol',
+                    'Beyaz sirke',
+                    'Enzimli deterjan',
+                    'Oksijenli leke çıkarıcı',
+                ],
+            ],
+            [
+                'id' => 30,
+                'slug' => 'toprak-lekesi',
+                'name' => 'Toprak/Çamur Lekesi',
+                'emoji' => '🟤',
+                'category' => 'outdoor',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Toprağın tamamen kurumasını bekleyin.',
+                        'tip' => 'Islak toprak daha fazla yayılır.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Kuru fırça ile fazla toprağı temizleyin.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Sıvı deterjan uygulayın.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Islakken temizlemeye çalışmayın.',
+                ],
+                'related_ingredients' => [
+                    'Sıvı deterjan',
+                    'Leke çıkarıcı',
+                ],
+            ],
+            [
+                'id' => 31,
+                'slug' => 'kum-lekesi',
+                'name' => 'Kum Lekesi',
+                'emoji' => '🏖️',
+                'category' => 'outdoor',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Kumun tamamen kurumasını bekleyin.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Silkeleyin veya vakumlayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [],
+                'related_ingredients' => [
+                    'Bebek deterjanı',
+                ],
+            ],
+            [
+                'id' => 32,
+                'slug' => 'cicek-poleni-lekesi',
+                'name' => 'Çiçek Poleni Lekesi',
+                'emoji' => '🌸',
+                'category' => 'outdoor',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Poleni silkelemeyin, bantla yapıştırarak alın.',
+                        'tip' => 'Silkelemek lekeyi yayar.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Vakum ile emmeyi deneyin.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Leke çıkarıcı ile yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Ovalamayın veya silkelemeyin.',
+                ],
+                'related_ingredients' => [
+                    'Leke çıkarıcı',
+                    'Alkol',
+                ],
+            ],
+
+            // CRAFT/ART STAINS (4 stains)
+            [
+                'id' => 33,
+                'slug' => 'boya-lekesi',
+                'name' => 'Boya Lekesi',
+                'emoji' => '🎨',
+                'category' => 'craft',
+                'difficulty' => 'hard',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Boya tipini belirleyin (su bazlı mı, yağlı mı).',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Su bazlı boya için: Soğuk suyla hemen durulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Yağlı boya için: Terpentin veya solvent uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Sıvı deterjan ile ovalayın.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Sıcak suyla yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Kurumuş boya çıkmayabilir.',
+                    'Hemen müdahale edin.',
+                ],
+                'related_ingredients' => [
+                    'Alkol',
+                    'Terpentin (yağlı boya için)',
+                    'Sıvı deterjan',
+                ],
+            ],
+            [
+                'id' => 34,
+                'slug' => 'keceli-kalem-lekesi',
+                'name' => 'Keçeli Kalem Lekesi',
+                'emoji' => '✏️',
+                'category' => 'craft',
+                'difficulty' => 'hard',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Leke altına emici bir bez yerleştirin.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Alkol veya dezenfektan ile hafifçe silin.',
+                        'tip' => 'Lekeyi kumaşa değil, altındaki beze transfer edin.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Temiz yüzeye geçene kadar tekrarlayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Leke çıkarıcı ile yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Kalıcı marker tamamen çıkmayabilir.',
+                    'Bazı markerlarda solvent gerekir.',
+                ],
+                'related_ingredients' => [
+                    'Alkol',
+                    'Dezenfektan',
+                    'Leke çıkarıcı sprey',
+                ],
+            ],
+            [
+                'id' => 35,
+                'slug' => 'pastel-boya-lekesi',
+                'name' => 'Pastel Boya Lekesi',
+                'emoji' => '🖍️',
+                'category' => 'craft',
+                'difficulty' => 'medium',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla boyayı kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Bulaşık deterjanı uygulayın.',
+                        'tip' => 'Pastel yağlı olduğu için yağ çözücü gerekir.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Sıcak suyla ovalayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Leke çıkarıcı sprey uygulayın.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Yağ içeriği nedeniyle inatçıdır.',
+                ],
+                'related_ingredients' => [
+                    'Bulaşık deterjanı',
+                    'Leke çıkarıcı sprey',
+                    'Talk pudrası',
+                ],
+            ],
+            [
+                'id' => 36,
+                'slug' => 'oyun-hamuru-lekesi',
+                'name' => 'Oyun Hamuru Lekesi',
+                'emoji' => '🟢',
+                'category' => 'craft',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Hamuru tamamen kurumasını bekleyin.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Kuru hamuru fırça ile kazıyın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Kalan lekeye beyaz sirke uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => '15 dakika bekleyin.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Renkli hamurlar boya bırakabilir.',
+                ],
+                'related_ingredients' => [
+                    'Beyaz sirke',
+                    'Sıvı deterjan',
+                ],
+            ],
+
+            // HOUSEHOLD STAINS (4 stains)
+            [
+                'id' => 37,
+                'slug' => 'krem-lekesi',
+                'name' => 'Krem/Losyon Lekesi',
+                'emoji' => '🧴',
+                'category' => 'household',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla kremi bir kaşıkla kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Talk pudrası veya mısır nişastası serpin.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => '20 dakika bekleyin ve tozu fırçalayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Bulaşık deterjanı uygulayın.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Yağ bazlı kremler daha zor çıkar.',
+                ],
+                'related_ingredients' => [
+                    'Talk pudrası',
+                    'Bulaşık deterjanı',
+                    'Mısır nişastası',
+                ],
+            ],
+            [
+                'id' => 38,
+                'slug' => 'dis-macunu-lekesi',
+                'name' => 'Diş Macunu Lekesi',
+                'emoji' => '🦷',
+                'category' => 'household',
+                'difficulty' => 'easy',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla macunu kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Soğuk suyla durulayın.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Beyaz sirke uygulayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => '10 dakika bekleyin.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Normal yıkama programında yıkayın.',
+                    ],
+                ],
+                'warnings' => [],
+                'related_ingredients' => [
+                    'Beyaz sirke',
+                    'Sıvı deterjan',
+                ],
+            ],
+            [
+                'id' => 39,
+                'slug' => 'bebek-yagi-lekesi',
+                'name' => 'Bebek Yağı Lekesi',
+                'emoji' => '🍼',
+                'category' => 'household',
+                'difficulty' => 'medium',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla yağı emici kağıtla silin.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Talk pudrası veya mısır nişastası bol miktarda serpin.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => '30-60 dakika bekleyin.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Tozu fırçalayın.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Bulaşık deterjanı ile ovalayın.',
+                    ],
+                    [
+                        'step' => 6,
+                        'instruction' => 'Sıcak suyla yıkayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'Yağ lekeleri kurutucuya atılırsa kalıcı olur.',
+                ],
+                'related_ingredients' => [
+                    'Talk pudrası',
+                    'Mısır nişastası',
+                    'Bulaşık deterjanı',
+                ],
+            ],
+            [
+                'id' => 40,
+                'slug' => 'pisik-kremi-lekesi',
+                'name' => 'Pişik Kremi Lekesi',
+                'emoji' => '🧴',
+                'category' => 'household',
+                'difficulty' => 'medium',
+                'steps' => [
+                    [
+                        'step' => 1,
+                        'instruction' => 'Fazla kremi kazıyın.',
+                    ],
+                    [
+                        'step' => 2,
+                        'instruction' => 'Bulaşık deterjanı bol miktarda uygulayın.',
+                        'tip' => 'Çinko oksit ve vazelin içerir, çok yağlıdır.',
+                    ],
+                    [
+                        'step' => 3,
+                        'instruction' => 'Sıcak suyla ovalayın.',
+                    ],
+                    [
+                        'step' => 4,
+                        'instruction' => 'Leke çıkarıcı sprey uygulayın.',
+                    ],
+                    [
+                        'step' => 5,
+                        'instruction' => 'Sıcak suyla yıkayın.',
+                    ],
+                    [
+                        'step' => 6,
+                        'instruction' => 'Gerekirse tekrarlayın.',
+                    ],
+                ],
+                'warnings' => [
+                    'En zor çıkan lekelerden biridir.',
+                    'Birden fazla yıkama gerekebilir.',
+                    'Kurutmadan önce lekenin çıktığından emin olun.',
+                ],
+                'related_ingredients' => [
+                    'Bulaşık deterjanı',
+                    'Leke çıkarıcı sprey',
+                    'Oksijenli leke çıkarıcı',
                 ],
             ],
         ];
@@ -1130,10 +2559,27 @@ class SponsoredToolController {
                 'label' => 'Vücut Sıvıları',
             ],
             [
-                'id' => 'other',
-                'label' => 'Diğer',
+                'id' => 'outdoor',
+                'label' => 'Dış Mekan',
+            ],
+            [
+                'id' => 'craft',
+                'label' => 'Sanat/Oyun',
+            ],
+            [
+                'id' => 'household',
+                'label' => 'Ev İçi',
             ],
         ];
+    }
+
+    /**
+     * Normalize Turkish characters for search
+     */
+    private function normalize_turkish( $text ) {
+        $search = ['ç', 'ğ', 'ı', 'ö', 'ş', 'ü', 'Ç', 'Ğ', 'İ', 'Ö', 'Ş', 'Ü'];
+        $replace = ['c', 'g', 'i', 'o', 's', 'u', 'C', 'G', 'I', 'O', 'S', 'U'];
+        return str_replace( $search, $replace, strtolower( $text ) );
     }
 
     /**
