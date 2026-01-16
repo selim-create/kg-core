@@ -638,7 +638,7 @@ class SponsoredToolController {
         $query = $request->get_param( 'q' );
         $category = $request->get_param( 'category' );
 
-        // For now, return mock data. In a real implementation, this would query a stain database
+        // Get stain database
         $stains = $this->get_stain_database();
 
         // Filter by query with Turkish character normalization
