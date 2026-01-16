@@ -101,6 +101,12 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/DiscussionAdmin.php' ) ) requir
 // User Profile Fields (Kullanıcı Profil Alanları)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/UserProfileFields.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/UserProfileFields.php';
 
+// 5.5.1. HEALTH ADMIN PAGES (Vaccination Tracker)
+if ( file_exists( KG_CORE_PATH . 'includes/Health/VaccineManager.php' ) ) require_once KG_CORE_PATH . 'includes/Health/VaccineManager.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/VaccineAdminPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/VaccineAdminPage.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/EmailTemplateAdminPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/EmailTemplateAdminPage.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/NotificationLogAdminPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/NotificationLogAdminPage.php';
+
 // 5.6. MIGRATION SINIFLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/FieldConsolidation.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/FieldConsolidation.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/ContentParser.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/ContentParser.php';
@@ -209,6 +215,17 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\UserProfileFields' ) ) {
         new \KG_Core\Admin\UserProfileFields();
+    }
+    
+    // Health Admin Pages (Vaccination Tracker)
+    if ( is_admin() && class_exists( '\KG_Core\Admin\VaccineAdminPage' ) ) {
+        new \KG_Core\Admin\VaccineAdminPage();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\EmailTemplateAdminPage' ) ) {
+        new \KG_Core\Admin\EmailTemplateAdminPage();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\NotificationLogAdminPage' ) ) {
+        new \KG_Core\Admin\NotificationLogAdminPage();
     }
 
     // Role Manager (RBAC)
