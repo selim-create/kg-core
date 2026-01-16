@@ -9,6 +9,23 @@ class SponsoredToolController {
      */
     private const DIAPERS_PER_PACK = 50;
 
+    /**
+     * Air Quality Analysis Constants
+     */
+    private const DEFAULT_HOME_TYPE = 'apartment';
+    private const DEFAULT_HEATING_TYPE = 'central';
+    private const DEFAULT_VENTILATION = 'daily';
+    private const DEFAULT_COOKING_FREQUENCY = 'medium';
+    private const DEFAULT_HOME_RISK_SCORE = 15;
+    private const DEFAULT_HEATING_RISK_SCORE = 15;
+    private const MIN_RECOMMENDATIONS_COUNT = 3;
+    
+    private const VALID_HOME_TYPES = ['apartment', 'ground_floor', 'house', 'villa'];
+    private const VALID_HEATING_TYPES = ['stove', 'natural_gas', 'central', 'electric', 'air_conditioner'];
+    private const VALID_SEASONS = ['winter', 'spring', 'summer', 'autumn'];
+    private const VALID_VENTILATION_FREQUENCIES = ['multiple_daily', 'daily', 'rarely'];
+    private const VALID_COOKING_FREQUENCIES = ['high', 'medium', 'low'];
+
     public function __construct() {
         add_action( 'rest_api_init', [ $this, 'register_routes' ] );
     }
@@ -520,16 +537,35 @@ class SponsoredToolController {
         }
         $has_respiratory_issues = (bool) $request->get_param( 'respiratory_issues' );
         
-        // Ev ortamı parametreleri (Frontend'in gönderdiği)
-        $home_type = sanitize_text_field( $request->get_param( 'home_type' ) ) ?: 'apartment';
-        $heating_type = sanitize_text_field( $request->get_param( 'heating_type' ) ) ?: 'central';
+        // Ev ortamı parametreleri (Frontend'in gönderdiği) with validation
+        $home_type = sanitize_text_field( $request->get_param( 'home_type' ) );
+        if ( ! in_array( $home_type, self::VALID_HOME_TYPES, true ) ) {
+            $home_type = self::DEFAULT_HOME_TYPE;
+        }
+        
+        $heating_type = sanitize_text_field( $request->get_param( 'heating_type' ) );
+        if ( ! in_array( $heating_type, self::VALID_HEATING_TYPES, true ) ) {
+            $heating_type = self::DEFAULT_HEATING_TYPE;
+        }
+        
         $has_pets = (bool) $request->get_param( 'has_pets' );
         $has_smoker = (bool) $request->get_param( 'has_smoker' );
-        $season = sanitize_text_field( $request->get_param( 'season' ) ) ?: $this->get_current_season();
         
-        // Ek parametreler (opsiyonel)
-        $ventilation_frequency = sanitize_text_field( $request->get_param( 'ventilation_frequency' ) ) ?: 'daily';
-        $cooking_frequency = sanitize_text_field( $request->get_param( 'cooking_frequency' ) ) ?: 'medium';
+        $season = sanitize_text_field( $request->get_param( 'season' ) );
+        if ( ! in_array( $season, self::VALID_SEASONS, true ) ) {
+            $season = $this->get_current_season();
+        }
+        
+        // Ek parametreler (opsiyonel) with validation
+        $ventilation_frequency = sanitize_text_field( $request->get_param( 'ventilation_frequency' ) );
+        if ( ! in_array( $ventilation_frequency, self::VALID_VENTILATION_FREQUENCIES, true ) ) {
+            $ventilation_frequency = self::DEFAULT_VENTILATION;
+        }
+        
+        $cooking_frequency = sanitize_text_field( $request->get_param( 'cooking_frequency' ) );
+        if ( ! in_array( $cooking_frequency, self::VALID_COOKING_FREQUENCIES, true ) ) {
+            $cooking_frequency = self::DEFAULT_COOKING_FREQUENCY;
+        }
         
         // Opsiyonel: Dış mekan AQI (geriye dönük uyumluluk)
         $external_aqi = $request->get_param( 'aqi' );
@@ -1433,7 +1469,7 @@ class SponsoredToolController {
             'house' => 10,
             'villa' => 5,
         ];
-        $score += $home_scores[$home_type] ?? 15;
+        $score += $home_scores[$home_type] ?? self::DEFAULT_HOME_RISK_SCORE;
         
         // Isıtma sistemi risk puanları
         $heating_scores = [
@@ -1443,7 +1479,7 @@ class SponsoredToolController {
             'electric' => 5,
             'air_conditioner' => 15,
         ];
-        $score += $heating_scores[$heating_type] ?? 15;
+        $score += $heating_scores[$heating_type] ?? self::DEFAULT_HEATING_RISK_SCORE;
         
         // Evcil hayvan riski
         if ( $has_pets ) {
@@ -1666,7 +1702,7 @@ class SponsoredToolController {
         }
         
         // Genel öneriler
-        if ( empty( $recommendations ) || count( $recommendations ) < 3 ) {
+        if ( empty( $recommendations ) || count( $recommendations ) < self::MIN_RECOMMENDATIONS_COUNT ) {
             $recommendations[] = 'Düzenli havalandırma yapın';
             $recommendations[] = 'Toz ve nem kontrolünü sağlayın';
             $recommendations[] = 'Doğal temizlik ürünleri tercih edin';
