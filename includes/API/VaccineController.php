@@ -5,6 +5,7 @@ use KG_Core\Auth\JWTHandler;
 use KG_Core\Health\VaccineManager;
 use KG_Core\Health\VaccineRecordManager;
 use KG_Core\Health\VaccineScheduleCalculator;
+use KG_Core\Health\SideEffectTracker;
 
 /**
  * VaccineController - Public vaccine endpoints
@@ -226,8 +227,8 @@ class VaccineController {
      * @return \WP_REST_Response|\WP_Error Response object or error
      */
     public function get_schedule_versions( $request ) {
-        $calculator = new VaccineScheduleCalculator();
-        $versions = $calculator->get_schedule_versions();
+        $vaccine_manager = new VaccineManager();
+        $versions = $vaccine_manager->get_schedule_versions();
 
         if ( is_wp_error( $versions ) ) {
             return $versions;
@@ -255,7 +256,7 @@ class VaccineController {
         }
 
         $record_manager = new VaccineRecordManager();
-        $schedule = $record_manager->get_child_schedule( $child_id );
+        $schedule = $record_manager->get_child_vaccines( $child_id );
 
         if ( is_wp_error( $schedule ) ) {
             return $schedule;
@@ -321,7 +322,7 @@ class VaccineController {
         }
 
         // Validate status
-        $valid_statuses = [ 'pending', 'done', 'skipped', 'postponed' ];
+        $valid_statuses = [ 'scheduled', 'done', 'skipped', 'overdue' ];
         if ( ! in_array( $status, $valid_statuses, true ) ) {
             return new \WP_Error( 'invalid_status', 'Invalid status. Must be one of: ' . implode( ', ', $valid_statuses ), [ 'status' => 400 ] );
         }
@@ -357,7 +358,7 @@ class VaccineController {
         }
 
         $record_manager = new VaccineRecordManager();
-        $result = $record_manager->add_private_vaccine( $child_id, $vaccine_code );
+        $result = $record_manager->add_private_vaccine( $user_id, $child_id, $vaccine_code );
 
         if ( is_wp_error( $result ) ) {
             return $result;
@@ -396,8 +397,8 @@ class VaccineController {
         // Sanitize side effects array
         $sanitized_effects = array_map( 'sanitize_text_field', $side_effects );
 
-        $record_manager = new VaccineRecordManager();
-        $result = $record_manager->report_side_effects( $record_id, $sanitized_effects, $severity );
+        $side_effect_tracker = new SideEffectTracker();
+        $result = $side_effect_tracker->record_side_effects( $record_id, $sanitized_effects, $severity );
 
         if ( is_wp_error( $result ) ) {
             return $result;
@@ -454,7 +455,7 @@ class VaccineController {
         }
 
         $record_manager = new VaccineRecordManager();
-        $history = $record_manager->get_vaccine_history( $child_id );
+        $history = $record_manager->get_child_vaccines( $child_id, 'done' );
 
         if ( is_wp_error( $history ) ) {
             return $history;
