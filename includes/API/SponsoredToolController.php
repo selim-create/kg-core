@@ -3,6 +3,12 @@ namespace KG_Core\API;
 
 class SponsoredToolController {
 
+    /**
+     * Average number of diapers per pack
+     * Used for calculating monthly pack requirements
+     */
+    private const DIAPERS_PER_PACK = 50;
+
     public function __construct() {
         add_action( 'rest_api_init', [ $this, 'register_routes' ] );
     }
@@ -308,17 +314,19 @@ class SponsoredToolController {
      */
     public function calculate_diaper_needs( $request ) {
         // Backward compatibility - accept both parameter names
-        $weight_kg = (float) $request->get_param( 'baby_weight_kg' );
-        if ( ! $weight_kg ) {
-            $weight_kg = (float) $request->get_param( 'weight_kg' );
+        $weight_kg = $request->get_param( 'baby_weight_kg' );
+        if ( $weight_kg === null ) {
+            $weight_kg = $request->get_param( 'weight_kg' );
         }
+        $weight_kg = (float) $weight_kg;
 
-        $age_months = (int) $request->get_param( 'baby_age_months' );
-        if ( ! $age_months ) {
-            $age_months = (int) $request->get_param( 'child_age_months' );
+        $age_months = $request->get_param( 'baby_age_months' );
+        if ( $age_months === null ) {
+            $age_months = $request->get_param( 'child_age_months' );
         }
+        $age_months = (int) $age_months;
 
-        $daily_changes = (int) $request->get_param( 'daily_changes' );
+        $daily_changes = $request->get_param( 'daily_changes' );
         $feeding_type = $request->get_param( 'feeding_type' ) ?: 'mixed';
 
         if ( $age_months < 0 || $weight_kg <= 0 ) {
@@ -326,8 +334,10 @@ class SponsoredToolController {
         }
 
         // Use daily_changes if provided, otherwise calculate based on age and feeding type
-        if ( ! $daily_changes ) {
+        if ( $daily_changes === null ) {
             $daily_changes = $this->calculate_daily_diapers( $age_months, $feeding_type );
+        } else {
+            $daily_changes = (int) $daily_changes;
         }
 
         $recommended_size = $this->get_diaper_size( $weight_kg, $age_months );
@@ -363,17 +373,22 @@ class SponsoredToolController {
         }
         
         // New format - direct parameters
-        $change_frequency = (float) $request->get_param( 'change_frequency' );
-        $night_diaper_hours = (float) $request->get_param( 'night_diaper_hours' );
+        $change_frequency = $request->get_param( 'change_frequency' );
+        $night_diaper_hours = $request->get_param( 'night_diaper_hours' );
         $humidity_level = $request->get_param( 'humidity_level' ) ?: 'normal';
         $has_diarrhea = (bool) $request->get_param( 'has_diarrhea' );
 
         // Default values if not provided
-        if ( ! $change_frequency ) {
+        if ( $change_frequency === null ) {
             $change_frequency = 3;
+        } else {
+            $change_frequency = (float) $change_frequency;
         }
-        if ( ! $night_diaper_hours ) {
+        
+        if ( $night_diaper_hours === null ) {
             $night_diaper_hours = 8;
+        } else {
+            $night_diaper_hours = (float) $night_diaper_hours;
         }
 
         return $this->calculate_rash_risk_new( $change_frequency, $night_diaper_hours, $humidity_level, $has_diarrhea, $request );
@@ -1292,9 +1307,8 @@ class SponsoredToolController {
      * Aylık paket sayısını hesapla
      */
     private function calculate_monthly_packs( $daily_count ) {
-        // Bir pakette ortalama 50 adet bez olduğunu varsayalım
         $monthly_diapers = $daily_count * 30;
-        $packs_needed = ceil( $monthly_diapers / 50 );
+        $packs_needed = ceil( $monthly_diapers / self::DIAPERS_PER_PACK );
         
         return $packs_needed;
     }
