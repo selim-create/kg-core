@@ -77,13 +77,13 @@ class UserController {
             'permission_callback' => [ $this, 'check_authentication' ],
         ]);
 
-        register_rest_route( 'kg/v1', '/user/children/(?P<id>[a-zA-Z0-9]+)', [
+        register_rest_route( 'kg/v1', '/user/children/(?P<id>[a-zA-Z0-9-]+)', [
             'methods'  => 'PUT',
             'callback' => [ $this, 'update_child' ],
             'permission_callback' => [ $this, 'check_authentication' ],
         ]);
 
-        register_rest_route( 'kg/v1', '/user/children/(?P<id>[a-zA-Z0-9]+)', [
+        register_rest_route( 'kg/v1', '/user/children/(?P<id>[a-zA-Z0-9-]+)', [
             'methods'  => 'DELETE',
             'callback' => [ $this, 'delete_child' ],
             'permission_callback' => [ $this, 'check_authentication' ],
