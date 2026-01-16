@@ -37,6 +37,22 @@ class UserController {
             'permission_callback' => [ $this, 'check_authentication' ],
         ]);
 
+        register_rest_route( 'kg/v1', '/auth/can-edit', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'can_edit_content' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+            'args' => [
+                'post_id' => [
+                    'type'              => 'integer',
+                    'sanitize_callback' => 'absint',
+                ],
+                'id' => [
+                    'type'              => 'integer',
+                    'sanitize_callback' => 'absint',
+                ],
+            ],
+        ]);
+
         // Google OAuth endpoint
         register_rest_route( 'kg/v1', '/auth/google', [
             'methods'  => 'POST',
@@ -354,6 +370,64 @@ class UserController {
         $display_name = get_user_meta( $user_id, '_kg_display_name', true );
         $parent_role = get_user_meta( $user_id, '_kg_parent_role', true );
 
+        // Admin URL
+        $admin_url = defined( 'KG_API_URL' ) 
+            ? KG_API_URL . '/wp-admin/'
+            : admin_url();
+
+        // Yetki kontrolleri
+        $capabilities = [
+            'edit_posts'              => $user->has_cap( 'edit_posts' ),
+            'edit_others_posts'       => $user->has_cap( 'edit_others_posts' ),
+            'edit_published_posts'    => $user->has_cap( 'edit_published_posts' ),
+            'publish_posts'           => $user->has_cap( 'publish_posts' ),
+            'delete_posts'            => $user->has_cap( 'delete_posts' ),
+            'edit_recipes'            => $user->has_cap( 'edit_posts' ),
+            'edit_others_recipes'     => $user->has_cap( 'edit_others_posts' ),
+            'edit_ingredients'        => $user->has_cap( 'edit_posts' ),
+            'edit_others_ingredients' => $user->has_cap( 'edit_others_posts' ),
+            'edit_discussions'        => $user->has_cap( 'edit_posts' ),
+            'manage_categories'       => $user->has_cap( 'manage_categories' ),
+            'moderate_comments'       => $user->has_cap( 'moderate_comments' ),
+            'upload_files'            => $user->has_cap( 'upload_files' ),
+        ];
+
+        // Basitleştirilmiş düzenleme yetkileri (frontend için)
+        $can_edit = [
+            'posts'       => $user->has_cap( 'edit_posts' ),
+            'recipes'     => $user->has_cap( 'edit_posts' ),
+            'ingredients' => $user->has_cap( 'edit_posts' ),
+            'discussions' => $user->has_cap( 'edit_posts' ),
+        ];
+
+        // Başkalarının içeriklerini düzenleyebilir mi?
+        $can_edit_others = [
+            'posts'       => $user->has_cap( 'edit_others_posts' ),
+            'recipes'     => $user->has_cap( 'edit_others_posts' ),
+            'ingredients' => $user->has_cap( 'edit_others_posts' ),
+            'discussions' => $user->has_cap( 'edit_others_posts' ),
+        ];
+
+        // Rol kontrolleri
+        $is_admin = in_array( 'administrator', $roles );
+        $is_editor = in_array( 'editor', $roles ) || $is_admin;
+        $is_expert = in_array( 'kg_expert', $roles );
+        $is_author = in_array( 'author', $roles );
+
+        // Editör seviyesi yetki (admin, editor, kg_expert)
+        $has_editor_access = $is_admin || $is_editor || $is_expert;
+
+        // Edit URLs
+        $edit_urls = [
+            'new_post'       => $admin_url . 'post-new.php',
+            'new_recipe'     => $admin_url . 'post-new.php?post_type=recipe',
+            'new_ingredient' => $admin_url . 'post-new.php?post_type=ingredient',
+            'new_discussion' => $admin_url . 'post-new.php?post_type=discussion',
+            'edit_post'      => $admin_url . 'post.php?post=%d&action=edit',
+            'edit_recipe'    => $admin_url . 'post.php?post=%d&action=edit',
+            'edit_ingredient'=> $admin_url . 'post.php?post=%d&action=edit',
+        ];
+
         return new \WP_REST_Response( [
             'user_id' => $user->ID,
             'id' => $user->ID,
@@ -363,9 +437,71 @@ class UserController {
             'display_name' => $display_name ?: $user->display_name,
             'parent_role' => $parent_role,
             'avatar_url' => $avatar_url,
+            'avatar' => $avatar_url,
             'children' => $children,
             'role' => $primary_role,
+            'roles' => array_values( $roles ),
             'created_at' => $user->user_registered,
+            'capabilities' => $capabilities,
+            'can_edit' => $can_edit,
+            'can_edit_others' => $can_edit_others,
+            'is_admin' => $is_admin,
+            'is_editor' => $is_editor,
+            'is_expert' => $is_expert,
+            'is_author' => $is_author,
+            'has_editor_access' => $has_editor_access,
+            'admin_url' => $admin_url,
+            'edit_urls' => $edit_urls,
+        ], 200 );
+    }
+
+    /**
+     * Check if current user can edit a specific content
+     * 
+     * GET /kg/v1/auth/can-edit?post_id=123
+     * GET /kg/v1/auth/can-edit?id=123
+     */
+    public function can_edit_content( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+        $user = get_user_by( 'id', $user_id );
+
+        if ( ! $user ) {
+            return new \WP_REST_Response( [
+                'can_edit' => false,
+                'reason'   => 'not_authenticated'
+            ], 200 );
+        }
+
+        $post_id = $request->get_param( 'post_id' ) ?: $request->get_param( 'id' );
+
+        if ( ! $post_id ) {
+            return new \WP_Error(
+                'missing_param',
+                'post_id veya id parametresi gerekli',
+                [ 'status' => 400 ]
+            );
+        }
+
+        $post = get_post( $post_id );
+
+        if ( ! $post ) {
+            return new \WP_REST_Response( [
+                'can_edit' => false,
+                'reason'   => 'post_not_found'
+            ], 200 );
+        }
+
+        $can_edit = current_user_can( 'edit_post', $post_id );
+
+        $admin_url = defined( 'KG_API_URL' ) 
+            ? KG_API_URL . '/wp-admin/'
+            : admin_url();
+
+        return new \WP_REST_Response( [
+            'can_edit'  => $can_edit,
+            'post_id'   => (int) $post_id,
+            'post_type' => $post->post_type,
+            'edit_url'  => $can_edit ? $admin_url . 'post.php?post=' . $post_id . '&action=edit' : null,
         ], 200 );
     }
 
