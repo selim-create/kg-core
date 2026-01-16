@@ -24,7 +24,7 @@ class UserProfileFields {
             wp_enqueue_media();
             wp_enqueue_script(
                 'kg-admin-user-profile',
-                plugin_dir_url( dirname( __DIR__ ) ) . 'assets/js/admin-user-profile.js',
+                KG_CORE_URL . 'assets/js/admin-user-profile.js',
                 [ 'jquery' ],
                 '1.0.1',
                 true
