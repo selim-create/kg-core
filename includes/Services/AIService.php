@@ -399,10 +399,10 @@ class AIService {
             return new \WP_Error('json_parse_error', 'AI yanıtı JSON olarak ayrıştırılamadı: ' . json_last_error_msg());
         }
         
-        // Pairings validasyonu - AI'dan gelmezse varsayılan ekle
+        // Pairings validasyonu - AI'dan gelmezse boş array set et ve logla
         if (!isset($data['pairings']) || !is_array($data['pairings']) || empty($data['pairings'])) {
             error_log('KG Core: pairings alanı AI yanıtında bulunamadı veya boş. Raw response: ' . substr($response, 0, 500));
-            // Varsayılan boş array yerine null bırak ki eksik olarak görünsün
+            // Boş array set et - update_single_field bu alanı güncellemeyecek
             $data['pairings'] = [];
         }
         

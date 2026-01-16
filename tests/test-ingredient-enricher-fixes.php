@@ -37,12 +37,13 @@ if (file_exists($enricherFile)) {
         $testsFailed++;
     }
     
-    // Check for wp_localize_script usage
-    if (strpos($content, "wp_localize_script('kg-enricher-script', 'kgEnricher'") !== false) {
-        echo "✅ Uses wp_localize_script for passing data to JavaScript\n";
+    // Check for wp_add_inline_script with kgEnricher variable
+    if (strpos($content, "wp_add_inline_script('jquery',") !== false && 
+        strpos($content, 'var kgEnricher =') !== false) {
+        echo "✅ Uses wp_add_inline_script for passing data to JavaScript\n";
         $testsPassed++;
     } else {
-        echo "❌ Missing wp_localize_script\n";
+        echo "❌ Missing wp_add_inline_script with kgEnricher\n";
         $testsFailed++;
     }
     

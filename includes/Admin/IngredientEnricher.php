@@ -368,18 +368,24 @@ class IngredientEnricher {
             return;
         }
 
-        // Register and enqueue script with localized data
-        wp_register_script('kg-enricher-script', '', ['jquery'], '1.0', true);
-        wp_enqueue_script('kg-enricher-script');
+        // Create nonce once and use it for both hidden input and localized script
+        // Note: This is created in enqueue_scripts to ensure it's available when needed
+        // The nonce in render_enrichment_box is created separately as metaboxes render before scripts
         
-        // Localize script with nonce and post ID
-        wp_localize_script('kg-enricher-script', 'kgEnricher', [
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('kg_enrich_ingredient'),
-            'postId' => $post ? $post->ID : 0
-        ]);
+        // Use inline script approach without empty registration
+        wp_enqueue_script('jquery');
+        
+        // Localize data for JavaScript
+        wp_add_inline_script('jquery', 
+            'var kgEnricher = ' . json_encode([
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('kg_enrich_ingredient'),
+                'postId' => $post ? $post->ID : 0
+            ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';',
+            'before'
+        );
 
-        wp_add_inline_script('kg-enricher-script', "
+        wp_add_inline_script('jquery', "
             jQuery(document).ready(function($) {
                 // Eksik Alanları Doldur butonu
                 $('#kg-enrich-missing-btn').on('click', function() {
