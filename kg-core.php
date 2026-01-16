@@ -98,6 +98,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/MigrationPage.php' ) ) require_
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/ToolSeeder.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/ToolSeeder.php';
 // Discussion Admin (Moderasyon Sayfası)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/DiscussionAdmin.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/DiscussionAdmin.php';
+// User Profile Fields (Kullanıcı Profil Alanları)
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/UserProfileFields.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/UserProfileFields.php';
 
 // 5.6. MIGRATION SINIFLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/FieldConsolidation.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/FieldConsolidation.php';
@@ -196,6 +198,9 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\DiscussionAdmin' ) ) {
         new \KG_Core\Admin\DiscussionAdmin();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\UserProfileFields' ) ) {
+        new \KG_Core\Admin\UserProfileFields();
     }
 
     // Role Manager (RBAC)
