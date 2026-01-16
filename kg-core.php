@@ -149,6 +149,9 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/LookupController.php' ) ) require
 if ( file_exists( KG_CORE_PATH . 'includes/API/VaccineController.php' ) ) require_once KG_CORE_PATH . 'includes/API/VaccineController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/NotificationController.php' ) ) require_once KG_CORE_PATH . 'includes/API/NotificationController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/AdminVaccineController.php' ) ) require_once KG_CORE_PATH . 'includes/API/AdminVaccineController.php';
+if ( file_exists( KG_CORE_PATH . 'includes/API/VaccinePrivateController.php' ) ) require_once KG_CORE_PATH . 'includes/API/VaccinePrivateController.php';
+if ( file_exists( KG_CORE_PATH . 'includes/API/VaccineExportController.php' ) ) require_once KG_CORE_PATH . 'includes/API/VaccineExportController.php';
+if ( file_exists( KG_CORE_PATH . 'includes/API/PushNotificationController.php' ) ) require_once KG_CORE_PATH . 'includes/API/PushNotificationController.php';
 
 // 6.6. ADMIN SINIFLARI DAHİL ET (Frontend View Links)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/FrontendViewLinks.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/FrontendViewLinks.php';
@@ -163,12 +166,20 @@ if ( file_exists( KG_CORE_PATH . 'includes/Health/VaccineManager.php' ) ) requir
 if ( file_exists( KG_CORE_PATH . 'includes/Health/VaccineScheduleCalculator.php' ) ) require_once KG_CORE_PATH . 'includes/Health/VaccineScheduleCalculator.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Health/VaccineRecordManager.php' ) ) require_once KG_CORE_PATH . 'includes/Health/VaccineRecordManager.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Health/SideEffectTracker.php' ) ) require_once KG_CORE_PATH . 'includes/Health/SideEffectTracker.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Health/PrivateVaccineWizard.php' ) ) require_once KG_CORE_PATH . 'includes/Health/PrivateVaccineWizard.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Health/VaccineStatsCalculator.php' ) ) require_once KG_CORE_PATH . 'includes/Health/VaccineStatsCalculator.php';
 
 // 6.9. VACCINATION TRACKER NOTIFICATION SERVICES (NEW)
 if ( file_exists( KG_CORE_PATH . 'includes/Notifications/NotificationManager.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/NotificationManager.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Notifications/EmailService.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/EmailService.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Notifications/TemplateEngine.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/TemplateEngine.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Notifications/NotificationQueue.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/NotificationQueue.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Notifications/VapidKeyManager.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/VapidKeyManager.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Notifications/PushSubscriptionManager.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/PushSubscriptionManager.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Notifications/PushNotificationService.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/PushNotificationService.php';
+
+// 6.9.1. VACCINATION TRACKER EXPORT SERVICES (NEW)
+if ( file_exists( KG_CORE_PATH . 'includes/Export/VaccinePdfExporter.php' ) ) require_once KG_CORE_PATH . 'includes/Export/VaccinePdfExporter.php';
 
 // 6.10. VACCINATION TRACKER CRON JOBS (NEW)
 if ( file_exists( KG_CORE_PATH . 'includes/Cron/VaccineReminderCron.php' ) ) require_once KG_CORE_PATH . 'includes/Cron/VaccineReminderCron.php';
@@ -283,6 +294,9 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\VaccineController' ) ) new \KG_Core\API\VaccineController();
     if ( class_exists( '\KG_Core\API\NotificationController' ) ) new \KG_Core\API\NotificationController();
     if ( class_exists( '\KG_Core\API\AdminVaccineController' ) ) new \KG_Core\API\AdminVaccineController();
+    if ( class_exists( '\KG_Core\API\VaccinePrivateController' ) ) new \KG_Core\API\VaccinePrivateController();
+    if ( class_exists( '\KG_Core\API\VaccineExportController' ) ) new \KG_Core\API\VaccineExportController();
+    if ( class_exists( '\KG_Core\API\PushNotificationController' ) ) new \KG_Core\API\PushNotificationController();
     
     // Frontend View Links (Admin only)
     if ( is_admin() && class_exists( '\KG_Core\Admin\FrontendViewLinks' ) ) {
