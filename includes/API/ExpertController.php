@@ -109,7 +109,7 @@ class ExpertController {
             
             $expert_data = [
                 'id' => $user_id,
-                'username' => $user->user_login,
+                'username' => $user->user_nicename,
                 'display_name' => $user->display_name,
                 'avatar_url' => $avatar_url,
                 'biography' => $biography ?: '',

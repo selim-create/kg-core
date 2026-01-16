@@ -1419,7 +1419,7 @@ class UserController {
         $age_group_color = '';
         
         if ( ! empty( $age_groups ) && ! is_wp_error( $age_groups ) ) {
-            $age_group = $age_groups[0]->name;
+            $age_group = \KG_Core\Utils\Helper::decode_html_entities( $age_groups[0]->name );
             $age_group_color = get_term_meta( $age_groups[0]->term_id, '_kg_color', true ) ?: '#22C55E';
         }
 
@@ -1428,7 +1428,7 @@ class UserController {
         $meal_types = wp_get_post_terms( $post->ID, 'meal-type' );
         if ( ! empty( $meal_types ) && ! is_wp_error( $meal_types ) ) {
             foreach ( $meal_types as $meal_type ) {
-                $categories[] = $meal_type->name;
+                $categories[] = \KG_Core\Utils\Helper::decode_html_entities( $meal_type->name );
             }
         }
 
@@ -1469,7 +1469,7 @@ class UserController {
         $categories = get_the_category( $post->ID );
         $category = '';
         if ( ! empty( $categories ) ) {
-            $category = $categories[0]->name;
+            $category = \KG_Core\Utils\Helper::decode_html_entities( $categories[0]->name );
         }
 
         // Calculate read time (assuming 200 words per minute)
@@ -1510,7 +1510,7 @@ class UserController {
         $circles = wp_get_post_terms( $post->ID, 'community_circle' );
         $circle = '';
         if ( ! empty( $circles ) && ! is_wp_error( $circles ) ) {
-            $circle = $circles[0]->name;
+            $circle = \KG_Core\Utils\Helper::decode_html_entities( $circles[0]->name );
         }
 
         // Get answer count
@@ -1615,11 +1615,11 @@ class UserController {
         $total_answers = $this->get_user_answer_count( $user_id );
         $total_questions = $this->get_user_question_count( $user_id );
         
-        // Get content
-        $recipes = $this->get_user_recipes( $user_id, 6 );
-        $blog_posts = $this->get_user_blog_posts( $user_id, 6 );
-        $answered_questions = $this->get_user_answered_questions( $user_id, 6 );
-        $asked_questions = $this->get_user_asked_questions( $user_id, 6 );
+        // Get content (all items, not limited)
+        $recipes = $this->get_user_recipes( $user_id, -1 );
+        $blog_posts = $this->get_user_blog_posts( $user_id, -1 );
+        $answered_questions = $this->get_user_answered_questions( $user_id, -1 );
+        $asked_questions = $this->get_user_asked_questions( $user_id, -1 );
         
         // Get role display name
         $role_display = $this->get_role_display_name( $user );
@@ -1627,7 +1627,7 @@ class UserController {
         // Build public profile data
         $public_data = [
             'id' => $user->ID,
-            'username' => $user->user_login,
+            'username' => $user->user_nicename,
             'display_name' => $user->display_name,
             'avatar_url' => $avatar_url,
             'biography' => $biography ?: '',
