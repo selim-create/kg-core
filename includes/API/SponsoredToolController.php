@@ -646,12 +646,9 @@ class SponsoredToolController {
             $normalized_query = $this->normalize_turkish( $query );
             $stains = array_filter( $stains, function( $stain ) use ( $query, $normalized_query ) {
                 $normalized_name = $this->normalize_turkish( $stain['name'] );
-                $normalized_desc = isset( $stain['description'] ) ? $this->normalize_turkish( $stain['description'] ) : '';
                 
                 return stripos( $stain['name'], $query ) !== false || 
-                       stripos( $normalized_name, $normalized_query ) !== false ||
-                       ( isset( $stain['description'] ) && stripos( $stain['description'], $query ) !== false ) ||
-                       stripos( $normalized_desc, $normalized_query ) !== false;
+                       stripos( $normalized_name, $normalized_query ) !== false;
             });
         }
 
