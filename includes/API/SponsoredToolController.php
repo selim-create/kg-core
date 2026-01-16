@@ -250,35 +250,53 @@ class SponsoredToolController {
      * Calculate hygiene needs
      */
     public function calculate_hygiene_needs( $request ) {
-        $child_age_months = (int) $request->get_param( 'child_age_months' );
-        $lifestyle = $request->get_param( 'lifestyle' ) ?: 'moderate';
+        // Parametre uyumluluğu - her iki adı da kabul et
+        $baby_age_months = $request->get_param( 'baby_age_months' );
+        if ( $baby_age_months === null ) {
+            $baby_age_months = $request->get_param( 'child_age_months' );
+        }
+        $baby_age_months = (int) $baby_age_months;
+        
+        $daily_diaper_changes = $request->get_param( 'daily_diaper_changes' );
+        $daily_diaper_changes = $daily_diaper_changes !== null ? (int) $daily_diaper_changes : 6;
+        
+        $outdoor_hours = $request->get_param( 'outdoor_hours' );
+        $outdoor_hours = $outdoor_hours !== null ? (float) $outdoor_hours : 2;
+        
+        $meal_count = $request->get_param( 'meal_count' );
+        $meal_count = $meal_count !== null ? (int) $meal_count : 3;
 
-        if ( $child_age_months < 0 ) {
-            return new \WP_Error( 'invalid_age', 'Geçerli bir yaş değeri giriniz', [ 'status' => 400 ] );
+        // Validation
+        if ( $baby_age_months < 0 || $baby_age_months > 36 ) {
+            return new \WP_Error( 'invalid_age', 'Geçerli bir yaş değeri giriniz (0-36 ay)', [ 'status' => 400 ] );
         }
 
-        $daily_needs = [
-            'diapers' => $this->calculate_daily_diapers( $child_age_months ),
-            'wipes' => $this->calculate_daily_wipes( $child_age_months, $lifestyle ),
-            'bath_products' => $this->calculate_bath_products( $child_age_months ),
-            'laundry_loads' => $this->calculate_laundry( $child_age_months ),
-        ];
+        // Mendil hesaplama mantığı
+        $wipes_per_diaper_change = $this->get_wipes_per_diaper_change( $baby_age_months );
+        $wipes_per_meal = $this->get_wipes_per_meal( $baby_age_months );
+        $wipes_per_outdoor_hour = $this->get_wipes_per_outdoor_hour( $baby_age_months );
+        
+        // Günlük mendil ihtiyacı hesaplama
+        $daily_wipes_needed = 
+            ($daily_diaper_changes * $wipes_per_diaper_change) + 
+            ($meal_count * $wipes_per_meal) + 
+            ($outdoor_hours * $wipes_per_outdoor_hour);
+        
+        $daily_wipes_needed = (int) ceil( $daily_wipes_needed );
+        $weekly_wipes_needed = $daily_wipes_needed * 7;
+        $monthly_wipes_needed = $daily_wipes_needed * 30;
 
-        $monthly_needs = [
-            'diapers' => $daily_needs['diapers'] * 30,
-            'wipes' => $daily_needs['wipes'] * 30,
-            'bath_products' => $daily_needs['bath_products'],
-            'laundry_loads' => $daily_needs['laundry_loads'] * 30,
-        ];
-
+        // Sponsor data
         $tool = $this->get_tool_by_slug( 'hygiene-calculator' );
         $sponsor_data = ! is_wp_error( $tool ) ? $this->get_sponsor_data( $tool->ID ) : null;
 
+        // Frontend'in beklediği formatta response
         $result = [
-            'daily_needs' => $daily_needs,
-            'monthly_needs' => $monthly_needs,
-            'estimated_cost' => $this->calculate_estimated_cost( $monthly_needs ),
-            'recommendations' => $this->get_hygiene_recommendations( $child_age_months ),
+            'daily_wipes_needed' => $daily_wipes_needed,
+            'weekly_wipes_needed' => $weekly_wipes_needed,
+            'monthly_wipes_needed' => $monthly_wipes_needed,
+            'recommendations' => $this->get_hygiene_recommendations_detailed( $baby_age_months, $daily_diaper_changes, $outdoor_hours, $meal_count ),
+            'carry_bag_essentials' => $this->get_carry_bag_essentials( $baby_age_months, $outdoor_hours ),
             'sponsor' => $sponsor_data,
         ];
 
@@ -1031,5 +1049,126 @@ class SponsoredToolController {
         $recommendations[] = 'Banyo termometresi';
         
         return $recommendations;
+    }
+
+    /**
+     * Bez değişimi başına mendil sayısı (yaşa göre)
+     */
+    private function get_wipes_per_diaper_change( $age_months ) {
+        if ( $age_months < 3 ) {
+            return 4; // Yenidoğanlar için daha fazla
+        } elseif ( $age_months < 12 ) {
+            return 3; // 3-12 ay arası
+        } else {
+            return 2; // Büyük bebekler için daha az
+        }
+    }
+
+    /**
+     * Öğün başına mendil sayısı (yaşa göre)
+     */
+    private function get_wipes_per_meal( $age_months ) {
+        if ( $age_months < 6 ) {
+            return 1; // Sadece süt, az kirlilik
+        } elseif ( $age_months < 9 ) {
+            return 2; // Ek gıdaya yeni başlayanlar
+        } elseif ( $age_months < 12 ) {
+            return 3; // Aktif yemek yiyenler (BLW vs.)
+        } else {
+            return 4; // Kendi yemeye çalışanlar, çok dağınık
+        }
+    }
+
+    /**
+     * Dış mekan saati başına ekstra mendil
+     */
+    private function get_wipes_per_outdoor_hour( $age_months ) {
+        if ( $age_months < 6 ) {
+            return 1;
+        } elseif ( $age_months < 12 ) {
+            return 1.5;
+        } else {
+            return 2; // Aktif bebekler, parkta oyun vs.
+        }
+    }
+
+    /**
+     * Detaylı hijyen önerileri
+     */
+    private function get_hygiene_recommendations_detailed( $age_months, $diaper_changes, $outdoor_hours, $meal_count ) {
+        $recommendations = [];
+
+        // Genel öneriler
+        $recommendations[] = 'Islak mendilleri serin ve kuru bir yerde saklayın';
+        $recommendations[] = 'Hassas ciltler için parfümsüz mendil tercih edin';
+
+        // Yaşa özel öneriler
+        if ( $age_months < 3 ) {
+            $recommendations[] = 'Yenidoğan cildi çok hassastır, %99 su içerikli mendiller tercih edin';
+            $recommendations[] = 'Her bez değişiminde nazikçe temizleyin, ovalamayın';
+        } elseif ( $age_months < 6 ) {
+            $recommendations[] = 'Pişik önleyici bariyer krem kullanmayı unutmayın';
+        }
+
+        // Ek gıda döneminde
+        if ( $age_months >= 6 && $meal_count >= 3 ) {
+            $recommendations[] = 'Yemek sonrası yüz ve elleri ıslak mendille temizleyin';
+            $recommendations[] = 'Mama önlüğü kullanarak kıyafet kirliliğini azaltın';
+        }
+
+        // Bez değişim sıklığına göre
+        if ( $diaper_changes < 5 ) {
+            $recommendations[] = 'Bez değişim sıklığını artırmayı düşünün, pişik riskini azaltır';
+        } elseif ( $diaper_changes > 8 ) {
+            $recommendations[] = 'Bez değişim sıklığınız ideal! Cilt sağlığı için harika';
+        }
+
+        // Dış mekan aktivitesine göre
+        if ( $outdoor_hours >= 3 ) {
+            $recommendations[] = 'Dışarıda geçirilen süre fazla, çantada yedek mendil paketi bulundurun';
+            $recommendations[] = 'Güneş koruyucu uyguladıktan sonra eller için ayrı mendil kullanın';
+        }
+
+        return $recommendations;
+    }
+
+    /**
+     * Çantada bulundurulması gerekenler
+     */
+    private function get_carry_bag_essentials( $age_months, $outdoor_hours ) {
+        $essentials = [];
+
+        // Temel ihtiyaçlar
+        $essentials[] = 'Islak mendil paketi (mini seyahat boy)';
+        $essentials[] = 'Yedek bez (en az 2-3 adet)';
+        $essentials[] = 'Bez değiştirme altlığı';
+        $essentials[] = 'Pişik kremi';
+
+        // Yaşa göre eklemeler
+        if ( $age_months >= 6 ) {
+            $essentials[] = 'Yedek önlük';
+            $essentials[] = 'Atıştırmalık kabı';
+        }
+
+        if ( $age_months >= 9 ) {
+            $essentials[] = 'El temizleme jeli (alkol içermeyen)';
+        }
+
+        // Dış mekan süresine göre
+        if ( $outdoor_hours >= 2 ) {
+            $essentials[] = 'Ekstra mendil paketi';
+            $essentials[] = 'Küçük çöp poşetleri';
+        }
+
+        if ( $outdoor_hours >= 4 ) {
+            $essentials[] = 'Yedek kıyafet seti';
+            $essentials[] = 'İkinci bez paketi';
+        }
+
+        // Mevsimsel (opsiyonel - gelecekte eklenebilir)
+        $essentials[] = 'Nemlendirici krem';
+        $essentials[] = 'Güneş koruyucu (6 ay üzeri için)';
+
+        return $essentials;
     }
 }
