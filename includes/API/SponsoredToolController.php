@@ -1330,6 +1330,9 @@ class SponsoredToolController {
 
     /**
      * Numara değişikliği uyarısı
+     * 
+     * @param float $weight_kg Baby's weight in kg
+     * @param int $age_months Baby's age in months (reserved for future age-specific alerts)
      */
     private function get_size_change_alert( $weight_kg, $age_months ) {
         // Üst sınıra yaklaşıyorsa uyarı ver
