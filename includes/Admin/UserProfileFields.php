@@ -24,9 +24,9 @@ class UserProfileFields {
             wp_enqueue_media();
             wp_enqueue_script(
                 'kg-admin-user-profile',
-                plugins_url( 'assets/js/admin-user-profile.js', dirname( __DIR__ ) . '/kg-core.php' ),
+                KG_CORE_URL . 'assets/js/admin-user-profile.js',
                 [ 'jquery' ],
-                '1.0.0',
+                '1.0.1',
                 true
             );
         }
@@ -117,6 +117,10 @@ class UserProfileFields {
                         <input type="url" name="kg_social_instagram" value="<?php echo esc_url( $social_links['instagram'] ?? '' ); ?>" class="regular-text" placeholder="https://instagram.com/kullaniciadi">
                     </p>
                     <p>
+                        <label>Facebook:</label><br>
+                        <input type="url" name="kg_social_facebook" value="<?php echo esc_url( $social_links['facebook'] ?? '' ); ?>" class="regular-text" placeholder="https://facebook.com/kullaniciadi">
+                    </p>
+                    <p>
                         <label>Twitter:</label><br>
                         <input type="url" name="kg_social_twitter" value="<?php echo esc_url( $social_links['twitter'] ?? '' ); ?>" class="regular-text" placeholder="https://twitter.com/kullaniciadi">
                     </p>
@@ -181,7 +185,7 @@ class UserProfileFields {
         
         // Save social links
         $social_links = [];
-        $platforms = [ 'instagram', 'twitter', 'linkedin', 'youtube', 'website' ];
+        $platforms = [ 'instagram', 'facebook', 'twitter', 'linkedin', 'youtube', 'website' ];
         foreach ( $platforms as $platform ) {
             $key = 'kg_social_' . $platform;
             if ( isset( $_POST[ $key ] ) && ! empty( $_POST[ $key ] ) ) {

@@ -587,7 +587,7 @@ class UserController {
             }
             
             if ( is_array( $social_links ) ) {
-                $allowed_platforms = [ 'instagram', 'twitter', 'linkedin', 'youtube', 'website' ];
+                $allowed_platforms = [ 'instagram', 'facebook', 'twitter', 'linkedin', 'youtube', 'website' ];
                 $sanitized_links = [];
                 
                 foreach ( $social_links as $platform => $url ) {
