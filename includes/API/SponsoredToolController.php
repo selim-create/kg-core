@@ -3,6 +3,12 @@ namespace KG_Core\API;
 
 class SponsoredToolController {
 
+    /**
+     * Average number of diapers per pack
+     * Used for calculating monthly pack requirements
+     */
+    private const DIAPERS_PER_PACK = 50;
+
     public function __construct() {
         add_action( 'rest_api_init', [ $this, 'register_routes' ] );
     }
@@ -307,27 +313,47 @@ class SponsoredToolController {
      * Calculate diaper needs
      */
     public function calculate_diaper_needs( $request ) {
-        $child_age_months = (int) $request->get_param( 'child_age_months' );
-        $weight_kg = (float) $request->get_param( 'weight_kg' );
+        // Backward compatibility - accept both parameter names
+        $weight_kg = $request->get_param( 'baby_weight_kg' );
+        if ( $weight_kg === null ) {
+            $weight_kg = $request->get_param( 'weight_kg' );
+        }
+        $weight_kg = (float) $weight_kg;
+
+        $age_months = $request->get_param( 'baby_age_months' );
+        if ( $age_months === null ) {
+            $age_months = $request->get_param( 'child_age_months' );
+        }
+        $age_months = (int) $age_months;
+
+        $daily_changes = $request->get_param( 'daily_changes' );
         $feeding_type = $request->get_param( 'feeding_type' ) ?: 'mixed';
 
-        if ( $child_age_months < 0 || $weight_kg <= 0 ) {
+        if ( $age_months < 0 || $weight_kg <= 0 ) {
             return new \WP_Error( 'invalid_input', 'Geçerli yaş ve kilo değerleri giriniz', [ 'status' => 400 ] );
         }
 
-        $daily_count = $this->calculate_daily_diapers( $child_age_months, $feeding_type );
-        $recommended_size = $this->get_diaper_size( $weight_kg, $child_age_months );
+        // Use daily_changes if provided, otherwise calculate based on age and feeding type
+        if ( $daily_changes === null ) {
+            $daily_changes = $this->calculate_daily_diapers( $age_months, $feeding_type );
+        } else {
+            $daily_changes = (int) $daily_changes;
+        }
+
+        $recommended_size = $this->get_diaper_size( $weight_kg, $age_months );
 
         $tool = $this->get_tool_by_slug( 'diaper-calculator' );
         $sponsor_data = ! is_wp_error( $tool ) ? $this->get_sponsor_data( $tool->ID ) : null;
 
         $result = [
-            'daily_count' => $daily_count,
-            'weekly_count' => $daily_count * 7,
-            'monthly_count' => $daily_count * 30,
             'recommended_size' => $recommended_size,
-            'change_frequency' => $this->get_change_frequency( $child_age_months ),
-            'tips' => $this->get_diaper_tips( $child_age_months ),
+            'size_range' => $this->get_size_weight_range( $weight_kg ),
+            'daily_count' => $daily_changes,
+            'monthly_count' => $daily_changes * 30,
+            'monthly_packs' => $this->calculate_monthly_packs( $daily_changes ),
+            'pack_type' => $this->get_recommended_pack_type( $daily_changes ),
+            'size_change_alert' => $this->get_size_change_alert( $weight_kg, $age_months ),
+            'tips' => $this->get_diaper_tips( $age_months ),
             'sponsor' => $sponsor_data,
         ];
 
@@ -338,12 +364,40 @@ class SponsoredToolController {
      * Assess diaper rash risk
      */
     public function assess_rash_risk( $request ) {
-        $factors = $request->get_param( 'factors' ) ?: [];
+        // Check for legacy format (factors object)
+        $factors = $request->get_param( 'factors' );
         
-        if ( ! is_array( $factors ) ) {
-            return new \WP_Error( 'invalid_input', 'Factors array required', [ 'status' => 400 ] );
+        if ( is_array( $factors ) && ! empty( $factors ) ) {
+            // Use legacy format
+            return $this->assess_rash_risk_legacy( $factors, $request );
+        }
+        
+        // New format - direct parameters
+        $change_frequency = $request->get_param( 'change_frequency' );
+        $night_diaper_hours = $request->get_param( 'night_diaper_hours' );
+        $humidity_level = $request->get_param( 'humidity_level' ) ?: 'normal';
+        $has_diarrhea = (bool) $request->get_param( 'has_diarrhea' );
+
+        // Default values if not provided
+        if ( $change_frequency === null ) {
+            $change_frequency = 3;
+        } else {
+            $change_frequency = (float) $change_frequency;
+        }
+        
+        if ( $night_diaper_hours === null ) {
+            $night_diaper_hours = 8;
+        } else {
+            $night_diaper_hours = (float) $night_diaper_hours;
         }
 
+        return $this->calculate_rash_risk_new( $change_frequency, $night_diaper_hours, $humidity_level, $has_diarrhea, $request );
+    }
+
+    /**
+     * Legacy rash risk assessment (for backward compatibility)
+     */
+    private function assess_rash_risk_legacy( $factors, $request ) {
         $risk_score = 0;
         $risk_factors = [];
 
@@ -378,7 +432,7 @@ class SponsoredToolController {
         if ( $risk_score >= 60 ) {
             $risk_level = 'high';
         } elseif ( $risk_score >= 30 ) {
-            $risk_level = 'moderate';
+            $risk_level = 'medium';
         }
 
         $tool = $this->get_tool_by_slug( 'diaper-calculator' );
@@ -389,7 +443,65 @@ class SponsoredToolController {
             'risk_score' => $risk_score,
             'risk_factors' => $risk_factors,
             'prevention_tips' => $this->get_rash_prevention_tips( $risk_level ),
-            'treatment_recommendations' => $this->get_rash_treatment( $risk_level ),
+            'sponsor' => $sponsor_data,
+        ];
+
+        return new \WP_REST_Response( $result, 200 );
+    }
+
+    /**
+     * New rash risk calculation based on direct parameters
+     */
+    private function calculate_rash_risk_new( $change_frequency, $night_diaper_hours, $humidity_level, $has_diarrhea, $request ) {
+        $risk_score = 0;
+        $risk_factors = [];
+
+        // Bez değişim sıklığı (saat cinsinden)
+        if ( $change_frequency >= 5 ) {
+            $risk_score += 35;
+            $risk_factors[] = 'Bez değişim aralığı çok uzun (5+ saat)';
+        } elseif ( $change_frequency >= 4 ) {
+            $risk_score += 20;
+            $risk_factors[] = 'Bez değişim aralığı uzun (4+ saat)';
+        }
+
+        // Gece bezi kullanım süresi
+        if ( $night_diaper_hours >= 12 ) {
+            $risk_score += 30;
+            $risk_factors[] = 'Gece bezi çok uzun süre kalıyor (12+ saat)';
+        } elseif ( $night_diaper_hours >= 10 ) {
+            $risk_score += 15;
+            $risk_factors[] = 'Gece bezi uzun süre kalıyor (10+ saat)';
+        }
+
+        // Nem seviyesi
+        if ( $humidity_level === 'high' ) {
+            $risk_score += 25;
+            $risk_factors[] = 'Ortam nemi yüksek';
+        }
+
+        // İshal
+        if ( $has_diarrhea ) {
+            $risk_score += 40;
+            $risk_factors[] = 'Aktif ishal durumu mevcut';
+        }
+
+        // Risk seviyesi belirleme
+        $risk_level = 'low';
+        if ( $risk_score >= 60 ) {
+            $risk_level = 'high';
+        } elseif ( $risk_score >= 30 ) {
+            $risk_level = 'medium';
+        }
+
+        $tool = $this->get_tool_by_slug( 'diaper-calculator' );
+        $sponsor_data = ! is_wp_error( $tool ) ? $this->get_sponsor_data( $tool->ID ) : null;
+
+        $result = [
+            'risk_level' => $risk_level,
+            'risk_score' => $risk_score,
+            'risk_factors' => $risk_factors,
+            'prevention_tips' => $this->get_rash_prevention_tips( $risk_level ),
             'sponsor' => $sponsor_data,
         ];
 
@@ -1170,5 +1282,72 @@ class SponsoredToolController {
         $essentials[] = 'Güneş koruyucu (6 ay üzeri için)';
 
         return $essentials;
+    }
+
+    /**
+     * Bez numarasının kilo aralığını döndür
+     */
+    private function get_size_weight_range( $weight_kg ) {
+        if ( $weight_kg < 4 ) {
+            return '2-4 kg';
+        } elseif ( $weight_kg < 6 ) {
+            return '4-6 kg';
+        } elseif ( $weight_kg < 9 ) {
+            return '6-9 kg';
+        } elseif ( $weight_kg < 12 ) {
+            return '9-12 kg';
+        } elseif ( $weight_kg < 16 ) {
+            return '12-16 kg';
+        } else {
+            return '16+ kg';
+        }
+    }
+
+    /**
+     * Aylık paket sayısını hesapla
+     */
+    private function calculate_monthly_packs( $daily_count ) {
+        $monthly_diapers = $daily_count * 30;
+        $packs_needed = ceil( $monthly_diapers / self::DIAPERS_PER_PACK );
+        
+        return $packs_needed;
+    }
+
+    /**
+     * Önerilen paket tipini döndür
+     */
+    private function get_recommended_pack_type( $daily_count ) {
+        $monthly_diapers = $daily_count * 30;
+        
+        if ( $monthly_diapers >= 200 ) {
+            return 'Mega Paket (Ekonomik)';
+        } elseif ( $monthly_diapers >= 120 ) {
+            return 'Jumbo Paket';
+        } else {
+            return 'Standart Paket';
+        }
+    }
+
+    /**
+     * Numara değişikliği uyarısı
+     * 
+     * @param float $weight_kg Baby's weight in kg
+     * @param int $age_months Baby's age in months (reserved for future age-specific alerts)
+     */
+    private function get_size_change_alert( $weight_kg, $age_months ) {
+        // Üst sınıra yaklaşıyorsa uyarı ver
+        if ( $weight_kg >= 3.5 && $weight_kg < 4 ) {
+            return 'Bebeğiniz yakında 1 (Mini) numaraya geçebilir';
+        } elseif ( $weight_kg >= 5.5 && $weight_kg < 6 ) {
+            return 'Bebeğiniz yakında 2 (Midi) numaraya geçebilir';
+        } elseif ( $weight_kg >= 8.5 && $weight_kg < 9 ) {
+            return 'Bebeğiniz yakında 3 (Maxi) numaraya geçebilir';
+        } elseif ( $weight_kg >= 11.5 && $weight_kg < 12 ) {
+            return 'Bebeğiniz yakında 4 (Maxi+) numaraya geçebilir';
+        } elseif ( $weight_kg >= 15.5 && $weight_kg < 16 ) {
+            return 'Bebeğiniz yakında 5 (Junior) numaraya geçebilir';
+        }
+        
+        return null;
     }
 }
