@@ -216,6 +216,13 @@ class AIService {
         $prompt .= "9. Alerjen olmayan malzemeler için 'cross_contamination', 'allergy_symptoms' ve 'alternatives' alanlarını boş bırak.\n";
         $prompt .= "10. Content alanı için en az 3-4 paragraf detaylı, SEO-dostu, bilgilendirici içerik yaz. Her paragraf <p> etiketi ile sarılmalı.\n";
         
+        $prompt .= "\n\n⚠️ ÖNEMLİ HATIRLATMALAR:\n";
+        $prompt .= "1. 'pairings' alanı ZORUNLUDUR! Mutlaka 3-5 uyumlu malzeme içermelidir.\n";
+        $prompt .= "   Format: [{\"emoji\": \"🍌\", \"name\": \"Muz\"}, {\"emoji\": \"🥛\", \"name\": \"Yoğurt\"}]\n";
+        $prompt .= "   Bu alan BOŞ BIRAKILAMAZ!\n";
+        $prompt .= "2. 'season' alanı array olmalı: [\"Kış\"] veya [\"Yaz\", \"Sonbahar\"]\n";
+        $prompt .= "3. Tüm JSON alanları doldurulmalı, boş bırakılmamalı.\n";
+        
         return $prompt;
     }
     
@@ -390,6 +397,18 @@ class AIService {
         
         if (json_last_error() !== JSON_ERROR_NONE) {
             return new \WP_Error('json_parse_error', 'AI yanıtı JSON olarak ayrıştırılamadı: ' . json_last_error_msg());
+        }
+        
+        // Pairings validasyonu - AI'dan gelmezse boş array set et ve logla
+        if (!isset($data['pairings']) || !is_array($data['pairings']) || empty($data['pairings'])) {
+            error_log('KG Core: pairings alanı AI yanıtında bulunamadı veya boş. Raw response: ' . substr($response, 0, 500));
+            // Boş array set et - update_single_field'deki !empty() kontrolü nedeniyle kaydedilmeyecek
+            $data['pairings'] = [];
+        }
+        
+        // Debug log
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('KG Core AI Response pairings: ' . print_r($data['pairings'] ?? 'NOT SET', true));
         }
         
         // Validate required fields

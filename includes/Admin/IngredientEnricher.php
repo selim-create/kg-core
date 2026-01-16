@@ -25,8 +25,6 @@ class IngredientEnricher {
         // Eksik alan sayısını hesapla
         $missing_fields = $this->get_missing_fields($post->ID);
         $missing_count = count($missing_fields);
-        
-        wp_nonce_field('kg_enrich_ingredient', 'kg_enrich_nonce');
         ?>
         <div class="kg-enrichment-box">
             <?php if ($missing_count > 0): ?>
@@ -304,6 +302,15 @@ class IngredientEnricher {
         $array_fields = ['_kg_prep_methods', '_kg_prep_by_age', '_kg_pairings', '_kg_faq', '_kg_season'];
         if (in_array($key, $array_fields)) {
             $ai_key = $mapping[$key] ?? null;
+            
+            // Debug log for pairings
+            if ($key === '_kg_pairings') {
+                error_log('KG Enricher: Attempting to save pairings. ai_key=' . $ai_key . ', isset=' . (isset($ai_data[$ai_key]) ? 'yes' : 'no'));
+                if (isset($ai_data[$ai_key])) {
+                    error_log('KG Enricher: pairings data = ' . print_r($ai_data[$ai_key], true));
+                }
+            }
+            
             if ($ai_key && isset($ai_data[$ai_key]) && is_array($ai_data[$ai_key]) && !empty($ai_data[$ai_key])) {
                 update_post_meta($post_id, $key, $ai_data[$ai_key]);
                 return true;
@@ -352,10 +359,23 @@ class IngredientEnricher {
     }
 
     public function enqueue_scripts($hook) {
-        global $post_type;
+        global $post_type, $post;
         if ($hook !== 'post.php' || $post_type !== 'ingredient') {
             return;
         }
+
+        // Use inline script to inject kgEnricher object with nonce and post data
+        wp_enqueue_script('jquery');
+        
+        // Inject kgEnricher object for JavaScript
+        wp_add_inline_script('jquery', 
+            'var kgEnricher = ' . json_encode([
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('kg_enrich_ingredient'),
+                'postId' => $post ? $post->ID : 0
+            ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';',
+            'before'
+        );
 
         wp_add_inline_script('jquery', "
             jQuery(document).ready(function($) {
@@ -370,12 +390,12 @@ class IngredientEnricher {
                     statusDiv.html('<span style=\"color: #2271b1;\">⏳ Eksik alanlar AI ile doldruluyor...</span>');
                     
                     $.ajax({
-                        url: ajaxurl,
+                        url: kgEnricher.ajaxUrl,
                         type: 'POST',
                         data: {
                             action: 'kg_enrich_ingredient',
-                            nonce: $('#kg_enrich_nonce').val(),
-                            post_id: $('#post_ID').val()
+                            nonce: kgEnricher.nonce,
+                            post_id: kgEnricher.postId
                         },
                         success: function(response) {
                             if (response && response.success && response.data) {
@@ -422,12 +442,12 @@ class IngredientEnricher {
                     statusDiv.html('<span style=\"color: #2271b1;\">⏳ İçerik AI ile zenginleştiriliyor...</span>');
                     
                     $.ajax({
-                        url: ajaxurl,
+                        url: kgEnricher.ajaxUrl,
                         type: 'POST',
                         data: {
                             action: 'kg_full_enrich_ingredient',
-                            nonce: $('#kg_enrich_nonce').val(),
-                            post_id: $('#post_ID').val()
+                            nonce: kgEnricher.nonce,
+                            post_id: kgEnricher.postId
                         },
                         success: function(response) {
                             if (response && response.success && response.data) {
