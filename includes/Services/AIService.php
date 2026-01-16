@@ -76,7 +76,7 @@ class AIService {
             'cross_contamination' => 'Düşük|Orta|Yüksek (alerjen değilse boş bırak)',
             'allergy_symptoms' => 'Alerji belirtileri ve semptomları detaylı açıklama (alerjen değilse boş bırak)',
             'alternatives' => 'Alternatif malzemeler listesi ve açıklama (alerjen değilse boş bırak)',
-            'season' => 'İlkbahar|Yaz|Sonbahar|Kış|Tüm Yıl',
+            'season' => ['İlkbahar', 'Yaz'], // Array of seasons - can select multiple
             'storage_tips' => 'Saklama koşulları',
             'selection_tips' => 'Nasıl seçilir? Olgunluk belirtileri',
             'pro_tips' => 'Püf noktası ve önemli ipuçları',
@@ -134,8 +134,78 @@ class AIService {
         
         $prompt .= json_encode($json_template, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
         
-        $prompt .= "\n\nÖNEMLİ KURALLAR:\n";
-        $prompt .= "1. 'pairings' alanını MUTLAKA 4-6 uyumlu malzeme ile doldur. Gerçekten bu malzeme ile iyi giden besinleri yaz.\n";
+        $prompt .= "\n\n⚠️ KRİTİK: BAŞLANGIÇ YAŞI KURALLARI (MUTLAKA UYULMALI!)\n";
+        $prompt .= "start_age alanı çocuğun HAYATİ GÜVENLİĞİ için kritiktir. ASLA tahminle doldurma!\n\n";
+        $prompt .= "YASAKLI / GEÇ VERİLMESİ GEREKEN MALZEMELER:\n";
+        $prompt .= "- Bal: start_age = 12 (Botulizm riski - kesinlikle 1 yaş altına YASAK)\n";
+        $prompt .= "- Çay, kahve, kafeinli içecekler: start_age = 24 (tercihen hiç verilmemeli)\n";
+        $prompt .= "- İnek sütü (içecek olarak): start_age = 12\n";
+        $prompt .= "- Çilek, kivi, ananas, narenciye (alerjik meyveler): start_age = 8 minimum\n";
+        $prompt .= "- Tam yumurta (sarısı+beyazı): start_age = 8\n";
+        $prompt .= "- Yumurta beyazı tek başına: start_age = 12\n";
+        $prompt .= "- Kuruyemişler (bütün halde): start_age = 36 (boğulma riski)\n";
+        $prompt .= "- Kuruyemiş ezmesi: start_age = 6\n";
+        $prompt .= "- Deniz ürünleri (kabuklu): start_age = 12\n";
+        $prompt .= "- Şeker, tuz eklenmiş gıdalar: start_age = 24+\n";
+        $prompt .= "- Kakao, çikolata: start_age = 12\n";
+        $prompt .= "- Mantar: start_age = 12\n\n";
+        $prompt .= "GÜVENLİ ERKEN BAŞLANGIÇ (6 ay):\n";
+        $prompt .= "- Avokado, muz, elma (pişmiş), armut (pişmiş)\n";
+        $prompt .= "- Havuç, kabak, patates, tatlı patates\n";
+        $prompt .= "- Pirinç, yulaf\n\n";
+        $prompt .= "8 AY BAŞLANGIÇ:\n";
+        $prompt .= "- Yoğurt, peynir\n";
+        $prompt .= "- Mercimek, nohut (iyi pişmiş)\n";
+        $prompt .= "- Çilek, kivi (az miktarda test ile)\n";
+        $prompt .= "- Domates (çekirdeksiz, kabuğu soyulmuş)\n";
+        $prompt .= "- Tavuk, hindi, dana\n\n";
+        $prompt .= "ÖNEMLİ: prep_by_age alanındaki en erken yaş grubu ile start_age AYNI OLMALI!\n";
+        $prompt .= "Eğer prep_by_age'de en erken '8-9 Ay' yazıyorsa, start_age = 8 olmalı!\n\n";
+        
+        $prompt .= "ÖNEMLİ MEVSİM KURALLARI:\n";
+        $prompt .= "- Mevsim alanı için BİRDEN FAZLA mevsim seçilebilir (array olarak döndür)\n";
+        $prompt .= "- Türkiye'nin mevsim koşullarına ve DOĞAL ÜRETİM dönemine göre değerlendir\n";
+        $prompt .= "- 'Tüm Yıl' sadece gerçekten her mevsimde TAZE olarak bulunabilen malzemeler için seçilmeli\n";
+        $prompt .= "- SERADA YETİŞTİRİLEN değil, DOĞAL MEVSİMİNE göre belirle!\n\n";
+        $prompt .= "ÖRNEK MEVSİMLER (Türkiye):\n";
+        $prompt .= "- Lahana, ıspanak, pırasa, kereviz: ['Kış'] veya ['Sonbahar', 'Kış']\n";
+        $prompt .= "- Çilek: ['İlkbahar'] veya ['İlkbahar', 'Yaz']\n";
+        $prompt .= "- Kiraz, kayısı, şeftali: ['Yaz']\n";
+        $prompt .= "- Domates, biber, patlıcan: ['Yaz', 'Sonbahar']\n";
+        $prompt .= "- Elma, armut: ['Sonbahar', 'Kış']\n";
+        $prompt .= "- Havuç, patates, soğan: ['Tüm Yıl'] (gerçekten tüm yıl taze bulunabilir)\n";
+        $prompt .= "- Muz, avokado (ithal): ['Tüm Yıl']\n\n";
+        
+        $prompt .= "ZORUNLU KATEGORİLER (sadece bunlardan biri seçilmeli):\n";
+        $prompt .= "Baharatlar | Baklagiller | Meyveler | Özel Ürünler | Proteinler | Sebzeler | Sıvılar | Süt Ürünleri | Tahıllar | Yağlar\n";
+        $prompt .= "Bu kategoriler dışında bir değer KABUL EDİLMEZ!\n\n";
+        
+        $prompt .= "HAZIRLAMA YÖNTEMLERİ MANTIK KURALLARI:\n\n";
+        $prompt .= "SIVILAR (çay, su, meyve suyu, et suyu):\n";
+        $prompt .= "- prep_methods = ['Demleme', 'Soğutma', 'Seyreltme', 'Kaynatma']\n";
+        $prompt .= "- ASLA 'Püre', 'Ezme', 'Rendeleme' yazma!\n\n";
+        $prompt .= "BAHARATLAR (tarçın, zerdeçal, kimyon):\n";
+        $prompt .= "- prep_methods = ['Toz halinde ekleme', 'Kaynatma ile infüzyon']\n";
+        $prompt .= "- ASLA 'Haşlama', 'Püre' yazma!\n\n";
+        $prompt .= "MEYVELER:\n";
+        $prompt .= "- prep_methods = ['Püre', 'Ezme', 'Dilim', 'Rendelenmiş', 'Parmak yiyecek']\n\n";
+        $prompt .= "SEBZELER:\n";
+        $prompt .= "- prep_methods = ['Püre', 'Haşlama', 'Buhar', 'Fırın', 'Parmak yiyecek']\n\n";
+        $prompt .= "PROTEİNLER (et, tavuk, balık):\n";
+        $prompt .= "- prep_methods = ['Haşlama', 'Buhar', 'Fırın', 'Kıyma', 'Püre']\n\n";
+        $prompt .= "SÜT ÜRÜNLERİ:\n";
+        $prompt .= "- prep_methods = ['Doğrudan servis', 'Karıştırma', 'Rendelenmiş']\n\n";
+        $prompt .= "TAHILLAR:\n";
+        $prompt .= "- prep_methods = ['Haşlama', 'Kaynatma', 'Püre', 'Lapası']\n\n";
+        $prompt .= "YAĞLAR:\n";
+        $prompt .= "- prep_methods = ['Çiğ ekleme', 'Pişirme yağı olarak']\n\n";
+        $prompt .= "⚠️ Her malzemenin kategorisiyle UYUMLU yöntemler seç!\n";
+        $prompt .= "Mantıksız kombinasyonlar (örn: 'Çay püresi') KABUL EDİLEMEZ!\n\n";
+        
+        $prompt .= "DİĞER ÖNEMLİ KURALLAR:\n";
+        $prompt .= "1. ÖNEMLİ: 'pairings' alanı ZORUNLUDUR ve mutlaka 3-5 uyumlu malzeme içermelidir!\n";
+        $prompt .= "   Bebek beslenmesinde birlikte verilebilecek, lezzet ve besin değeri açısından uyumlu malzemeleri listele.\n";
+        $prompt .= "   Format: [{'emoji': '🍌', 'name': 'Muz'}, {'emoji': '🥛', 'name': 'Yoğurt'}]\n";
         $prompt .= "2. 'seo' alanındaki 'focus_keyword' malzeme adını içermeli ve doğal bir soru formatında olmalı.\n";
         $prompt .= "3. 'seo' alanındaki 'title' 50-60 karakter arasında, çekici ve bilgilendirici olmalı, odak kelimeyi başta içermeli.\n";
         $prompt .= "4. 'seo' alanındaki 'description' tam 150-160 karakter olmalı, odak kelimeyi ve harekete geçirici bir çağrı içermeli.\n";

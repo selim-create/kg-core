@@ -102,7 +102,14 @@ class IngredientGenerator {
         }
         
         if (isset($data['season'])) {
-            update_post_meta($post_id, '_kg_season', sanitize_text_field($data['season']));
+            // Handle both array and string format from AI
+            if (is_array($data['season'])) {
+                update_post_meta($post_id, '_kg_season', array_map('sanitize_text_field', $data['season']));
+            } else {
+                // Convert string to array for backward compatibility
+                $season_array = array_filter(array_map('trim', explode(',', $data['season'])));
+                update_post_meta($post_id, '_kg_season', array_map('sanitize_text_field', $season_array));
+            }
         }
         
         if (isset($data['storage_tips'])) {

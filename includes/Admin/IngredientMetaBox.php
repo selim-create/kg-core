@@ -57,6 +57,12 @@ class IngredientMetaBox {
         $benefits = get_post_meta( $post->ID, '_kg_benefits', true );
         $allergy_risk = get_post_meta( $post->ID, '_kg_allergy_risk', true );
         $season = get_post_meta( $post->ID, '_kg_season', true );
+        // Convert old string format to array for backward compatibility
+        if ( ! empty( $season ) && ! is_array( $season ) ) {
+            $season = array_filter( array_map( 'trim', explode( ',', $season ) ) );
+        } elseif ( empty( $season ) ) {
+            $season = [];
+        }
         $storage_tips = get_post_meta( $post->ID, '_kg_storage_tips', true );
         $selection_tips = get_post_meta( $post->ID, '_kg_selection_tips', true );
         $pro_tips = get_post_meta( $post->ID, '_kg_pro_tips', true );
@@ -245,11 +251,27 @@ class IngredientMetaBox {
             </p>
 
             <h3>Mevsim ve Saklama</h3>
-            <p>
-                <label for="kg_season"><strong>Mevsim:</strong></label><br>
-                <input type="text" id="kg_season" name="kg_season" value="<?php echo esc_attr( $season ); ?>" style="width:100%;">
-                <small>Örnek: İlkbahar, Yaz, Sonbahar, Kış, Tüm Yıl</small>
-            </p>
+            <p><strong>Mevsim (Birden fazla seçilebilir):</strong></p>
+            <div style="background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 4px;">
+                <?php 
+                $season_options = ['Tüm Yıl', 'İlkbahar', 'Yaz', 'Sonbahar', 'Kış'];
+                foreach ($season_options as $season_option): 
+                ?>
+                    <label style="display: block; margin-bottom: 8px;">
+                        <input 
+                            type="checkbox" 
+                            name="kg_season[]" 
+                            value="<?php echo esc_attr($season_option); ?>"
+                            <?php checked(in_array($season_option, $season)); ?>
+                        >
+                        <span><?php echo esc_html($season_option); ?></span>
+                    </label>
+                <?php endforeach; ?>
+                <small style="display: block; margin-top: 8px;">
+                    Türkiye'de bu malzemenin doğal olarak taze bulunduğu mevsimler. 
+                    Serada yetiştirilen değil, doğal üretim mevsimi dikkate alınmalıdır.
+                </small>
+            </div>
 
             <p>
                 <label for="kg_storage_tips"><strong>Saklama Koşulları:</strong></label><br>
@@ -284,6 +306,16 @@ class IngredientMetaBox {
         
         // Yetki kontrolü
         if ( ! current_user_can( 'edit_post', $post_id ) ) return;
+        
+        // Kategori zorunluluğu kontrolü (sadece publish durumunda)
+        $post_status = get_post_status( $post_id );
+        if ( $post_status === 'publish' ) {
+            $category_terms = wp_get_post_terms( $post_id, 'ingredient-category' );
+            if ( empty( $category_terms ) || is_wp_error( $category_terms ) ) {
+                $this->add_validation_error( $post_id, 'Malzeme kategorisi seçilmeden yayınlama yapılamaz!' );
+                wp_update_post( [ 'ID' => $post_id, 'post_status' => 'draft' ] );
+            }
+        }
 
         // Save is_featured checkbox
         $is_featured = isset( $_POST['kg_is_featured'] ) ? '1' : '0';
@@ -369,8 +401,12 @@ class IngredientMetaBox {
         }
 
         // Save season and storage
-        if ( isset( $_POST['kg_season'] ) ) {
-            update_post_meta( $post_id, '_kg_season', sanitize_text_field( $_POST['kg_season'] ) );
+        if ( isset( $_POST['kg_season'] ) && is_array( $_POST['kg_season'] ) ) {
+            $season_array = array_map( 'sanitize_text_field', $_POST['kg_season'] );
+            update_post_meta( $post_id, '_kg_season', $season_array );
+        } else {
+            // If no season selected, clear the field
+            update_post_meta( $post_id, '_kg_season', [] );
         }
 
         if ( isset( $_POST['kg_storage_tips'] ) ) {

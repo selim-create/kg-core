@@ -113,106 +113,134 @@ class IngredientEnricher {
 
     // AJAX: Sadece eksik alanları AI ile doldur
     public function ajax_enrich_ingredient() {
-        check_ajax_referer('kg_enrich_ingredient', 'nonce');
+        try {
+            check_ajax_referer('kg_enrich_ingredient', 'nonce');
 
-        if (!current_user_can('edit_posts')) {
-            wp_send_json_error(['message' => 'Yetkiniz yok']);
-        }
-
-        $post_id = intval($_POST['post_id']);
-
-        if (!$post_id) {
-            wp_send_json_error(['message' => 'Geçersiz post ID']);
-        }
-
-        $ingredient_name = get_the_title($post_id);
-        
-        // AI Service'i çağır
-        if (!class_exists('\KG_Core\Services\AIService')) {
-            wp_send_json_error(['message' => 'AI Service bulunamadı']);
-        }
-
-        $ai_service = new \KG_Core\Services\AIService();
-        $ai_data = $ai_service->generateIngredientContent($ingredient_name);
-
-        if (is_wp_error($ai_data)) {
-            wp_send_json_error(['message' => $ai_data->get_error_message()]);
-        }
-
-        $updated_fields = [];
-        $missing_fields = $this->get_missing_fields($post_id);
-
-        // Sadece eksik alanları güncelle
-        foreach ($missing_fields as $key => $label) {
-            $updated = $this->update_single_field($post_id, $key, $ai_data);
-            if ($updated) {
-                $updated_fields[] = $label;
+            if (!current_user_can('edit_posts')) {
+                wp_send_json_error(['message' => 'Yetkiniz yok']);
+                return;
             }
-        }
 
-        wp_send_json_success([
-            'message' => count($updated_fields) . ' alan güncellendi',
-            'updated_fields' => $updated_fields
-        ]);
+            $post_id = intval($_POST['post_id']);
+
+            if (!$post_id) {
+                wp_send_json_error(['message' => 'Geçersiz post ID']);
+                return;
+            }
+
+            $ingredient_name = get_the_title($post_id);
+            
+            // AI Service'i çağır
+            if (!class_exists('\KG_Core\Services\AIService')) {
+                wp_send_json_error(['message' => 'AI Service bulunamadı']);
+                return;
+            }
+
+            $ai_service = new \KG_Core\Services\AIService();
+            $ai_data = $ai_service->generateIngredientContent($ingredient_name);
+
+            if (is_wp_error($ai_data)) {
+                wp_send_json_error([
+                    'message' => 'AI hatası: ' . $ai_data->get_error_message(),
+                    'error_code' => $ai_data->get_error_code()
+                ]);
+                return;
+            }
+
+            $updated_fields = [];
+            $missing_fields = $this->get_missing_fields($post_id);
+
+            // Sadece eksik alanları güncelle
+            foreach ($missing_fields as $key => $label) {
+                $updated = $this->update_single_field($post_id, $key, $ai_data);
+                if ($updated) {
+                    $updated_fields[] = $label;
+                }
+            }
+
+            wp_send_json_success([
+                'message' => count($updated_fields) . ' alan güncellendi',
+                'updated_fields' => $updated_fields
+            ]);
+        } catch (\Exception $e) {
+            error_log('KG Enrichment Error: ' . $e->getMessage());
+            wp_send_json_error([
+                'message' => 'Zenginleştirme hatası: ' . $e->getMessage()
+            ]);
+        }
     }
     
     // AJAX: Tüm alanları zenginleştir (Title hariç)
     public function ajax_full_enrich_ingredient() {
-        check_ajax_referer('kg_enrich_ingredient', 'nonce');
+        try {
+            check_ajax_referer('kg_enrich_ingredient', 'nonce');
 
-        if (!current_user_can('edit_posts')) {
-            wp_send_json_error(['message' => 'Yetkiniz yok']);
-        }
+            if (!current_user_can('edit_posts')) {
+                wp_send_json_error(['message' => 'Yetkiniz yok']);
+                return;
+            }
 
-        $post_id = intval($_POST['post_id']);
+            $post_id = intval($_POST['post_id']);
 
-        if (!$post_id) {
-            wp_send_json_error(['message' => 'Geçersiz post ID']);
-        }
+            if (!$post_id) {
+                wp_send_json_error(['message' => 'Geçersiz post ID']);
+                return;
+            }
 
-        $ingredient_name = get_the_title($post_id);
-        
-        // AI Service'i çağır
-        if (!class_exists('\KG_Core\Services\AIService')) {
-            wp_send_json_error(['message' => 'AI Service bulunamadı']);
-        }
+            $ingredient_name = get_the_title($post_id);
+            
+            // AI Service'i çağır
+            if (!class_exists('\KG_Core\Services\AIService')) {
+                wp_send_json_error(['message' => 'AI Service bulunamadı']);
+                return;
+            }
 
-        $ai_service = new \KG_Core\Services\AIService();
-        $ai_data = $ai_service->generateIngredientContent($ingredient_name);
+            $ai_service = new \KG_Core\Services\AIService();
+            $ai_data = $ai_service->generateIngredientContent($ingredient_name);
 
-        if (is_wp_error($ai_data)) {
-            wp_send_json_error(['message' => $ai_data->get_error_message()]);
-        }
+            if (is_wp_error($ai_data)) {
+                wp_send_json_error([
+                    'message' => 'AI hatası: ' . $ai_data->get_error_message(),
+                    'error_code' => $ai_data->get_error_code()
+                ]);
+                return;
+            }
 
-        // Update post content (description) - Title stays the same
-        if (isset($ai_data['content'])) {
-            wp_update_post([
-                'ID' => $post_id,
-                'post_content' => wp_kses_post($ai_data['content']),
-                'post_excerpt' => isset($ai_data['excerpt']) ? sanitize_text_field($ai_data['excerpt']) : ''
+            // Update post content (description) - Title stays the same
+            if (isset($ai_data['content'])) {
+                wp_update_post([
+                    'ID' => $post_id,
+                    'post_content' => wp_kses_post($ai_data['content']),
+                    'post_excerpt' => isset($ai_data['excerpt']) ? sanitize_text_field($ai_data['excerpt']) : ''
+                ]);
+            }
+
+            // Update all meta fields using IngredientGenerator's logic
+            $updated_fields = $this->update_all_fields($post_id, $ai_data);
+
+            // Update RankMath SEO fields
+            if (isset($ai_data['seo'])) {
+                if (!empty($ai_data['seo']['title'])) {
+                    update_post_meta($post_id, 'rank_math_title', sanitize_text_field($ai_data['seo']['title']));
+                }
+                if (!empty($ai_data['seo']['description'])) {
+                    update_post_meta($post_id, 'rank_math_description', sanitize_text_field($ai_data['seo']['description']));
+                }
+                if (!empty($ai_data['seo']['focus_keyword'])) {
+                    update_post_meta($post_id, 'rank_math_focus_keyword', sanitize_text_field($ai_data['seo']['focus_keyword']));
+                }
+            }
+
+            wp_send_json_success([
+                'message' => 'İçerik başarıyla zenginleştirildi',
+                'updated_fields' => $updated_fields
+            ]);
+        } catch (\Exception $e) {
+            error_log('KG Full Enrichment Error: ' . $e->getMessage());
+            wp_send_json_error([
+                'message' => 'Zenginleştirme hatası: ' . $e->getMessage()
             ]);
         }
-
-        // Update all meta fields using IngredientGenerator's logic
-        $updated_fields = $this->update_all_fields($post_id, $ai_data);
-
-        // Update RankMath SEO fields
-        if (isset($ai_data['seo'])) {
-            if (!empty($ai_data['seo']['title'])) {
-                update_post_meta($post_id, 'rank_math_title', sanitize_text_field($ai_data['seo']['title']));
-            }
-            if (!empty($ai_data['seo']['description'])) {
-                update_post_meta($post_id, 'rank_math_description', sanitize_text_field($ai_data['seo']['description']));
-            }
-            if (!empty($ai_data['seo']['focus_keyword'])) {
-                update_post_meta($post_id, 'rank_math_focus_keyword', sanitize_text_field($ai_data['seo']['focus_keyword']));
-            }
-        }
-
-        wp_send_json_success([
-            'message' => 'İçerik başarıyla zenginleştirildi',
-            'updated_fields' => $updated_fields
-        ]);
     }
 
     private function update_single_field($post_id, $key, $ai_data) {
@@ -267,6 +295,17 @@ class IngredientEnricher {
 
             if (isset($nutrition_mapping[$key]) && isset($ai_data['nutrition'][$nutrition_mapping[$key]])) {
                 update_post_meta($post_id, $key, sanitize_text_field($ai_data['nutrition'][$nutrition_mapping[$key]]));
+                return true;
+            }
+            return false;
+        }
+
+        // Array alanları için özel işleme
+        $array_fields = ['_kg_prep_methods', '_kg_prep_by_age', '_kg_pairings', '_kg_faq', '_kg_season'];
+        if (in_array($key, $array_fields)) {
+            $ai_key = $mapping[$key] ?? null;
+            if ($ai_key && isset($ai_data[$ai_key]) && is_array($ai_data[$ai_key]) && !empty($ai_data[$ai_key])) {
+                update_post_meta($post_id, $key, $ai_data[$ai_key]);
                 return true;
             }
             return false;
