@@ -263,8 +263,8 @@ add_filter( 'kg_core_allowed_origins', function( $origins ) {
 // Production domains only
 add_filter( 'kg_core_allowed_origins', function( $origins ) {
     return [
-        'https://kidsgourmet.com',
-        'https://www.kidsgourmet.com',
+        'https://kidsgourmet.com.tr',
+        'https://www.kidsgourmet.com.tr',
     ];
 });
 ```
