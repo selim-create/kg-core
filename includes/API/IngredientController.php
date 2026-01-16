@@ -189,6 +189,16 @@ class IngredientController {
         $allergy_risk = get_post_meta( $post_id, '_kg_allergy_risk', true );
         $season = get_post_meta( $post_id, '_kg_season', true );
         
+        // Ensure season is always an array
+        if ( ! is_array( $season ) ) {
+            if ( ! empty( $season ) ) {
+                // Convert old string format to array
+                $season = array_filter( array_map( 'trim', explode( ',', $season ) ) );
+            } else {
+                $season = [];
+            }
+        }
+        
         $data = [
             'id'           => $post_id,
             'name'         => $name,
@@ -198,7 +208,7 @@ class IngredientController {
             'start_age'    => get_post_meta( $post_id, '_kg_start_age', true ),
             'category'     => $category,
             'allergy_risk' => $allergy_risk ?: 'Düşük',
-            'season'       => $season ?: 'Tüm Yıl',
+            'season'       => $season, // Now returns array
         ];
 
         if ( $full_detail ) {
