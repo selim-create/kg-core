@@ -145,10 +145,38 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/SponsoredToolController.php' ) ) 
 // Lookup Controller (Slug Lookup Endpoint)
 if ( file_exists( KG_CORE_PATH . 'includes/API/LookupController.php' ) ) require_once KG_CORE_PATH . 'includes/API/LookupController.php';
 
+// 6.5. VACCINATION TRACKER API CONTROLLERS (NEW)
+if ( file_exists( KG_CORE_PATH . 'includes/API/VaccineController.php' ) ) require_once KG_CORE_PATH . 'includes/API/VaccineController.php';
+if ( file_exists( KG_CORE_PATH . 'includes/API/NotificationController.php' ) ) require_once KG_CORE_PATH . 'includes/API/NotificationController.php';
+if ( file_exists( KG_CORE_PATH . 'includes/API/AdminVaccineController.php' ) ) require_once KG_CORE_PATH . 'includes/API/AdminVaccineController.php';
+
 // 6.6. ADMIN SINIFLARI DAHİL ET (Frontend View Links)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/FrontendViewLinks.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/FrontendViewLinks.php';
 
-// 6.7. REDIRECT SINIFLARI DAHİL ET (Frontend Redirect)
+// 6.7. VACCINATION TRACKER ADMIN PAGES (NEW)
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/VaccineAdminPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/VaccineAdminPage.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/EmailTemplateAdminPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/EmailTemplateAdminPage.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/NotificationLogAdminPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/NotificationLogAdminPage.php';
+
+// 6.8. VACCINATION TRACKER HEALTH SERVICES (NEW)
+if ( file_exists( KG_CORE_PATH . 'includes/Health/VaccineManager.php' ) ) require_once KG_CORE_PATH . 'includes/Health/VaccineManager.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Health/VaccineScheduleCalculator.php' ) ) require_once KG_CORE_PATH . 'includes/Health/VaccineScheduleCalculator.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Health/VaccineRecordManager.php' ) ) require_once KG_CORE_PATH . 'includes/Health/VaccineRecordManager.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Health/SideEffectTracker.php' ) ) require_once KG_CORE_PATH . 'includes/Health/SideEffectTracker.php';
+
+// 6.9. VACCINATION TRACKER NOTIFICATION SERVICES (NEW)
+if ( file_exists( KG_CORE_PATH . 'includes/Notifications/NotificationManager.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/NotificationManager.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Notifications/EmailService.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/EmailService.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Notifications/TemplateEngine.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/TemplateEngine.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Notifications/NotificationQueue.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/NotificationQueue.php';
+
+// 6.10. VACCINATION TRACKER CRON JOBS (NEW)
+if ( file_exists( KG_CORE_PATH . 'includes/Cron/VaccineReminderCron.php' ) ) require_once KG_CORE_PATH . 'includes/Cron/VaccineReminderCron.php';
+
+// 6.11. VACCINATION TRACKER DATABASE SCHEMA (NEW)
+if ( file_exists( KG_CORE_PATH . 'includes/Database/VaccinationSchema.php' ) ) require_once KG_CORE_PATH . 'includes/Database/VaccinationSchema.php';
+
+// 6.12. REDIRECT SINIFLARI DAHİL ET (Frontend Redirect)
 if ( file_exists( KG_CORE_PATH . 'includes/Redirect/FrontendRedirect.php' ) ) require_once KG_CORE_PATH . 'includes/Redirect/FrontendRedirect.php';
 
 // 7. SINIFLARI BAŞLAT (INIT HOOK)
@@ -251,6 +279,11 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\SponsoredToolController' ) ) new \KG_Core\API\SponsoredToolController();
     if ( class_exists( '\KG_Core\API\LookupController' ) ) new \KG_Core\API\LookupController();
     
+    // Vaccination Tracker API Controllers
+    if ( class_exists( '\KG_Core\API\VaccineController' ) ) new \KG_Core\API\VaccineController();
+    if ( class_exists( '\KG_Core\API\NotificationController' ) ) new \KG_Core\API\NotificationController();
+    if ( class_exists( '\KG_Core\API\AdminVaccineController' ) ) new \KG_Core\API\AdminVaccineController();
+    
     // Frontend View Links (Admin only)
     if ( is_admin() && class_exists( '\KG_Core\Admin\FrontendViewLinks' ) ) {
         new \KG_Core\Admin\FrontendViewLinks();
@@ -259,6 +292,11 @@ function kg_core_init() {
     // Frontend Redirect (sadece frontend isteklerinde)
     if ( !is_admin() && !wp_doing_ajax() && !(defined('REST_REQUEST') && REST_REQUEST) && class_exists( '\KG_Core\Redirect\FrontendRedirect' ) ) {
         new \KG_Core\Redirect\FrontendRedirect();
+    }
+    
+    // Vaccination Tracker Cron Job
+    if ( class_exists( '\KG_Core\Cron\VaccineReminderCron' ) ) {
+        new \KG_Core\Cron\VaccineReminderCron();
     }
 }
 add_action( 'plugins_loaded', 'kg_core_init' );
@@ -552,6 +590,17 @@ register_activation_hook( __FILE__, function() {
     // Seed tools on plugin activation
     if ( class_exists( '\KG_Core\Admin\ToolSeeder' ) ) {
         \KG_Core\Admin\ToolSeeder::seed_on_activation();
+    }
+    
+    // Create vaccination tracker database tables
+    if ( class_exists( '\KG_Core\Database\VaccinationSchema' ) ) {
+        \KG_Core\Database\VaccinationSchema::create_tables();
+    }
+    
+    // Load vaccine master data from JSON
+    if ( class_exists( '\KG_Core\Health\VaccineManager' ) ) {
+        $vaccine_manager = new \KG_Core\Health\VaccineManager();
+        $vaccine_manager->load_vaccine_master_data();
     }
     
     // Flush rewrite rules
