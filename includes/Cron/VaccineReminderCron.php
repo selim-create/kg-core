@@ -16,12 +16,26 @@ class VaccineReminderCron {
         // Register cron schedule
         add_filter('cron_schedules', [$this, 'add_cron_schedule']);
         
-        // Hook cron job
+        // Hook cron jobs
         add_action('kg_vaccine_reminder_daily', [$this, 'process_reminders']);
+        add_action('kg_weekly_vaccine_digest', [$this, 'process_weekly_digest']);
+        add_action('kg_cleanup_subscriptions', [$this, 'cleanup_old_subscriptions']);
         
-        // Schedule cron if not scheduled
+        // Schedule daily cron if not scheduled
         if (!wp_next_scheduled('kg_vaccine_reminder_daily')) {
             wp_schedule_event(strtotime('02:00:00'), 'kg_daily_2am', 'kg_vaccine_reminder_daily');
+        }
+        
+        // Schedule weekly digest cron (Mondays at 9 AM)
+        if (!wp_next_scheduled('kg_weekly_vaccine_digest')) {
+            $next_monday = strtotime('next Monday 09:00:00');
+            wp_schedule_event($next_monday, 'weekly', 'kg_weekly_vaccine_digest');
+        }
+        
+        // Schedule subscription cleanup (weekly, Sundays at 3 AM)
+        if (!wp_next_scheduled('kg_cleanup_subscriptions')) {
+            $next_sunday = strtotime('next Sunday 03:00:00');
+            wp_schedule_event($next_sunday, 'weekly', 'kg_cleanup_subscriptions');
         }
     }
     
@@ -182,7 +196,7 @@ class VaccineReminderCron {
             'unsubscribe_url' => home_url('/hesap/bildirim-tercihleri')
         ];
         
-        // Schedule notification
+        // Schedule email notification
         $scheduled_at = date('Y-m-d H:i:s', strtotime('+1 hour')); // Send in 1 hour
         $notification_manager->schedule_vaccine_reminder(
             $record['user_id'],
@@ -191,6 +205,23 @@ class VaccineReminderCron {
             $record['scheduled_date'],
             $days_before
         );
+        
+        // Send push notification immediately
+        $push_service = new \KG_Core\Notifications\PushNotificationService();
+        $push_result = $push_service->send_vaccine_reminder(
+            $record['user_id'],
+            $child_info['name'],
+            $vaccine_info['name'],
+            $record['child_id'],
+            $record['vaccine_code'],
+            $days_before
+        );
+        
+        if (is_wp_error($push_result)) {
+            $this->log('Push notification failed: ' . $push_result->get_error_message());
+        } else {
+            $this->log('Push notification sent successfully');
+        }
         
         $this->log("Scheduled {$days_before}-day reminder for user #{$record['user_id']}, vaccine: {$record['vaccine_code']}");
     }
@@ -308,6 +339,102 @@ class VaccineReminderCron {
         ), ARRAY_A);
         
         return $vaccine;
+    }
+    
+    /**
+     * Process weekly vaccine digest
+     * Runs every Monday at 9 AM
+     */
+    public function process_weekly_digest() {
+        global $wpdb;
+        
+        $this->log('Starting weekly vaccine digest cron job');
+        
+        // Get users who have weekly_digest enabled
+        $prefs_table = $wpdb->prefix . 'kg_notification_preferences';
+        $users = $wpdb->get_results(
+            "SELECT user_id FROM {$prefs_table} WHERE weekly_digest = 1",
+            ARRAY_A
+        );
+        
+        $this->log('Found ' . count($users) . ' users with weekly digest enabled');
+        
+        foreach ($users as $user_row) {
+            $this->send_weekly_digest($user_row['user_id']);
+        }
+        
+        $this->log('Weekly vaccine digest cron job completed');
+    }
+    
+    /**
+     * Send weekly digest to a user
+     * 
+     * @param int $user_id User ID
+     */
+    private function send_weekly_digest($user_id) {
+        global $wpdb;
+        
+        $user = get_user_by('id', $user_id);
+        if (!$user) {
+            return;
+        }
+        
+        $records_table = $wpdb->prefix . 'kg_vaccine_records';
+        
+        // Get vaccines from last week
+        $last_week = date('Y-m-d', strtotime('-7 days'));
+        $completed_last_week = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM {$records_table} 
+            WHERE user_id = %d 
+            AND status = 'done' 
+            AND actual_date >= %s",
+            $user_id,
+            $last_week
+        ), ARRAY_A);
+        
+        // Get upcoming vaccines for next week
+        $next_week = date('Y-m-d', strtotime('+7 days'));
+        $upcoming_next_week = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM {$records_table} 
+            WHERE user_id = %d 
+            AND status = 'upcoming' 
+            AND scheduled_date BETWEEN CURDATE() AND %s",
+            $user_id,
+            $next_week
+        ), ARRAY_A);
+        
+        // Get overdue vaccines
+        $overdue = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM {$records_table} 
+            WHERE user_id = %d 
+            AND status = 'upcoming' 
+            AND scheduled_date < CURDATE()",
+            $user_id
+        ), ARRAY_A);
+        
+        // Only send if there's something to report
+        if (empty($completed_last_week) && empty($upcoming_next_week) && empty($overdue)) {
+            return;
+        }
+        
+        $this->log("Sending weekly digest to user #{$user_id}");
+        
+        // TODO: Implement email template for weekly digest
+        // For now, just log it
+    }
+    
+    /**
+     * Cleanup old push subscriptions
+     * Runs weekly on Sundays at 3 AM
+     */
+    public function cleanup_old_subscriptions() {
+        $this->log('Starting subscription cleanup cron job');
+        
+        $subscription_manager = new \KG_Core\Notifications\PushSubscriptionManager();
+        $count = $subscription_manager->cleanup_old_subscriptions(90); // 90 days
+        
+        $this->log("Cleaned up {$count} old subscriptions");
+        $this->log('Subscription cleanup cron job completed');
     }
     
     /**
