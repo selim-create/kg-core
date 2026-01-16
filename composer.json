@@ -1,0 +1,15 @@
+{
+    "name": "kg-core/vaccination-tracker",
+    "description": "KidsGourmet Vaccination Tracker Backend with Push Notifications and PDF Export",
+    "type": "wordpress-plugin",
+    "require": {
+        "php": ">=7.4",
+        "minishlink/web-push": "^8.0",
+        "tecnickcom/tcpdf": "^6.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "KG_Core\\": "includes/"
+        }
+    }
+}

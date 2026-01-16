@@ -1,0 +1,129 @@
+{
+  "rotavirus": {
+    "name": "Rotavirüs",
+    "description": "İshal aşısı - Ağızdan damla şeklinde uygulanır",
+    "brands": [
+      {
+        "code": "rotarix",
+        "name": "Rotarix",
+        "manufacturer": "GSK",
+        "total_doses": 2,
+        "dose_intervals_weeks": [0, 4],
+        "min_age_weeks": 6,
+        "max_age_weeks_first_dose": 15,
+        "max_age_weeks_last_dose": 24,
+        "notes": "İlk doz en geç 15. haftada başlamalı"
+      },
+      {
+        "code": "rotateq",
+        "name": "RotaTeq",
+        "manufacturer": "MSD",
+        "total_doses": 3,
+        "dose_intervals_weeks": [0, 4, 4],
+        "min_age_weeks": 6,
+        "max_age_weeks_first_dose": 15,
+        "max_age_weeks_last_dose": 32,
+        "notes": "İlk doz en geç 15. haftada başlamalı"
+      }
+    ],
+    "warnings": [
+      "İlk doz için pencere: 6-15 hafta",
+      "Geç başlanırsa seri tamamlanamayabilir",
+      "Doktorunuza danışın"
+    ]
+  },
+  "meningococcal_acwy": {
+    "name": "Meningokok ACWY",
+    "description": "Menenjit aşısı - A, C, W, Y serotiplerine karşı koruma",
+    "brands": [
+      {
+        "code": "nimenrix",
+        "name": "Nimenrix",
+        "manufacturer": "Pfizer",
+        "total_doses": 1,
+        "min_age_months": 6,
+        "booster_after_months": 60,
+        "notes": "Tek doz, 5 yıl sonra rapel önerilir"
+      },
+      {
+        "code": "menveo",
+        "name": "Menveo",
+        "manufacturer": "GSK",
+        "total_doses": 1,
+        "min_age_months": 2,
+        "booster_after_months": 60,
+        "notes": "2 aydan itibaren yapılabilir"
+      }
+    ]
+  },
+  "meningococcal_b": {
+    "name": "Meningokok B",
+    "description": "Menenjit B aşısı",
+    "brands": [
+      {
+        "code": "bexsero",
+        "name": "Bexsero",
+        "manufacturer": "GSK",
+        "schedules": {
+          "infant": {
+            "name": "Bebek Şeması (2-5 ay)",
+            "total_doses": 3,
+            "dose_intervals_months": [0, 2, 6],
+            "min_age_months": 2,
+            "max_age_months": 5
+          },
+          "older_infant": {
+            "name": "Büyük Bebek Şeması (6-11 ay)",
+            "total_doses": 3,
+            "dose_intervals_months": [0, 2, 12],
+            "min_age_months": 6,
+            "max_age_months": 11
+          },
+          "toddler": {
+            "name": "Çocuk Şeması (12-23 ay)",
+            "total_doses": 3,
+            "dose_intervals_months": [0, 2, 12],
+            "min_age_months": 12,
+            "max_age_months": 23
+          },
+          "child": {
+            "name": "Büyük Çocuk Şeması (2+ yaş)",
+            "total_doses": 2,
+            "dose_intervals_months": [0, 2],
+            "min_age_months": 24
+          }
+        }
+      }
+    ]
+  },
+  "varicella": {
+    "name": "Su Çiçeği (Varisella)",
+    "description": "Su çiçeği hastalığına karşı koruma",
+    "brands": [
+      {
+        "code": "varivax",
+        "name": "Varivax",
+        "manufacturer": "MSD",
+        "total_doses": 2,
+        "dose_intervals_months": [0, 36],
+        "min_age_months": 12,
+        "notes": "1. doz 12 ay, 2. doz 4-6 yaş"
+      }
+    ]
+  },
+  "influenza": {
+    "name": "Grip (Mevsimsel)",
+    "description": "Mevsimsel grip aşısı - Her yıl tekrarlanır",
+    "is_annual": true,
+    "brands": [
+      {
+        "code": "generic",
+        "name": "Mevsimsel Grip Aşısı",
+        "manufacturer": "Çeşitli",
+        "min_age_months": 6,
+        "notes": "6 aydan büyük herkese her yıl önerilir",
+        "season_months": [9, 10, 11, 12]
+      }
+    ]
+  }
+}
