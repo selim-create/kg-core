@@ -441,9 +441,14 @@ class FoodTrialController {
         $start = strtotime( $start_date );
         $end = strtotime( $end_date );
         
+        // Validate dates
+        if ( $start === false || $end === false ) {
+            return $trials; // Return unfiltered if dates are invalid
+        }
+        
         return array_filter( $trials, function( $trial ) use ( $start, $end ) {
             $trial_date = strtotime( $trial['trial_date'] );
-            return $trial_date >= $start && $trial_date <= $end;
+            return $trial_date !== false && $trial_date >= $start && $trial_date <= $end;
         });
     }
 
@@ -467,7 +472,7 @@ class FoodTrialController {
             $key = $trial['child_id'] . '_' . strtolower( $trial['ingredient_name'] );
             if ( ! isset( $history[ $key ] ) ) {
                 $history[ $key ] = $trial['trial_date'];
-            } else if ( strtotime( $trial['trial_date'] ) < strtotime( $history[ $key ] ) ) {
+            } elseif ( strtotime( $trial['trial_date'] ) < strtotime( $history[ $key ] ) ) {
                 $history[ $key ] = $trial['trial_date'];
             }
         }
