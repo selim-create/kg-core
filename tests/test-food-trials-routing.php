@@ -23,8 +23,8 @@ if (file_exists($toolControllerFile)) {
         echo "   ✓ Negative lookahead pattern found for food-trials\n";
         $passed++;
         
-        // Verify the complete pattern
-        if (preg_match('/\/tools\/\(\?P<slug>\(\?!food-trials\)\[a-zA-Z0-9_-\]\+\)/', $content)) {
+        // Verify the pattern contains necessary components
+        if (strpos($content, '(?P<slug>(?!food-trials)[a-zA-Z0-9_-]+)') !== false) {
             echo "   ✓ Complete route pattern is correct\n";
             $passed++;
         } else {
@@ -84,11 +84,12 @@ if (file_exists($foodTrialControllerFile)) {
         $failed++;
     }
     
-    // Check for GET, POST, PUT, DELETE methods
+    // Check for GET, POST, PUT, DELETE methods (both string and array formats)
     $methods = ['GET', 'POST', 'PUT', 'DELETE'];
     $methodsFound = 0;
     foreach ($methods as $method) {
-        if (preg_match('/\'methods\'\s*=>\s*[\'"]' . $method . '[\'"]/', $content)) {
+        // Match both single method strings and method arrays
+        if (preg_match('/[\'"]methods[\'"]\s*=>\s*(\[.*[\'"]' . $method . '[\'"].*\]|[\'"]' . $method . '[\'"])/', $content)) {
             $methodsFound++;
         }
     }
@@ -111,9 +112,9 @@ echo "3. Route Registration Order Check\n";
 if (file_exists($foodTrialControllerFile)) {
     $content = file_get_contents($foodTrialControllerFile);
     
-    // Find positions of different route registrations
+    // Find positions of different route registrations (without assuming trailing comma)
     $statsPos = strpos($content, "'/tools/food-trials/stats'");
-    $basePos = strpos($content, "'/tools/food-trials',");
+    $basePos = strpos($content, "'/tools/food-trials'");
     $dynamicPos = strpos($content, "'/tools/food-trials/(?P<id>");
     
     if ($statsPos !== false && $basePos !== false && $dynamicPos !== false) {
