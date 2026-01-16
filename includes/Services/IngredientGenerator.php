@@ -148,8 +148,8 @@ class IngredientGenerator {
             update_post_meta($post_id, '_kg_prep_by_age', $sanitized_prep_by_age);
         }
         
-        // Pairings (JSON array)
-        if (isset($data['pairings']) && is_array($data['pairings'])) {
+        // Pairings (JSON array) - ZORUNLU ALAN
+        if (isset($data['pairings']) && is_array($data['pairings']) && !empty($data['pairings'])) {
             $sanitized_pairings = [];
             foreach ($data['pairings'] as $pairing) {
                 if (isset($pairing['emoji']) && isset($pairing['name'])) {
@@ -159,7 +159,12 @@ class IngredientGenerator {
                     ];
                 }
             }
-            update_post_meta($post_id, '_kg_pairings', $sanitized_pairings);
+            if (!empty($sanitized_pairings)) {
+                update_post_meta($post_id, '_kg_pairings', $sanitized_pairings);
+                error_log('KG Generator: Saved ' . count($sanitized_pairings) . ' pairings for post ' . $post_id);
+            }
+        } else {
+            error_log('KG Generator: WARNING - No pairings data found for post ' . $post_id);
         }
         
         // Nutrition (100g per serving format)
