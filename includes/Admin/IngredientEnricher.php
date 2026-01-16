@@ -25,12 +25,8 @@ class IngredientEnricher {
         // Eksik alan sayısını hesapla
         $missing_fields = $this->get_missing_fields($post->ID);
         $missing_count = count($missing_fields);
-        
-        // Nonce değerini doğrudan al
-        $nonce = wp_create_nonce('kg_enrich_ingredient');
         ?>
         <div class="kg-enrichment-box">
-            <input type="hidden" id="kg_enricher_nonce" value="<?php echo esc_attr($nonce); ?>">
             <?php if ($missing_count > 0): ?>
                 <p style="color: #d63638;">
                     <strong><?php echo $missing_count; ?> eksik alan</strong> bulundu
@@ -368,14 +364,10 @@ class IngredientEnricher {
             return;
         }
 
-        // Create nonce once and use it for both hidden input and localized script
-        // Note: This is created in enqueue_scripts to ensure it's available when needed
-        // The nonce in render_enrichment_box is created separately as metaboxes render before scripts
-        
-        // Use inline script approach without empty registration
+        // Use inline script to inject kgEnricher object with nonce and post data
         wp_enqueue_script('jquery');
         
-        // Localize data for JavaScript
+        // Inject kgEnricher object for JavaScript
         wp_add_inline_script('jquery', 
             'var kgEnricher = ' . json_encode([
                 'ajaxUrl' => admin_url('admin-ajax.php'),

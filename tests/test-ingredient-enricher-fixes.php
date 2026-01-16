@@ -19,8 +19,8 @@ if (file_exists($enricherFile)) {
     
     $content = file_get_contents($enricherFile);
     
-    // Check for wp_create_nonce instead of wp_nonce_field
-    if (strpos($content, "\$nonce = wp_create_nonce('kg_enrich_ingredient');") !== false) {
+    // Check for wp_create_nonce in enqueue_scripts
+    if (strpos($content, "wp_create_nonce('kg_enrich_ingredient')") !== false) {
         echo "✅ Uses wp_create_nonce for nonce generation\n";
         $testsPassed++;
     } else {
@@ -28,12 +28,12 @@ if (file_exists($enricherFile)) {
         $testsFailed++;
     }
     
-    // Check for hidden input with proper ID
-    if (strpos($content, 'id="kg_enricher_nonce"') !== false) {
-        echo "✅ Hidden input has correct ID (kg_enricher_nonce)\n";
+    // Check that old hidden input is removed (no longer using kg_enricher_nonce ID)
+    if (strpos($content, 'id="kg_enricher_nonce"') === false) {
+        echo "✅ Removed unused hidden input (using kgEnricher object instead)\n";
         $testsPassed++;
     } else {
-        echo "❌ Hidden input ID not correct\n";
+        echo "❌ Old hidden input still present (should be removed)\n";
         $testsFailed++;
     }
     
