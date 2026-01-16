@@ -177,7 +177,7 @@ class AdminVaccineController {
      */
     public function get_all_vaccines( $request ) {
         $vaccine_manager = new VaccineManager();
-        $vaccines = $vaccine_manager->get_all_vaccines( true );
+        $vaccines = $vaccine_manager->get_all_vaccines( false );
 
         if ( is_wp_error( $vaccines ) ) {
             return $vaccines;

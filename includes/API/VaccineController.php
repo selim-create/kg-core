@@ -395,7 +395,23 @@ class VaccineController {
         }
 
         // Sanitize side effects array
-        $sanitized_effects = array_map( 'sanitize_text_field', $side_effects );
+        if ( ! is_array( $side_effects ) ) {
+            return new \WP_Error( 'invalid_side_effects', 'Side effects must be an array', [ 'status' => 400 ] );
+        }
+
+        $sanitized_effects = [];
+        foreach ( $side_effects as $effect ) {
+            if ( is_array( $effect ) ) {
+                $sanitized_effect = [];
+                foreach ( $effect as $key => $value ) {
+                    $sanitized_effect[ sanitize_key( $key ) ] = sanitize_text_field( $value );
+                }
+                $sanitized_effects[] = $sanitized_effect;
+            } elseif ( is_string( $effect ) ) {
+                // Support simple string array format as well
+                $sanitized_effects[] = sanitize_text_field( $effect );
+            }
+        }
 
         $side_effect_tracker = new SideEffectTracker();
         $result = $side_effect_tracker->record_side_effects( $record_id, $sanitized_effects, $severity );
