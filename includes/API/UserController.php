@@ -1600,14 +1600,13 @@ class UserController {
         $expertise = get_user_meta( $user_id, '_kg_expertise', true );
         $show_email = get_user_meta( $user_id, '_kg_show_email', true );
         
-        // Get avatar URL
-        $avatar_url = '';
+        // Get avatar URL - önce custom avatar, yoksa gravatar
+        $avatar_url = null;
         if ( $avatar_id ) {
-            $avatar_url = wp_get_attachment_url( $avatar_id );
+            $avatar_url = wp_get_attachment_image_url( $avatar_id, 'medium' );
         }
         if ( ! $avatar_url ) {
-            $google_avatar = get_user_meta( $user_id, 'google_avatar', true );
-            $avatar_url = ! empty( $google_avatar ) ? $google_avatar : get_avatar_url( $user_id );
+            $avatar_url = get_avatar_url( $user_id, [ 'size' => 256 ] );
         }
 
         // Get statistics

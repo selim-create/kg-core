@@ -73,13 +73,12 @@ class ExpertController {
     /**
      * Get list of all expert users
      * Public endpoint - no authentication required
+     * Only returns users with kg_expert role
      */
     public function get_experts_list( $request ) {
-        // Get users with expert roles
-        $expert_roles = [ 'kg_expert', 'author', 'editor' ];
-        
+        // SADECE kg_expert rolündeki kullanıcıları getir
         $users = get_users([
-            'role__in' => $expert_roles,
+            'role' => 'kg_expert',
             'orderby' => 'display_name',
             'order' => 'ASC',
         ]);
@@ -94,9 +93,16 @@ class ExpertController {
             $expertise = get_user_meta( $user_id, '_kg_expertise', true );
             $social_links = get_user_meta( $user_id, '_kg_social_links', true );
             $show_email = get_user_meta( $user_id, '_kg_show_email', true );
+            $avatar_id = get_user_meta( $user_id, '_kg_avatar_id', true );
             
-            // Get avatar URL
-            $avatar_url = get_avatar_url( $user_id, [ 'size' => 256 ] );
+            // Get avatar URL - önce custom avatar, yoksa gravatar
+            $avatar_url = null;
+            if ( $avatar_id ) {
+                $avatar_url = wp_get_attachment_image_url( $avatar_id, 'medium' );
+            }
+            if ( ! $avatar_url ) {
+                $avatar_url = get_avatar_url( $user_id, [ 'size' => 256 ] );
+            }
             
             // Get user statistics
             $stats = $this->get_expert_stats( $user_id );
@@ -108,7 +114,7 @@ class ExpertController {
                 'avatar_url' => $avatar_url,
                 'biography' => $biography ?: '',
                 'expertise' => is_array( $expertise ) ? $expertise : [],
-                'social_links' => is_array( $social_links ) ? $social_links : [],
+                'social_links' => is_array( $social_links ) ? $social_links : (object)[],
                 'stats' => $stats,
             ];
             
@@ -153,27 +159,33 @@ class ExpertController {
         ]);
         $total_posts = $posts_query->found_posts;
         
-        // Count approved recipes (where user is expert approver)
-        $approved_recipes = new \WP_Query([
-            'post_type' => 'recipe',
+        // Count user's answers (comments on discussions)
+        $total_answers = get_comments([
+            'user_id' => $user_id,
+            'post_type' => 'discussion',
+            'status' => 'approve',
+            'count' => true,
+        ]);
+        
+        // Count user's questions (discussions authored)
+        $questions_query = new \WP_Query([
+            'post_type' => 'discussion',
+            'author' => $user_id,
             'post_status' => 'publish',
-            'meta_query' => [
-                [
-                    'key' => '_kg_expert_id',
-                    'value' => $user_id,
-                ],
-            ],
             'posts_per_page' => -1,
             'fields' => 'ids',
             'no_found_rows' => false, // We need found_posts
             'update_post_meta_cache' => false,
             'update_post_term_cache' => false,
         ]);
+        $total_questions = $questions_query->found_posts;
         
         return [
             'total_recipes' => $total_recipes,
-            'total_posts' => $total_posts,
-            'approved_recipes' => $approved_recipes->found_posts,
+            'total_blog_posts' => $total_posts,
+            'total_posts' => $total_posts, // Alias for compatibility
+            'total_answers' => (int) $total_answers,
+            'total_questions' => $total_questions,
         ];
     }
     
