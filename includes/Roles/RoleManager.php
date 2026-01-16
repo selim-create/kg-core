@@ -93,7 +93,13 @@ class RoleManager {
         
         foreach ( $experts as $user ) {
             // Re-assign role to apply new capabilities
-            $user->set_role( 'kg_expert' );
+            // This removes and re-adds the role with updated capabilities
+            $result = $user->set_role( 'kg_expert' );
+            
+            // Log any failures
+            if ( ! $result ) {
+                error_log( 'KG Core: Failed to update capabilities for user ID ' . $user->ID );
+            }
         }
     }
     

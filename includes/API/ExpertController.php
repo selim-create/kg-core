@@ -134,6 +134,9 @@ class ExpertController {
             'post_status' => 'publish',
             'posts_per_page' => -1,
             'fields' => 'ids',
+            'no_found_rows' => false, // We need found_posts
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
         ]);
         $total_recipes = $recipes_query->found_posts;
         
@@ -144,6 +147,9 @@ class ExpertController {
             'post_status' => 'publish',
             'posts_per_page' => -1,
             'fields' => 'ids',
+            'no_found_rows' => false, // We need found_posts
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
         ]);
         $total_posts = $posts_query->found_posts;
         
@@ -159,6 +165,9 @@ class ExpertController {
             ],
             'posts_per_page' => -1,
             'fields' => 'ids',
+            'no_found_rows' => false, // We need found_posts
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
         ]);
         
         return [
