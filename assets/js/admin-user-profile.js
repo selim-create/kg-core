@@ -15,7 +15,7 @@
             
             frame.on('select', function() {
                 var attachment = frame.state().get('selection').first().toJSON();
-                var imageUrl = attachment.sizes && attachment.sizes.thumbnail 
+                var imageUrl = attachment.sizes && attachment.sizes.thumbnail && attachment.sizes.thumbnail.url
                     ? attachment.sizes.thumbnail.url 
                     : attachment.url;
                     
