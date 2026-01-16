@@ -79,7 +79,7 @@ class SponsoredToolController {
                 'id' => $tool->ID,
                 'title' => $tool->post_title,
                 'description' => $tool->post_content,
-                'icon' => get_field( 'tool_icon', $tool->ID ),
+                'icon' => get_post_meta( $tool->ID, '_kg_tool_icon', true ) ?: 'fa-bath',
             ],
             'skin_types' => [
                 [
