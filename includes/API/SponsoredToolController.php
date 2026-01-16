@@ -81,6 +81,64 @@ class SponsoredToolController {
                 'description' => $tool->post_content,
                 'icon' => get_field( 'tool_icon', $tool->ID ),
             ],
+            'skin_types' => [
+                [
+                    'id' => 'normal',
+                    'label' => 'Normal Cilt',
+                ],
+                [
+                    'id' => 'dry',
+                    'label' => 'Kuru Cilt',
+                ],
+                [
+                    'id' => 'sensitive',
+                    'label' => 'Hassas Cilt',
+                ],
+                [
+                    'id' => 'oily',
+                    'label' => 'Yağlı Cilt',
+                ],
+            ],
+            'seasons' => [
+                [
+                    'id' => 'spring',
+                    'label' => 'İlkbahar',
+                ],
+                [
+                    'id' => 'summer',
+                    'label' => 'Yaz',
+                ],
+                [
+                    'id' => 'autumn',
+                    'label' => 'Sonbahar',
+                ],
+                [
+                    'id' => 'winter',
+                    'label' => 'Kış',
+                ],
+            ],
+            'frequency_options' => [
+                [
+                    'id' => '2-3',
+                    'label' => 'Haftada 2-3 kez',
+                    'description' => 'Yenidoğanlar için önerilen',
+                ],
+                [
+                    'id' => '3-4',
+                    'label' => 'Haftada 3-4 kez',
+                    'description' => '3-6 aylık bebekler için',
+                ],
+                [
+                    'id' => '4-5',
+                    'label' => 'Haftada 4-5 kez',
+                    'description' => '6-12 aylık bebekler için',
+                ],
+                [
+                    'id' => 'daily',
+                    'label' => 'Her gün',
+                    'description' => '12 ay üzeri için',
+                ],
+            ],
             'age_groups' => [
                 [
                     'id' => '0-3months',
@@ -120,7 +178,7 @@ class SponsoredToolController {
                     'suitable_for' => '12months+',
                 ],
             ],
-            'sponsor_data' => $sponsor_data,
+            'sponsor' => $sponsor_data,
         ];
 
         return new \WP_REST_Response( $config, 200 );
@@ -130,32 +188,59 @@ class SponsoredToolController {
      * Generate bath routine plan
      */
     public function generate_bath_routine( $request ) {
-        $child_age_months = (int) $request->get_param( 'child_age_months' );
+        // Accept both baby_age_months and child_age_months for backwards compatibility
+        $age_months = (int) $request->get_param( 'baby_age_months' );
+        if ( ! $age_months ) {
+            $age_months = (int) $request->get_param( 'child_age_months' );
+        }
+        
         $skin_type = $request->get_param( 'skin_type' ) ?: 'normal';
-        $activity_level = $request->get_param( 'activity_level' ) ?: 'moderate';
+        
+        // Accept both season and activity_level for backwards compatibility
+        $season = $request->get_param( 'season' );
+        if ( ! $season ) {
+            // Map activity_level to season if season not provided
+            $activity_level = $request->get_param( 'activity_level' ) ?: 'moderate';
+            $season = 'spring'; // Default season
+        }
+        
+        $has_eczema = (bool) $request->get_param( 'has_eczema' );
 
-        if ( $child_age_months < 0 ) {
+        if ( $age_months < 0 ) {
             return new \WP_Error( 'invalid_age', 'Geçerli bir yaş değeri giriniz', [ 'status' => 400 ] );
         }
 
-        // Determine frequency based on age and activity level
-        $frequency = $this->calculate_bath_frequency( $child_age_months, $activity_level );
+        // Determine frequency based on age and season/activity
+        $activity_level = $request->get_param( 'activity_level' ) ?: 'moderate';
+        $frequency = $this->calculate_bath_frequency( $age_months, $activity_level );
         
         // Get appropriate products based on skin type
-        $products = $this->get_bath_products( $skin_type, $child_age_months );
+        $products = $this->get_bath_products( $skin_type, $age_months );
 
         // Generate routine steps
-        $routine = $this->generate_routine_steps( $child_age_months, $skin_type );
+        $routine = $this->generate_routine_steps( $age_months, $skin_type );
+        
+        // Generate weekly schedule
+        $weekly_schedule = $this->generate_weekly_schedule( $age_months, $season, $has_eczema );
+        
+        // Get warnings
+        $warnings = $this->get_warnings( $skin_type, $season, $has_eczema );
+        
+        // Get product recommendations as string array
+        $product_recommendations = $this->get_product_recommendations_list( $skin_type, $has_eczema );
 
         $tool = $this->get_tool_by_slug( 'bath-planner' );
         $sponsor_data = ! is_wp_error( $tool ) ? $this->get_sponsor_data( $tool->ID ) : null;
 
         $result = [
             'recommended_frequency' => $frequency,
+            'weekly_schedule' => $weekly_schedule,
+            'tips' => $this->get_bath_tips( $age_months, $skin_type ),
+            'warnings' => $warnings,
+            'product_recommendations' => $product_recommendations,
             'products' => $products,
             'routine' => $routine,
-            'tips' => $this->get_bath_tips( $child_age_months, $skin_type ),
-            'sponsor_data' => $sponsor_data,
+            'sponsor' => $sponsor_data,
         ];
 
         return new \WP_REST_Response( $result, 200 );
@@ -194,7 +279,7 @@ class SponsoredToolController {
             'monthly_needs' => $monthly_needs,
             'estimated_cost' => $this->calculate_estimated_cost( $monthly_needs ),
             'recommendations' => $this->get_hygiene_recommendations( $child_age_months ),
-            'sponsor_data' => $sponsor_data,
+            'sponsor' => $sponsor_data,
         ];
 
         return new \WP_REST_Response( $result, 200 );
@@ -225,7 +310,7 @@ class SponsoredToolController {
             'recommended_size' => $recommended_size,
             'change_frequency' => $this->get_change_frequency( $child_age_months ),
             'tips' => $this->get_diaper_tips( $child_age_months ),
-            'sponsor_data' => $sponsor_data,
+            'sponsor' => $sponsor_data,
         ];
 
         return new \WP_REST_Response( $result, 200 );
@@ -287,7 +372,7 @@ class SponsoredToolController {
             'risk_factors' => $risk_factors,
             'prevention_tips' => $this->get_rash_prevention_tips( $risk_level ),
             'treatment_recommendations' => $this->get_rash_treatment( $risk_level ),
-            'sponsor_data' => $sponsor_data,
+            'sponsor' => $sponsor_data,
         ];
 
         return new \WP_REST_Response( $result, 200 );
@@ -320,7 +405,7 @@ class SponsoredToolController {
             'is_safe_for_outdoor' => $this->is_safe_outdoor( $aqi, $has_newborn, $respiratory_issues ),
             'recommendations' => $recommendations,
             'indoor_tips' => $this->get_indoor_air_tips(),
-            'sponsor_data' => $sponsor_data,
+            'sponsor' => $sponsor_data,
         ];
 
         return new \WP_REST_Response( $result, 200 );
@@ -358,7 +443,7 @@ class SponsoredToolController {
             'total' => count( $stains ),
             'stains' => array_values( $stains ),
             'categories' => $this->get_stain_categories(),
-            'sponsor_data' => $sponsor_data,
+            'sponsor' => $sponsor_data,
         ];
 
         return new \WP_REST_Response( $result, 200 );
@@ -387,7 +472,7 @@ class SponsoredToolController {
         $tool = $this->get_tool_by_slug( 'stain-encyclopedia' );
         $sponsor_data = ! is_wp_error( $tool ) ? $this->get_sponsor_data( $tool->ID ) : null;
 
-        $stain['sponsor_data'] = $sponsor_data;
+        $stain['sponsor'] = $sponsor_data;
 
         return new \WP_REST_Response( $stain, 200 );
     }
@@ -420,26 +505,19 @@ class SponsoredToolController {
 
         $sponsor_logo_id = get_post_meta( $tool_id, '_kg_tool_sponsor_logo', true );
         $sponsor_light_logo_id = get_post_meta( $tool_id, '_kg_tool_sponsor_light_logo', true );
+        $gam_impression = get_post_meta( $tool_id, '_kg_tool_gam_impression_url', true );
+        $gam_click = get_post_meta( $tool_id, '_kg_tool_gam_click_url', true );
 
         return [
             'is_sponsored' => true,
             'sponsor_name' => get_post_meta( $tool_id, '_kg_tool_sponsor_name', true ),
-            'sponsor_url' => get_post_meta( $tool_id, '_kg_tool_sponsor_url', true ),
-            'sponsor_logo' => [
-                'id' => $sponsor_logo_id ? absint( $sponsor_logo_id ) : null,
-                'url' => $sponsor_logo_id ? wp_get_attachment_url( $sponsor_logo_id ) : null,
-            ],
-            'sponsor_light_logo' => [
-                'id' => $sponsor_light_logo_id ? absint( $sponsor_light_logo_id ) : null,
-                'url' => $sponsor_light_logo_id ? wp_get_attachment_url( $sponsor_light_logo_id ) : null,
-            ],
+            'sponsor_logo' => $sponsor_logo_id ? wp_get_attachment_url( $sponsor_logo_id ) : null,
+            'sponsor_light_logo' => $sponsor_light_logo_id ? wp_get_attachment_url( $sponsor_light_logo_id ) : null,
             'sponsor_tagline' => get_post_meta( $tool_id, '_kg_tool_sponsor_tagline', true ),
-            'sponsor_cta' => [
-                'text' => get_post_meta( $tool_id, '_kg_tool_sponsor_cta_text', true ),
-                'url' => get_post_meta( $tool_id, '_kg_tool_sponsor_cta_url', true ),
-            ],
-            'gam_impression_url' => get_post_meta( $tool_id, '_kg_tool_gam_impression_url', true ),
-            'gam_click_url' => get_post_meta( $tool_id, '_kg_tool_gam_click_url', true ),
+            'sponsor_cta_text' => get_post_meta( $tool_id, '_kg_tool_sponsor_cta_text', true ),
+            'sponsor_cta_url' => get_post_meta( $tool_id, '_kg_tool_sponsor_cta_url', true ),
+            'gam_impression_url' => $gam_impression ?: null,
+            'gam_click_url' => $gam_click ?: null,
         ];
     }
 
@@ -837,5 +915,121 @@ class SponsoredToolController {
                 'label' => 'Diğer',
             ],
         ];
+    }
+
+    /**
+     * Haftalık banyo takvimi oluştur
+     */
+    private function generate_weekly_schedule( $age_months, $season, $has_eczema ) {
+        $days = [ 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar' ];
+        $schedule = [];
+        
+        // Yaşa göre banyo günlerini belirle
+        $bath_days = $this->get_bath_days_for_age( $age_months, $has_eczema );
+        
+        foreach ( $days as $index => $day ) {
+            $is_bath_day = in_array( $index, $bath_days );
+            $schedule[] = [
+                'day' => $day,
+                'bath' => $is_bath_day,
+                'note' => $is_bath_day ? $this->get_day_note( $season, $has_eczema ) : null,
+            ];
+        }
+        
+        return $schedule;
+    }
+
+    /**
+     * Yaşa göre banyo günlerini belirle
+     */
+    private function get_bath_days_for_age( $age_months, $has_eczema ) {
+        // Egzama varsa banyo sıklığını azalt
+        if ( $has_eczema ) {
+            if ( $age_months < 3 ) {
+                return [ 0, 3, 5 ]; // 3 gün (Pzt, Per, Cmt)
+            } elseif ( $age_months < 6 ) {
+                return [ 0, 2, 4, 6 ]; // 4 gün
+            } elseif ( $age_months < 12 ) {
+                return [ 0, 2, 3, 5, 6 ]; // 5 gün
+            } else {
+                return [ 0, 1, 2, 3, 4, 5, 6 ]; // Her gün
+            }
+        } else {
+            if ( $age_months < 3 ) {
+                return [ 1, 3, 5 ]; // 3 gün (Salı, Perşembe, Cumartesi)
+            } elseif ( $age_months < 6 ) {
+                return [ 0, 2, 4, 6 ]; // 4 gün
+            } elseif ( $age_months < 12 ) {
+                return [ 0, 1, 3, 4, 6 ]; // 5 gün
+            } else {
+                return [ 0, 1, 2, 3, 4, 5, 6 ]; // Her gün
+            }
+        }
+    }
+
+    /**
+     * Gün notu oluştur
+     */
+    private function get_day_note( $season, $has_eczema ) {
+        if ( $has_eczema ) {
+            return 'Ilık su ve kısa süreli banyo';
+        }
+        
+        if ( $season === 'winter' ) {
+            return 'Banyodan sonra cildi iyi nemlendirin';
+        }
+        
+        return null;
+    }
+
+    /**
+     * Egzama ve mevsime göre uyarılar
+     */
+    private function get_warnings( $skin_type, $season, $has_eczema ) {
+        $warnings = [];
+        
+        if ( $has_eczema ) {
+            $warnings[] = 'Egzamalı ciltlerde banyo süresini 5-10 dakika ile sınırlayın';
+            $warnings[] = 'Banyo sonrası 3 dakika içinde nemlendirici uygulayın';
+            $warnings[] = 'Ilık su kullanın, sıcak su cildi kurutabilir';
+        }
+        
+        if ( $season === 'winter' ) {
+            $warnings[] = 'Kış aylarında banyo sıklığını azaltmayı düşünün';
+            $warnings[] = 'Banyodan sonra cildi iyi nemlendirin';
+        }
+        
+        if ( $skin_type === 'dry' ) {
+            $warnings[] = 'Sabun kullanımını minimumda tutun';
+            $warnings[] = 'Yağlı banyo ürünleri tercih edin';
+        }
+        
+        return $warnings;
+    }
+
+    /**
+     * Ürün önerilerini string array olarak döndür
+     */
+    private function get_product_recommendations_list( $skin_type, $has_eczema ) {
+        $recommendations = [];
+        
+        if ( $has_eczema || $skin_type === 'sensitive' ) {
+            $recommendations[] = 'Parfümsüz, hipoalerjenik bebek şampuanı';
+            $recommendations[] = 'Oat (yulaf) bazlı banyo yağı';
+            $recommendations[] = 'Seramid içeren nemlendirici';
+        } else {
+            $recommendations[] = 'Hafif bebek şampuanı';
+            $recommendations[] = 'Bebek duş jeli';
+        }
+        
+        if ( $skin_type === 'dry' ) {
+            $recommendations[] = 'Nemlendirici içeren banyo köpüğü';
+            $recommendations[] = 'Yoğun nemlendirici krem veya balm';
+        }
+        
+        $recommendations[] = 'Yumuşak pamuklu havlu';
+        $recommendations[] = 'Banyo termometresi';
+        
+        return $recommendations;
     }
 }
