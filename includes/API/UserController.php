@@ -176,6 +176,19 @@ class UserController {
             'callback' => [ $this, 'get_child_blw_results' ],
             'permission_callback' => [ $this, 'check_authentication' ],
         ]);
+
+        // Solid Food Readiness results endpoints
+        register_rest_route( 'kg/v1', '/user/solid-food-results', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_solid_food_results' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+        ]);
+
+        register_rest_route( 'kg/v1', '/user/children/(?P<child_id>[a-zA-Z0-9-]+)/solid-food-results', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_child_solid_food_results' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+        ]);
     }
 
     /**
@@ -2071,5 +2084,117 @@ class UserController {
         });
 
         return new \WP_REST_Response( array_values( $child_results ), 200 );
+    }
+
+    /**
+     * Get user's Solid Food Readiness test results
+     */
+    public function get_solid_food_results( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+        $results = get_user_meta( $user_id, '_kg_solid_food_readiness_results', true );
+
+        if ( ! is_array( $results ) ) {
+            $results = [];
+        }
+
+        // Get children for child_name lookup
+        $children = get_user_meta( $user_id, '_kg_children', true );
+        $children_map = [];
+        if ( is_array( $children ) ) {
+            foreach ( $children as $child ) {
+                $children_map[ $child['id'] ] = $child['name'];
+            }
+        }
+
+        // Format results with child_name
+        $formatted_results = array_map( function( $result ) use ( $children_map ) {
+            return [
+                'id' => $result['id'] ?? null,
+                'child_id' => $result['child_id'] ?? null,
+                'child_name' => isset( $result['child_id'] ) && isset( $children_map[ $result['child_id'] ] ) 
+                    ? $children_map[ $result['child_id'] ] 
+                    : null,
+                'score' => $result['score'] ?? 0,
+                'result_bucket_id' => $result['result_category'] ?? $result['result_bucket_id'] ?? null,
+                'red_flags' => $result['red_flags'] ?? [],
+                'answers' => $result['answers'] ?? [],
+                'created_at' => $result['timestamp'] ?? $result['created_at'] ?? null,
+            ];
+        }, $results );
+
+        // Sort by timestamp (newest first)
+        usort( $formatted_results, function( $a, $b ) {
+            $time_a = strtotime( $a['created_at'] ?? '1970-01-01' );
+            $time_b = strtotime( $b['created_at'] ?? '1970-01-01' );
+            return $time_b - $time_a;
+        });
+
+        return new \WP_REST_Response( $formatted_results, 200 );
+    }
+
+    /**
+     * Get Solid Food Readiness test results for a specific child
+     */
+    public function get_child_solid_food_results( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+        $child_id = $request->get_param( 'child_id' );
+
+        if ( empty( $child_id ) ) {
+            return new \WP_Error( 'missing_child_id', 'Child ID is required', [ 'status' => 400 ] );
+        }
+
+        // Verify child belongs to user
+        $children = get_user_meta( $user_id, '_kg_children', true );
+        if ( ! is_array( $children ) ) {
+            return new \WP_Error( 'no_children', 'No children found', [ 'status' => 404 ] );
+        }
+
+        $child_exists = false;
+        $child_name = null;
+        foreach ( $children as $child ) {
+            if ( $child['id'] === $child_id ) {
+                $child_exists = true;
+                $child_name = $child['name'];
+                break;
+            }
+        }
+
+        if ( ! $child_exists ) {
+            return new \WP_Error( 'child_not_found', 'Child not found', [ 'status' => 404 ] );
+        }
+
+        // Get all solid food results
+        $all_results = get_user_meta( $user_id, '_kg_solid_food_readiness_results', true );
+        if ( ! is_array( $all_results ) ) {
+            return new \WP_REST_Response( [], 200 );
+        }
+
+        // Filter results for this child
+        $child_results = array_filter( $all_results, function( $result ) use ( $child_id ) {
+            return isset( $result['child_id'] ) && $result['child_id'] === $child_id;
+        });
+
+        // Format results
+        $formatted_results = array_map( function( $result ) use ( $child_name ) {
+            return [
+                'id' => $result['id'] ?? null,
+                'child_id' => $result['child_id'] ?? null,
+                'child_name' => $child_name,
+                'score' => $result['score'] ?? 0,
+                'result_bucket_id' => $result['result_category'] ?? $result['result_bucket_id'] ?? null,
+                'red_flags' => $result['red_flags'] ?? [],
+                'answers' => $result['answers'] ?? [],
+                'created_at' => $result['timestamp'] ?? $result['created_at'] ?? null,
+            ];
+        }, $child_results );
+
+        // Sort by timestamp (newest first)
+        usort( $formatted_results, function( $a, $b ) {
+            $time_a = strtotime( $a['created_at'] ?? '1970-01-01' );
+            $time_b = strtotime( $b['created_at'] ?? '1970-01-01' );
+            return $time_b - $time_a;
+        });
+
+        return new \WP_REST_Response( array_values( $formatted_results ), 200 );
     }
 }
