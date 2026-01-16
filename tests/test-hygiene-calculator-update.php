@@ -290,6 +290,35 @@ if ($response instanceof WP_REST_Response) {
     $failed++;
 }
 
+echo "\n7. Test 0-Month-Old Newborn (Edge Case)\n";
+$request = new MockRequest([
+    'baby_age_months' => 0,
+    'daily_diaper_changes' => 12,
+    'outdoor_hours' => 0,
+    'meal_count' => 0
+]);
+
+$response = $controller->calculate_hygiene_needs($request);
+
+if ($response instanceof WP_REST_Response) {
+    $data = $response->data;
+    
+    // 0 months: 12 diapers * 4 wipes + 0 meals * 1 wipes + 0 hours * 1 wipes = 48 wipes
+    $expected_daily = 48;
+    if ($data['daily_wipes_needed'] == $expected_daily) {
+        echo "   ✓ 0-month-old handled correctly (expected: $expected_daily, got: {$data['daily_wipes_needed']})\n";
+        $passed++;
+    } else {
+        echo "   ✗ 0-month-old calculation incorrect (expected: $expected_daily, got: {$data['daily_wipes_needed']})\n";
+        $failed++;
+    }
+    
+    echo "   Daily wipes: {$data['daily_wipes_needed']}\n";
+} else {
+    echo "   ✗ Response is not WP_REST_Response\n";
+    $failed++;
+}
+
 // Summary
 echo "\n=== Test Summary ===\n";
 echo "Passed: $passed\n";

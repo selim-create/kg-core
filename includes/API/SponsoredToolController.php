@@ -251,10 +251,11 @@ class SponsoredToolController {
      */
     public function calculate_hygiene_needs( $request ) {
         // Parametre uyumluluğu - her iki adı da kabul et
-        $baby_age_months = (int) $request->get_param( 'baby_age_months' );
-        if ( ! $baby_age_months ) {
-            $baby_age_months = (int) $request->get_param( 'child_age_months' );
+        $baby_age_months = $request->get_param( 'baby_age_months' );
+        if ( $baby_age_months === null ) {
+            $baby_age_months = $request->get_param( 'child_age_months' );
         }
+        $baby_age_months = (int) $baby_age_months;
         
         $daily_diaper_changes = $request->get_param( 'daily_diaper_changes' );
         $daily_diaper_changes = $daily_diaper_changes !== null ? (int) $daily_diaper_changes : 6;
