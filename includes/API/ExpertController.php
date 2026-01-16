@@ -145,7 +145,6 @@ class ExpertController {
             'update_post_term_cache' => false,
         ]);
         $total_recipes = $recipes_query->found_posts;
-        wp_reset_postdata();
         
         // Count user's blog posts
         $posts_query = new \WP_Query([
@@ -159,7 +158,6 @@ class ExpertController {
             'update_post_term_cache' => false,
         ]);
         $total_posts = $posts_query->found_posts;
-        wp_reset_postdata();
         
         // Count user's answers (comments on discussions)
         $total_answers = get_comments([
@@ -181,7 +179,6 @@ class ExpertController {
             'update_post_term_cache' => false,
         ]);
         $total_questions = $questions_query->found_posts;
-        wp_reset_postdata();
         
         return [
             'total_recipes' => $total_recipes,

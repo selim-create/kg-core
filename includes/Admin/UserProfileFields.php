@@ -55,6 +55,9 @@ class UserProfileFields {
         if ( ! is_array( $social_links ) ) {
             $social_links = [];
         }
+        
+        // Add nonce field for security
+        wp_nonce_field( 'kg_save_expert_fields', 'kg_expert_fields_nonce' );
         ?>
         <h3>KidsGourmet Profil Bilgileri</h3>
         <table class="form-table">
@@ -140,6 +143,12 @@ class UserProfileFields {
      */
     public function save_expert_fields( $user_id ) {
         if ( ! current_user_can( 'edit_user', $user_id ) ) {
+            return false;
+        }
+        
+        // Verify nonce for security
+        if ( ! isset( $_POST['kg_expert_fields_nonce'] ) || 
+             ! wp_verify_nonce( $_POST['kg_expert_fields_nonce'], 'kg_save_expert_fields' ) ) {
             return false;
         }
         
