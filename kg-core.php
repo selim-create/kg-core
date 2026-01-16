@@ -136,6 +136,14 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/PercentileController.php' ) ) req
 if ( file_exists( KG_CORE_PATH . 'includes/API/FoodTrialController.php' ) ) require_once KG_CORE_PATH . 'includes/API/FoodTrialController.php';
 // Sponsored Tool API Controller
 if ( file_exists( KG_CORE_PATH . 'includes/API/SponsoredToolController.php' ) ) require_once KG_CORE_PATH . 'includes/API/SponsoredToolController.php';
+// Lookup Controller (Slug Lookup Endpoint)
+if ( file_exists( KG_CORE_PATH . 'includes/API/LookupController.php' ) ) require_once KG_CORE_PATH . 'includes/API/LookupController.php';
+
+// 6.6. ADMIN SINIFLARI DAHİL ET (Frontend View Links)
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/FrontendViewLinks.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/FrontendViewLinks.php';
+
+// 6.7. REDIRECT SINIFLARI DAHİL ET (Frontend Redirect)
+if ( file_exists( KG_CORE_PATH . 'includes/Redirect/FrontendRedirect.php' ) ) require_once KG_CORE_PATH . 'includes/Redirect/FrontendRedirect.php';
 
 // 7. SINIFLARI BAŞLAT (INIT HOOK)
 function kg_core_init() {
@@ -224,6 +232,17 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\PercentileController' ) ) new \KG_Core\API\PercentileController();
     if ( class_exists( '\KG_Core\API\FoodTrialController' ) ) new \KG_Core\API\FoodTrialController();
     if ( class_exists( '\KG_Core\API\SponsoredToolController' ) ) new \KG_Core\API\SponsoredToolController();
+    if ( class_exists( '\KG_Core\API\LookupController' ) ) new \KG_Core\API\LookupController();
+    
+    // Frontend View Links (Admin only)
+    if ( is_admin() && class_exists( '\KG_Core\Admin\FrontendViewLinks' ) ) {
+        new \KG_Core\Admin\FrontendViewLinks();
+    }
+    
+    // Frontend Redirect (sadece frontend isteklerinde)
+    if ( !is_admin() && !wp_doing_ajax() && !(defined('REST_REQUEST') && REST_REQUEST) && class_exists( '\KG_Core\Redirect\FrontendRedirect' ) ) {
+        new \KG_Core\Redirect\FrontendRedirect();
+    }
 }
 add_action( 'plugins_loaded', 'kg_core_init' );
 
