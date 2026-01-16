@@ -136,6 +136,30 @@ class VaccineController {
             ],
         ]);
 
+        register_rest_route( 'kg/v1', '/health/vaccines/side-effects/(?P<record_id>\d+)', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_side_effects' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+        ]);
+
+        register_rest_route( 'kg/v1', '/health/vaccines/side-effects/(?P<record_id>\d+)', [
+            'methods'  => 'PUT',
+            'callback' => [ $this, 'update_side_effects' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+        ]);
+
+        register_rest_route( 'kg/v1', '/health/vaccines/side-effects/stats', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_side_effect_stats' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+            'args' => [
+                'vaccine_code' => [
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ]);
+
         register_rest_route( 'kg/v1', '/health/vaccines/upcoming', [
             'methods'  => 'GET',
             'callback' => [ $this, 'get_upcoming_vaccines' ],
@@ -480,6 +504,88 @@ class VaccineController {
         return new \WP_REST_Response( [
             'success' => true,
             'data' => $history,
+        ], 200 );
+    }
+
+    /**
+     * Get side effects for a vaccine record
+     * 
+     * @param \WP_REST_Request $request The request object
+     * @return \WP_REST_Response|\WP_Error Response object or error
+     */
+    public function get_side_effects( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+        $record_id = $request->get_param( 'record_id' );
+
+        // Verify record belongs to user's child
+        if ( ! $this->verify_record_ownership( $user_id, $record_id ) ) {
+            return new \WP_Error( 'forbidden', 'Vaccine record does not belong to user', [ 'status' => 403 ] );
+        }
+
+        $side_effect_manager = new \KG_Core\Health\SideEffectManager();
+        $result = $side_effect_manager->get( $record_id );
+
+        if ( is_wp_error( $result ) ) {
+            return $result;
+        }
+
+        return new \WP_REST_Response( [
+            'success' => true,
+            'data' => $result,
+        ], 200 );
+    }
+
+    /**
+     * Update side effects for a vaccine record
+     * 
+     * @param \WP_REST_Request $request The request object
+     * @return \WP_REST_Response|\WP_Error Response object or error
+     */
+    public function update_side_effects( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+        $record_id = $request->get_param( 'record_id' );
+        $params = $request->get_json_params();
+
+        // Verify record belongs to user's child
+        if ( ! $this->verify_record_ownership( $user_id, $record_id ) ) {
+            return new \WP_Error( 'forbidden', 'Vaccine record does not belong to user', [ 'status' => 403 ] );
+        }
+
+        $side_effects = isset( $params['side_effects'] ) ? $params['side_effects'] : [];
+        $severity = isset( $params['severity'] ) ? $params['severity'] : 'none';
+
+        $side_effect_manager = new \KG_Core\Health\SideEffectManager();
+        $result = $side_effect_manager->update( $record_id, $side_effects, $severity );
+
+        if ( is_wp_error( $result ) ) {
+            return $result;
+        }
+
+        return new \WP_REST_Response( [
+            'success' => true,
+            'message' => 'Side effects updated successfully',
+        ], 200 );
+    }
+
+    /**
+     * Get anonymous side effect statistics
+     * 
+     * @param \WP_REST_Request $request The request object
+     * @return \WP_REST_Response|\WP_Error Response object or error
+     */
+    public function get_side_effect_stats( $request ) {
+        $vaccine_code = $request->get_param( 'vaccine_code' );
+
+        $side_effect_manager = new \KG_Core\Health\SideEffectManager();
+        $stats = $side_effect_manager->get_statistics( $vaccine_code );
+
+        if ( is_wp_error( $stats ) ) {
+            return $stats;
+        }
+
+        return new \WP_REST_Response( [
+            'success' => true,
+            'data' => $stats,
         ], 200 );
     }
 
