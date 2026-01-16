@@ -14,6 +14,15 @@ class FoodTrialController {
     }
 
     public function register_routes() {
+        // 1. FIRST: Register static routes (stats)
+        // GET /kg/v1/tools/food-trials/stats - Get statistics
+        register_rest_route( 'kg/v1', '/tools/food-trials/stats', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_stats' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+        ]);
+
+        // 2. SECOND: Register collection routes (GET list, POST create)
         // GET /kg/v1/tools/food-trials - List all food trials for authenticated user
         register_rest_route( 'kg/v1', '/tools/food-trials', [
             'methods'  => 'GET',
@@ -28,6 +37,7 @@ class FoodTrialController {
             'permission_callback' => [ $this, 'check_authentication' ],
         ]);
 
+        // 3. LAST: Register dynamic {id} routes
         // GET /kg/v1/tools/food-trials/{id} - Get single food trial
         register_rest_route( 'kg/v1', '/tools/food-trials/(?P<id>[a-zA-Z0-9_-]+)', [
             'methods'  => 'GET',
@@ -46,13 +56,6 @@ class FoodTrialController {
         register_rest_route( 'kg/v1', '/tools/food-trials/(?P<id>[a-zA-Z0-9_-]+)', [
             'methods'  => 'DELETE',
             'callback' => [ $this, 'delete_food_trial' ],
-            'permission_callback' => [ $this, 'check_authentication' ],
-        ]);
-
-        // GET /kg/v1/tools/food-trials/stats - Get statistics
-        register_rest_route( 'kg/v1', '/tools/food-trials/stats', [
-            'methods'  => 'GET',
-            'callback' => [ $this, 'get_stats' ],
             'permission_callback' => [ $this, 'check_authentication' ],
         ]);
     }
@@ -96,6 +99,8 @@ class FoodTrialController {
         }
 
         $child_id = $request->get_param( 'child_id' );
+        $start_date = $request->get_param( 'start_date' );
+        $end_date = $request->get_param( 'end_date' );
         
         // Get all food trials from user meta
         $all_trials = get_user_meta( $user_id, '_kg_food_trials', true );
@@ -109,10 +114,18 @@ class FoodTrialController {
             $all_trials = $this->filter_trials_by_child( $all_trials, $child_id );
         }
 
+        // Filter by date range if provided
+        if ( $start_date && $end_date ) {
+            $all_trials = $this->filter_trials_by_date_range( $all_trials, $start_date, $end_date );
+        }
+
         // Sort by trial_date descending
         usort( $all_trials, function( $a, $b ) {
             return strtotime( $b['trial_date'] ) - strtotime( $a['trial_date'] );
         });
+
+        // Mark new foods (first time tried)
+        $all_trials = $this->mark_new_foods( $all_trials, $user_id );
 
         return new \WP_REST_Response( [
             'trials' => array_values( $all_trials ),
@@ -130,26 +143,44 @@ class FoodTrialController {
             return new \WP_Error( 'unauthorized', 'Kullanıcı bulunamadı', [ 'status' => 401 ] );
         }
 
-        // Validate required fields
+        // Validate required fields - ingredient_id is now optional
         $child_id = sanitize_text_field( $request->get_param( 'child_id' ) );
-        $ingredient_id = (int) $request->get_param( 'ingredient_id' );
+        $ingredient_id = $request->get_param( 'ingredient_id' ) ? (int) $request->get_param( 'ingredient_id' ) : null;
+        $ingredient_name = sanitize_text_field( $request->get_param( 'ingredient_name' ) );
         $trial_date = sanitize_text_field( $request->get_param( 'trial_date' ) );
         $result = sanitize_text_field( $request->get_param( 'result' ) );
 
-        if ( empty( $child_id ) || empty( $ingredient_id ) || empty( $trial_date ) || empty( $result ) ) {
-            return new \WP_Error( 'missing_fields', 'Gerekli alanlar: child_id, ingredient_id, trial_date, result', [ 'status' => 400 ] );
+        // child_id, trial_date and result are required
+        // ingredient_name OR ingredient_id must be provided
+        if ( empty( $child_id ) || empty( $trial_date ) || empty( $result ) ) {
+            return new \WP_Error( 'missing_fields', 'Gerekli alanlar: child_id, trial_date, result', [ 'status' => 400 ] );
+        }
+
+        // Determine the ingredient name
+        $final_ingredient_name = '';
+        
+        if ( $ingredient_id ) {
+            // Get ingredient name from WordPress
+            $wp_ingredient_name = get_the_title( $ingredient_id );
+            if ( ! empty( $wp_ingredient_name ) ) {
+                $final_ingredient_name = $wp_ingredient_name;
+            }
+        }
+        
+        // If not found from WordPress, use the provided ingredient_name
+        if ( empty( $final_ingredient_name ) && ! empty( $ingredient_name ) ) {
+            $final_ingredient_name = $ingredient_name;
+        }
+        
+        // If still empty, return error
+        if ( empty( $final_ingredient_name ) ) {
+            return new \WP_Error( 'missing_ingredient', 'Besin adı gerekli (ingredient_name veya geçerli ingredient_id)', [ 'status' => 400 ] );
         }
 
         // Validate result value
         $valid_results = [ 'success', 'mild_reaction', 'reaction', 'severe_reaction' ];
         if ( ! in_array( $result, $valid_results ) ) {
-            return new \WP_Error( 'invalid_result', 'Geçersiz result değeri', [ 'status' => 400 ] );
-        }
-
-        // Get ingredient name
-        $ingredient_name = get_the_title( $ingredient_id );
-        if ( empty( $ingredient_name ) ) {
-            return new \WP_Error( 'ingredient_not_found', 'Malzeme bulunamadı', [ 'status' => 404 ] );
+            return new \WP_Error( 'invalid_result', 'Geçersiz result değeri. Geçerli değerler: success, mild_reaction, reaction, severe_reaction', [ 'status' => 400 ] );
         }
 
         // Get all existing trials
@@ -165,14 +196,16 @@ class FoodTrialController {
         $new_trial = [
             'id' => $trial_id,
             'child_id' => $child_id,
-            'ingredient_id' => $ingredient_id,
-            'ingredient_name' => $ingredient_name,
+            'ingredient_id' => $ingredient_id, // can be null
+            'ingredient_name' => $final_ingredient_name,
             'trial_date' => $trial_date,
             'result' => $result,
+            'form' => sanitize_text_field( $request->get_param( 'form' ) ?: '' ),
+            'reaction' => $this->map_result_to_reaction( $result ), // Frontend format
             'reaction_notes' => sanitize_textarea_field( $request->get_param( 'reaction_notes' ) ?: '' ),
             'amount' => sanitize_text_field( $request->get_param( 'amount' ) ?: '' ),
-            'form' => sanitize_text_field( $request->get_param( 'form' ) ?: '' ),
             'retry_after' => $this->calculate_retry_after( $result, $trial_date ),
+            'is_new' => $this->is_new_food( $user_id, $child_id, $final_ingredient_name ),
             'created_at' => current_time( 'c' ),
         ];
 
@@ -394,6 +427,100 @@ class FoodTrialController {
         return array_filter( $trials, function( $trial ) use ( $child_id ) {
             return $trial['child_id'] === $child_id;
         });
+    }
+
+    /**
+     * Filter trials by date range
+     * 
+     * @param array $trials All trials
+     * @param string $start_date Start date (Y-m-d format)
+     * @param string $end_date End date (Y-m-d format)
+     * @return array Filtered trials
+     */
+    private function filter_trials_by_date_range( $trials, $start_date, $end_date ) {
+        $start = strtotime( $start_date );
+        $end = strtotime( $end_date );
+        
+        return array_filter( $trials, function( $trial ) use ( $start, $end ) {
+            $trial_date = strtotime( $trial['trial_date'] );
+            return $trial_date >= $start && $trial_date <= $end;
+        });
+    }
+
+    /**
+     * Mark foods as new (first time tried by this child)
+     * 
+     * @param array $trials Trials to mark
+     * @param int $user_id User ID
+     * @return array Trials with is_new flag
+     */
+    private function mark_new_foods( $trials, $user_id ) {
+        // Get all trials to check history
+        $all_user_trials = get_user_meta( $user_id, '_kg_food_trials', true );
+        if ( ! is_array( $all_user_trials ) ) {
+            $all_user_trials = [];
+        }
+        
+        // Group by child_id and ingredient
+        $history = [];
+        foreach ( $all_user_trials as $trial ) {
+            $key = $trial['child_id'] . '_' . strtolower( $trial['ingredient_name'] );
+            if ( ! isset( $history[ $key ] ) ) {
+                $history[ $key ] = $trial['trial_date'];
+            } else if ( strtotime( $trial['trial_date'] ) < strtotime( $history[ $key ] ) ) {
+                $history[ $key ] = $trial['trial_date'];
+            }
+        }
+        
+        // Mark as new if this is the first occurrence
+        foreach ( $trials as &$trial ) {
+            $key = $trial['child_id'] . '_' . strtolower( $trial['ingredient_name'] );
+            $trial['is_new'] = ( $history[ $key ] === $trial['trial_date'] );
+        }
+        
+        return $trials;
+    }
+
+    /**
+     * Map backend result to frontend reaction format
+     * 
+     * @param string $result Backend result value
+     * @return string Frontend reaction value
+     */
+    private function map_result_to_reaction( $result ) {
+        switch ( $result ) {
+            case 'success': return 'none';
+            case 'mild_reaction': return 'mild';
+            case 'reaction': return 'moderate';
+            case 'severe_reaction': return 'severe';
+            default: return 'none';
+        }
+    }
+
+    /**
+     * Check if this is the first time this food is tried by this child
+     * 
+     * @param int $user_id User ID
+     * @param string $child_id Child ID
+     * @param string $ingredient_name Ingredient name
+     * @return bool True if this is a new food for this child
+     */
+    private function is_new_food( $user_id, $child_id, $ingredient_name ) {
+        $all_trials = get_user_meta( $user_id, '_kg_food_trials', true );
+        if ( ! is_array( $all_trials ) ) {
+            return true;
+        }
+        
+        $normalized_name = strtolower( trim( $ingredient_name ) );
+        
+        foreach ( $all_trials as $trial ) {
+            if ( $trial['child_id'] === $child_id && 
+                 strtolower( trim( $trial['ingredient_name'] ) ) === $normalized_name ) {
+                return false;
+            }
+        }
+        
+        return true;
     }
 
     /**
