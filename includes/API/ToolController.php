@@ -1079,6 +1079,8 @@ class ToolController {
                     'child_id' => $child_id ?: null,
                     'score' => $result['score'],
                     'result_category' => $result['result']['id'],
+                    'red_flags' => isset( $result['red_flags'] ) ? $result['red_flags'] : [],
+                    'answers' => $answers,
                     'timestamp' => $result['timestamp'],
                 ];
 
