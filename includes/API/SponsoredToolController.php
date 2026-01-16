@@ -1056,10 +1056,8 @@ class SponsoredToolController {
     private function get_wipes_per_diaper_change( $age_months ) {
         if ( $age_months < 3 ) {
             return 4; // Yenidoğanlar için daha fazla
-        } elseif ( $age_months < 6 ) {
-            return 3;
         } elseif ( $age_months < 12 ) {
-            return 3;
+            return 3; // 3-12 ay arası
         } else {
             return 2; // Büyük bebekler için daha az
         }
