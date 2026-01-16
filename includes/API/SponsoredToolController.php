@@ -2578,8 +2578,8 @@ class SponsoredToolController {
      */
     private function normalize_turkish( $text ) {
         $search = ['ç', 'ğ', 'ı', 'ö', 'ş', 'ü', 'Ç', 'Ğ', 'İ', 'Ö', 'Ş', 'Ü'];
-        $replace = ['c', 'g', 'i', 'o', 's', 'u', 'C', 'G', 'I', 'O', 'S', 'U'];
-        return str_replace( $search, $replace, strtolower( $text ) );
+        $replace = ['c', 'g', 'i', 'o', 's', 'u', 'c', 'g', 'i', 'o', 's', 'u'];
+        return strtolower( str_replace( $search, $replace, $text ) );
     }
 
     /**
