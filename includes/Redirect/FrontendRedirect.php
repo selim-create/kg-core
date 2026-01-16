@@ -68,7 +68,7 @@ class FrontendRedirect {
      * Early redirect check (parse_request hook)
      */
     public function early_redirect_check($wp) {
-        $request_uri = $_SERVER['REQUEST_URI'] ?? '/';
+        $request_uri = isset($_SERVER['REQUEST_URI']) ? esc_url_raw($_SERVER['REQUEST_URI']) : '/';
         
         // Excluded path'leri atla
         if ($this->is_excluded_path($request_uri)) {
@@ -92,7 +92,7 @@ class FrontendRedirect {
             return;
         }
         
-        $request_uri = $_SERVER['REQUEST_URI'] ?? '/';
+        $request_uri = isset($_SERVER['REQUEST_URI']) ? esc_url_raw($_SERVER['REQUEST_URI']) : '/';
         
         // Excluded path'leri atla
         if ($this->is_excluded_path($request_uri)) {

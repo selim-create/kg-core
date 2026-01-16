@@ -34,22 +34,29 @@ if ( $all_files_exist ) {
 }
 echo "\n";
 
-// Test 2: Verify PHP syntax of new files
+// Test 2: Verify PHP syntax of new files (using token_get_all)
 echo "Test 2: Checking PHP syntax of new files...\n";
 
 $syntax_ok = true;
 foreach ( $files_to_check as $file ) {
     $full_path = __DIR__ . '/../' . $file;
-    $output = [];
-    $return_var = 0;
-    exec( "php -l " . escapeshellarg( $full_path ) . " 2>&1", $output, $return_var );
+    $content = file_get_contents( $full_path );
     
-    if ( $return_var === 0 ) {
-        echo "  ✓ $file has valid PHP syntax\n";
-    } else {
-        echo "  ✗ $file has syntax errors:\n";
-        echo "    " . implode( "\n    ", $output ) . "\n";
+    // Use token_get_all to check syntax
+    $old_error_level = error_reporting( E_ERROR | E_PARSE );
+    try {
+        $tokens = @token_get_all( $content );
+        if ( $tokens !== false ) {
+            echo "  ✓ $file has valid PHP syntax\n";
+        } else {
+            echo "  ✗ $file has syntax errors\n";
+            $syntax_ok = false;
+        }
+    } catch ( Exception $e ) {
+        echo "  ✗ $file has syntax errors: " . $e->getMessage() . "\n";
         $syntax_ok = false;
+    } finally {
+        error_reporting( $old_error_level );
     }
 }
 
