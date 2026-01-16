@@ -20,7 +20,18 @@
                     : attachment.url;
                     
                 $('#kg_avatar_id').val(attachment.id);
-                $('#kg-avatar-preview').html('<img src="' + imageUrl + '" style="max-width: 150px; height: auto; border-radius: 50%;">');
+                
+                // Create image element safely to prevent XSS
+                var $img = $('<img>', {
+                    src: imageUrl,
+                    css: {
+                        'max-width': '150px',
+                        'height': 'auto',
+                        'border-radius': '50%'
+                    }
+                });
+                
+                $('#kg-avatar-preview').empty().append($img);
                 $('#kg-remove-avatar').show();
             });
             
@@ -31,7 +42,7 @@
         $('#kg-remove-avatar').on('click', function(e) {
             e.preventDefault();
             $('#kg_avatar_id').val('');
-            $('#kg-avatar-preview').html('');
+            $('#kg-avatar-preview').empty();
             $(this).hide();
         });
     });
