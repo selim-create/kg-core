@@ -13,10 +13,21 @@ KG Core is a complete backend solution for a baby food recipes platform, offerin
 - **Expert Reviews:** Recipe validation by nutritionists
 - **Cross-selling:** Integration with Tariften.com
 - **🤖 AI-Powered Content:** Automated ingredient generation with multiple AI providers
+- **💉 Vaccination Tracker:** Smart vaccine scheduling and reminder system
 
 ## Features
 
-### 🤖 AI-Powered Ingredient Management (NEW)
+### 💉 Vaccination Tracker (NEW)
+- Automated vaccine scheduling based on Turkish Ministry of Health calendar
+- 30 vaccines (18 mandatory + 12 private/optional)
+- Email reminder system (3-day and 1-day advance notifications)
+- Side effect tracking and monitoring
+- Overdue vaccine alerts
+- Admin management interface for vaccines and email templates
+- Multi-channel notification support (Email + Push)
+- See [docs/VACCINATION_TRACKER.md](./docs/VACCINATION_TRACKER.md) for details
+
+### 🤖 AI-Powered Ingredient Management
 - Multi-provider AI support (OpenAI GPT-4, Anthropic Claude, Google Gemini)
 - Automated ingredient content generation in Turkish
 - Bulk ingredient creation (100+ predefined items)
