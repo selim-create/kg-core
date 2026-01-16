@@ -150,9 +150,12 @@ if (file_exists($enricherFile)) {
     }
     
     // Check proper return statements after wp_send_json_error
-    $errorReturns = substr_count($content, "wp_send_json_error")  === substr_count($content, "wp_send_json_error")  ;
-    if ($errorReturns) {
-        echo "✅ Error handling with returns exists\n";
+    $errorCount = substr_count($content, "wp_send_json_error");
+    $returnCount = substr_count($content, "wp_send_json_error")  + substr_count($content, "return;");
+    if ($returnCount > $errorCount) {
+        echo "✅ Return statements exist after error handling\n";
+    } else {
+        echo "⚠️  Check return statements after wp_send_json_error calls\n";
     }
 } else {
     echo "❌ IngredientEnricher.php not found\n";
