@@ -1729,7 +1729,7 @@ class SponsoredToolController {
                 'id' => 19,
                 'slug' => 'nar-lekesi',
                 'name' => 'Nar Lekesi',
-                'emoji' => '🍎',
+                'emoji' => '🍒',
                 'category' => 'food',
                 'difficulty' => 'hard',
                 'steps' => [
@@ -2574,8 +2574,14 @@ class SponsoredToolController {
      * Normalize Turkish characters for search
      */
     private function normalize_turkish( $text ) {
-        $search = ['ç', 'ğ', 'ı', 'ö', 'ş', 'ü', 'Ç', 'Ğ', 'İ', 'Ö', 'Ş', 'Ü'];
-        $replace = ['c', 'g', 'i', 'o', 's', 'u', 'c', 'g', 'i', 'o', 's', 'u'];
+        static $search = null;
+        static $replace = null;
+        
+        if ( $search === null ) {
+            $search = ['ç', 'ğ', 'ı', 'ö', 'ş', 'ü', 'Ç', 'Ğ', 'İ', 'Ö', 'Ş', 'Ü'];
+            $replace = ['c', 'g', 'i', 'o', 's', 'u', 'c', 'g', 'i', 'o', 's', 'u'];
+        }
+        
         return strtolower( str_replace( $search, $replace, $text ) );
     }
 
