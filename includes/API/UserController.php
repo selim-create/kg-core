@@ -1729,19 +1729,22 @@ class UserController {
         global $wpdb;
         
         // Get unique discussion IDs where user has commented, ordered by most recent comment
-        $query = $wpdb->prepare(
-            "SELECT DISTINCT c.comment_post_ID 
+        $sql = "SELECT DISTINCT c.comment_post_ID 
             FROM {$wpdb->comments} c
             INNER JOIN {$wpdb->posts} p ON c.comment_post_ID = p.ID
             WHERE c.user_id = %d 
             AND c.comment_approved = '1'
             AND p.post_type = 'discussion'
             AND p.post_status = 'publish'
-            ORDER BY c.comment_date DESC
-            LIMIT %d",
-            $user_id,
-            $limit
-        );
+            ORDER BY c.comment_date DESC";
+        
+        // Add LIMIT only if not requesting all results
+        if ( $limit !== -1 ) {
+            $sql .= " LIMIT %d";
+            $query = $wpdb->prepare( $sql, $user_id, $limit );
+        } else {
+            $query = $wpdb->prepare( $sql, $user_id );
+        }
         
         $discussion_ids = $wpdb->get_col( $query );
         
