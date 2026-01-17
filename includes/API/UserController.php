@@ -878,6 +878,8 @@ class UserController {
         update_user_meta( $user_id, '_kg_children', $children );
 
         // Automatically create vaccine schedule for the child
+        // Note: Using broad exception handling for graceful degradation
+        // Child creation should succeed even if vaccine schedule fails
         try {
             $vaccine_record_manager = new VaccineRecordManager();
             $vaccine_result = $vaccine_record_manager->create_schedule_for_child(
@@ -891,6 +893,7 @@ class UserController {
                 error_log( 'Failed to create vaccine schedule for child ' . $uuid . ': ' . $vaccine_result->get_error_message() );
             }
         } catch ( \Exception $e ) {
+            // Catch all exceptions to ensure child creation succeeds
             error_log( 'Exception creating vaccine schedule for child ' . $uuid . ': ' . $e->getMessage() );
         }
 

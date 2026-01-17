@@ -467,10 +467,12 @@ class VaccineController {
         // Get child's birth date
         $children = get_user_meta( $user_id, '_kg_children', true );
         $child = null;
-        foreach ( $children as $c ) {
-            if ( $c['id'] === $child_id ) {
-                $child = $c;
-                break;
+        if ( is_array( $children ) ) {
+            foreach ( $children as $c ) {
+                if ( $c['id'] === $child_id ) {
+                    $child = $c;
+                    break;
+                }
             }
         }
 
