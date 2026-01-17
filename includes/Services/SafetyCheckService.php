@@ -35,6 +35,10 @@ class SafetyCheckService {
         $age_alerts = $this->check_age_appropriateness( $recipe_id, $child );
         if ( ! empty( $age_alerts ) ) {
             $alerts = array_merge( $alerts, $age_alerts );
+            // Set is_safe to false if recipe is for older children
+            if ( $this->is_recipe_for_older_children( $age_alerts ) ) {
+                $is_safe = false;
+            }
         }
         
         // 3. Forbidden Ingredients Check (e.g., honey for <12 months)
@@ -229,24 +233,37 @@ class SafetyCheckService {
         
         // Check if current age group is in recipe's age groups
         if ( ! in_array( $current_age_group, $age_group_slugs ) ) {
-            $severity = 'warning';
             $message = sprintf(
                 'Bu tarif %s yaş grubu için önerilmiş. Çocuğunuz %d aylık.',
                 $age_groups[0]->name,
                 $age_in_months
             );
             
-            // More serious if recipe is for older children
+            // Check if recipe is for older children
             if ( $this->is_age_group_older( $age_groups[0]->slug, $current_age_group ) ) {
+                // Recipe is for older age group - this is critical
+                $severity = 'critical';
                 $message .= ' Bu tarif çocuğunuz için erken olabilir.';
+                
+                $alerts[] = [
+                    'type' => 'age',
+                    'severity' => $severity,
+                    'message' => $message,
+                    'alternative' => 'Yaş grubunuza uygun tariflere göz atın.',
+                    'is_for_older' => true,
+                ];
+            } else {
+                // Recipe is for younger age group - just informational
+                $severity = 'info';
+                
+                $alerts[] = [
+                    'type' => 'age',
+                    'severity' => $severity,
+                    'message' => $message,
+                    'alternative' => 'Bu tarifi yine de verebilirsiniz.',
+                    'is_for_older' => false,
+                ];
             }
-            
-            $alerts[] = [
-                'type' => 'age',
-                'severity' => $severity,
-                'message' => $message,
-                'alternative' => 'Yaş grubunuza uygun tariflere göz atın.',
-            ];
         }
         
         return $alerts;
@@ -509,6 +526,23 @@ class SafetyCheckService {
         } else {
             return '2-yas-ve-uzeri';
         }
+    }
+    
+    /**
+     * Check if age alerts indicate recipe is for older children
+     * 
+     * @param array $alerts Age alerts
+     * @return bool True if recipe is for older children
+     */
+    private function is_recipe_for_older_children( $alerts ) {
+        foreach ( $alerts as $alert ) {
+            if ( $alert['type'] === 'age' && 
+                 isset( $alert['is_for_older'] ) && 
+                 $alert['is_for_older'] === true ) {
+                return true;
+            }
+        }
+        return false;
     }
     
     /**
