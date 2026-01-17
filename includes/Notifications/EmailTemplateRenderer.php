@@ -9,11 +9,25 @@ namespace KG_Core\Notifications;
  */
 class EmailTemplateRenderer {
     
-    // Social media URLs - update these if URLs change
+    // Default social media URLs (used as fallback)
     const SOCIAL_INSTAGRAM = 'https://instagram.com/kidsgourmet';
     const SOCIAL_FACEBOOK = 'https://facebook.com/kidsgourmet';
     const SOCIAL_TWITTER = 'https://twitter.com/kidsgourmet';
     const SOCIAL_YOUTUBE = 'https://youtube.com/@kidsgourmet';
+    
+    /**
+     * Get social media URLs from WordPress options with fallback to defaults
+     * 
+     * @return array Social media URLs
+     */
+    public static function get_social_urls() {
+        return [
+            'instagram' => get_option('kg_social_instagram', self::SOCIAL_INSTAGRAM),
+            'facebook' => get_option('kg_social_facebook', self::SOCIAL_FACEBOOK),
+            'twitter' => get_option('kg_social_twitter', self::SOCIAL_TWITTER),
+            'youtube' => get_option('kg_social_youtube', self::SOCIAL_YOUTUBE),
+        ];
+    }
     
     /**
      * Wrap content in HTML email template
@@ -35,6 +49,9 @@ class EmailTemplateRenderer {
         
         // Calculate lighter shade for gradient
         $accent_light = self::adjust_brightness($accent_color, 0.85);
+        
+        // Get social media URLs from options
+        $social_urls = self::get_social_urls();
         
         return '
 <!DOCTYPE html>
@@ -104,16 +121,16 @@ class EmailTemplateRenderer {
                                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="display: inline-block;">
                                             <tr>
                                                 <td style="padding: 0 8px;">
-                                                    <a href="' . self::SOCIAL_INSTAGRAM . '" style="display: inline-block; width: 36px; height: 36px; background: #E1306C; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">📷</a>
+                                                    <a href="' . $social_urls['instagram'] . '" style="display: inline-block; width: 36px; height: 36px; background: #E1306C; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">📷</a>
                                                 </td>
                                                 <td style="padding: 0 8px;">
-                                                    <a href="' . self::SOCIAL_FACEBOOK . '" style="display: inline-block; width: 36px; height: 36px; background: #1877F2; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">👍</a>
+                                                    <a href="' . $social_urls['facebook'] . '" style="display: inline-block; width: 36px; height: 36px; background: #1877F2; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">👍</a>
                                                 </td>
                                                 <td style="padding: 0 8px;">
-                                                    <a href="' . self::SOCIAL_TWITTER . '" style="display: inline-block; width: 36px; height: 36px; background: #1DA1F2; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">🐦</a>
+                                                    <a href="' . $social_urls['twitter'] . '" style="display: inline-block; width: 36px; height: 36px; background: #1DA1F2; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">🐦</a>
                                                 </td>
                                                 <td style="padding: 0 8px;">
-                                                    <a href="' . self::SOCIAL_YOUTUBE . '" style="display: inline-block; width: 36px; height: 36px; background: #FF0000; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">▶️</a>
+                                                    <a href="' . $social_urls['youtube'] . '" style="display: inline-block; width: 36px; height: 36px; background: #FF0000; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">▶️</a>
                                                 </td>
                                             </tr>
                                         </table>

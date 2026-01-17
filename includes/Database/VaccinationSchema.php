@@ -218,16 +218,11 @@ class VaccinationSchema {
     
     /**
      * Seed default email templates
+     * Uses UPSERT logic - only inserts templates that don't exist yet
      */
     private static function seed_email_templates() {
         global $wpdb;
         $table = $wpdb->prefix . 'kg_email_templates';
-        
-        // Check if templates already exist
-        $count = $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
-        if ($count > 0) {
-            return; // Already seeded
-        }
         
         // Note: Email templates use inline styles (not CSS classes) for maximum compatibility.
         // Most email clients (Gmail, Outlook, Yahoo Mail, Apple Mail) strip <style> tags and
@@ -775,8 +770,15 @@ class VaccinationSchema {
             ]
         ];
         
+        // Use UPSERT logic - fetch all existing template_keys at once to minimize DB queries
+        $existing_keys = $wpdb->get_col("SELECT template_key FROM {$table}");
+        $existing_keys_map = array_flip($existing_keys);
+        
+        // Only insert templates that don't exist yet
         foreach ($templates as $template) {
-            $wpdb->insert($table, $template);
+            if (!isset($existing_keys_map[$template['template_key']])) {
+                $wpdb->insert($table, $template);
+            }
         }
     }
     
