@@ -1296,6 +1296,43 @@ class UserController {
         // Check if user is expert
         $is_expert = \KG_Core\Roles\RoleManager::is_expert( $user_id );
 
+        // Rol kontrolleri
+        $roles = $user->roles;
+        $is_admin = in_array( 'administrator', $roles );
+        $is_editor = in_array( 'editor', $roles ) || $is_admin;
+
+        // Editör seviyesi yetki (admin, editor, kg_expert)
+        $has_editor_access = $is_admin || $is_editor || $is_expert;
+
+        // Admin URL
+        $admin_url = defined( 'KG_API_URL' ) 
+            ? KG_API_URL . '/wp-admin/'
+            : admin_url();
+
+        // Basitleştirilmiş düzenleme yetkileri (frontend için)
+        $can_edit = [
+            'posts'       => $user->has_cap( 'edit_posts' ),
+            'recipes'     => $user->has_cap( 'edit_posts' ),
+            'ingredients' => $user->has_cap( 'edit_posts' ),
+            'discussions' => $user->has_cap( 'edit_posts' ),
+        ];
+
+        // Başkalarının içeriklerini düzenleyebilir mi?
+        $can_edit_others = [
+            'posts'       => $user->has_cap( 'edit_others_posts' ),
+            'recipes'     => $user->has_cap( 'edit_others_posts' ),
+            'ingredients' => $user->has_cap( 'edit_others_posts' ),
+            'discussions' => $user->has_cap( 'edit_others_posts' ),
+        ];
+
+        // Edit URLs
+        $edit_urls = [
+            'new_post'       => $admin_url . 'post-new.php',
+            'new_recipe'     => $admin_url . 'post-new.php?post_type=recipe',
+            'new_ingredient' => $admin_url . 'post-new.php?post_type=ingredient',
+            'new_discussion' => $admin_url . 'post-new.php?post_type=discussion',
+        ];
+
         // Get user meta fields
         $display_name = get_user_meta( $user_id, '_kg_display_name', true );
         $parent_role = get_user_meta( $user_id, '_kg_parent_role', true );
@@ -1327,8 +1364,7 @@ class UserController {
         $question_count = $this->get_user_question_count( $user_id );
         $comment_count = $this->get_user_comment_count( $user_id );
 
-        // Add user role
-        $roles = $user->roles;
+        // Get primary role
         $primary_role = ! empty( $roles ) ? $roles[0] : 'subscriber';
         
         // Get new fields
@@ -1356,6 +1392,13 @@ class UserController {
             'birth_date' => $birth_date ?: '',
             'show_email' => (bool) $show_email,
             'is_expert' => $is_expert,
+            'is_admin' => $is_admin,
+            'is_editor' => $is_editor,
+            'has_editor_access' => $has_editor_access,
+            'admin_url' => $has_editor_access ? $admin_url : null,
+            'edit_urls' => $has_editor_access ? $edit_urls : null,
+            'can_edit' => $can_edit,
+            'can_edit_others' => $can_edit_others,
         ];
         
         // Add expert-only fields
