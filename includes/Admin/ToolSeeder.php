@@ -567,14 +567,6 @@ class ToolSeeder {
         update_post_meta($result, '_kg_requires_auth', $tool_data['requires_auth'] ? '1' : '0');
         update_post_meta($result, '_kg_tool_is_sponsored', $tool_data['is_sponsored'] ? '1' : '0');
         
-        // If ACF is available, also set ACF fields
-        if (function_exists('update_field')) {
-            update_field('tool_type', $tool_data['tool_type'], $result);
-            update_field('tool_icon', $tool_data['icon'], $result);
-            update_field('is_active', $tool_data['is_active'], $result);
-            update_field('requires_auth', $tool_data['requires_auth'], $result);
-        }
-        
         return $result;
     }
     
