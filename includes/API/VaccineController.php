@@ -5,7 +5,6 @@ use KG_Core\Auth\JWTHandler;
 use KG_Core\Health\VaccineManager;
 use KG_Core\Health\VaccineRecordManager;
 use KG_Core\Health\VaccineScheduleCalculator;
-use KG_Core\Health\SideEffectTracker;
 
 /**
  * VaccineController - Public vaccine endpoints
@@ -437,8 +436,8 @@ class VaccineController {
             }
         }
 
-        $side_effect_tracker = new SideEffectTracker();
-        $result = $side_effect_tracker->record_side_effects( $record_id, $sanitized_effects, $severity );
+        $side_effect_manager = new \KG_Core\Health\SideEffectManager();
+        $result = $side_effect_manager->report( $record_id, $sanitized_effects, $severity );
 
         if ( is_wp_error( $result ) ) {
             return $result;
