@@ -156,9 +156,9 @@ class VaccineRecordManager {
                 $vaccine['brand_options'] = json_decode($record['brand_options'], true);
             }
             
-            // Convert record ID to integer
-            $record['id'] = (int)$record['id'];
-            $record['user_id'] = (int)$record['user_id'];
+            // Convert record ID to integer with null check
+            $record['id'] = isset($record['id']) ? (int)$record['id'] : null;
+            $record['user_id'] = isset($record['user_id']) ? (int)$record['user_id'] : null;
             $record['is_mandatory'] = (bool)$record['is_mandatory'];
             
             // Add nested vaccine object

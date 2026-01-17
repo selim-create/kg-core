@@ -387,7 +387,7 @@ class VaccineController {
             'child_name' => isset( $child['name'] ) ? $child['name'] : '',
             'birth_date' => isset( $child['birth_date'] ) ? $child['birth_date'] : '',
             'is_premature' => isset( $child['is_premature'] ) ? (bool)$child['is_premature'] : false,
-            'schedule_version' => 'TR_2026_v1', // Default version
+            'schedule_version' => defined('KG_VACCINE_SCHEDULE_VERSION') ? KG_VACCINE_SCHEDULE_VERSION : 'TR_2026_v1',
             'vaccines' => $vaccines,
             'stats' => $stats
         ];
