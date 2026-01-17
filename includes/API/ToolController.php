@@ -103,14 +103,14 @@ class ToolController {
         // Try ACF first if available
         if ( function_exists( 'get_field' ) ) {
             $value = get_field( $field_name, $post_id );
-            if ( $value !== null && $value !== false ) {
+            if ( $value !== null ) {
                 return $value;
             }
         }
         
         // Fallback to post_meta with _kg_ prefix
         $value = get_post_meta( $post_id, '_kg_' . $field_name, true );
-        if ( ! empty( $value ) ) {
+        if ( $value !== '' && $value !== false ) {
             return $value;
         }
         

@@ -156,8 +156,8 @@ echo "\n4. get_blw_test_config() Method - No Direct ACF Calls\n";
 if (file_exists($controllerFile)) {
     $content = file_get_contents($controllerFile);
     
-    // Extract get_blw_test_config method
-    if (preg_match('/public function get_blw_test_config\(.*?\{(.*?)public function/s', $content, $matches)) {
+    // Extract get_blw_test_config method - handle both cases: another method after or end of class
+    if (preg_match('/public function get_blw_test_config\(.*?\{(.*?)\n\s{4}(?:public function|\/\*\*)/s', $content, $matches)) {
         $methodContent = $matches[1];
         
         // Check no direct get_field calls
@@ -236,19 +236,20 @@ if (file_exists($seederFile)) {
     
     // Check if ToolSeeder uses the same meta keys
     $metaKeys = ['_kg_tool_type', '_kg_tool_icon', '_kg_is_active', '_kg_requires_auth'];
-    $allKeysFound = true;
+    $foundCount = 0;
     
     foreach ($metaKeys as $key) {
-        if (strpos($seederContent, "'$key'") === false) {
-            echo "   ✗ ToolSeeder doesn't use '$key' meta key\n";
-            $allKeysFound = false;
-            $failed++;
+        if (strpos($seederContent, "'$key'") !== false) {
+            $foundCount++;
         }
     }
     
-    if ($allKeysFound) {
-        echo "   ✓ All meta keys match between ToolController and ToolSeeder\n";
+    if ($foundCount === count($metaKeys)) {
+        echo "   ✓ All " . count($metaKeys) . " meta keys match between ToolController and ToolSeeder\n";
         $passed++;
+    } else {
+        echo "   ✗ Only $foundCount/" . count($metaKeys) . " meta keys found in ToolSeeder\n";
+        $failed++;
     }
     
 } else {
