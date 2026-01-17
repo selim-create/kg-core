@@ -56,7 +56,9 @@ class RecipeController {
                     'validate_callback' => function( $value ) {
                         return is_numeric( $value ) && $value >= 1 && $value <= 5;
                     },
-                    'sanitize_callback' => 'floatval'
+                    'sanitize_callback' => function( $value, $request, $param ) {
+                        return floatval( $value );
+                    }
                 ]
             ]
         ]);
@@ -72,7 +74,9 @@ class RecipeController {
                     'validate_callback' => function( $value ) {
                         return is_numeric( $value ) && $value >= 1 && $value <= 10;
                     },
-                    'sanitize_callback' => 'absint'
+                    'sanitize_callback' => function( $value, $request, $param ) {
+                        return absint( $value );
+                    }
                 ]
             ]
         ]);
