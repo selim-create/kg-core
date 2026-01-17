@@ -459,7 +459,11 @@ class PrivateVaccineWizard {
         } elseif (isset($brand['dose_intervals_weeks']) && $dose_number) {
             // Week-based intervals (e.g., Rotavirus)
             // The intervals are cumulative offsets from birth date
+            // Example: [0, 4] means dose 1 at 0 weeks, dose 2 at 0+4=4 weeks
             if ($dose_number <= count($brand['dose_intervals_weeks'])) {
+                // array_slice($intervals, 0, $dose_number) gives the first $dose_number elements
+                // For dose 1: slice([0, 4], 0, 1) = [0], sum = 0 weeks from birth
+                // For dose 2: slice([0, 4], 0, 2) = [0, 4], sum = 4 weeks from birth
                 $weeks = array_sum(array_slice($brand['dose_intervals_weeks'], 0, $dose_number));
                 $timing_rule = [
                     'type' => 'week',
@@ -471,7 +475,9 @@ class PrivateVaccineWizard {
         } elseif (isset($brand['dose_intervals_months']) && $dose_number) {
             // Month-based intervals
             // The intervals are cumulative offsets from birth date
+            // Example: [0, 2, 6] means dose 1 at 0 months, dose 2 at 0+2=2 months, dose 3 at 0+2+6=8 months
             if ($dose_number <= count($brand['dose_intervals_months'])) {
+                // array_slice($intervals, 0, $dose_number) gives the first $dose_number elements
                 $months = array_sum(array_slice($brand['dose_intervals_months'], 0, $dose_number));
                 $timing_rule = [
                     'type' => 'month',

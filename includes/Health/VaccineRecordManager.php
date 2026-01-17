@@ -263,6 +263,12 @@ class VaccineRecordManager {
         }
         
         try {
+            // PrivateVaccineWizard is in the same namespace (KG_Core\Health)
+            if (!class_exists('KG_Core\Health\PrivateVaccineWizard')) {
+                error_log('PrivateVaccineWizard class not found');
+                return null;
+            }
+            
             $wizard = new PrivateVaccineWizard();
             
             // Get metadata and timing rule
