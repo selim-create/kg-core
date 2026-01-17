@@ -72,7 +72,7 @@ class FoodSuitabilityChecker {
 
         // Build response
         $response = [
-            'query' => $query,
+            'query' => html_entity_decode( $query, ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
             'found' => $ingredient ? true : false,
             'ingredient' => $ingredient,
             'verdict' => null,
@@ -81,7 +81,7 @@ class FoodSuitabilityChecker {
 
         // If hardcoded rule applies
         if ( $hardcoded_check ) {
-            $response['verdict'] = $hardcoded_check;
+            $response['verdict'] = self::decode_verdict_messages( $hardcoded_check );
             
             // Get alternatives if not suitable
             if ( $hardcoded_check['status'] === 'not_suitable' ) {
@@ -93,7 +93,9 @@ class FoodSuitabilityChecker {
 
         // If ingredient found in database
         if ( $ingredient ) {
-            $response['verdict'] = self::get_verdict_from_ingredient( $ingredient, $child_age_months );
+            $response['verdict'] = self::decode_verdict_messages( 
+                self::get_verdict_from_ingredient( $ingredient, $child_age_months ) 
+            );
             
             // Get alternatives if not suitable
             if ( $response['verdict']['status'] === 'not_suitable' || $response['verdict']['status'] === 'caution' ) {
@@ -113,6 +115,22 @@ class FoodSuitabilityChecker {
         ];
 
         return $response;
+    }
+    
+    /**
+     * Decode HTML entities in verdict messages
+     * 
+     * @param array $verdict Verdict array
+     * @return array Decoded verdict
+     */
+    private static function decode_verdict_messages( $verdict ) {
+        if ( isset( $verdict['message'] ) ) {
+            $verdict['message'] = html_entity_decode( $verdict['message'], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+        }
+        if ( isset( $verdict['reason'] ) ) {
+            $verdict['reason'] = html_entity_decode( $verdict['reason'], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+        }
+        return $verdict;
     }
 
     /**
@@ -200,7 +218,7 @@ class FoodSuitabilityChecker {
 
         return [
             'id' => $post->ID,
-            'name' => get_the_title( $post->ID ),
+            'name' => html_entity_decode( get_the_title( $post->ID ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
             'slug' => $post->post_name,
             'image' => get_the_post_thumbnail_url( $post->ID, 'medium' ),
             'start_age' => get_post_meta( $post->ID, '_kg_start_age', true ),
@@ -279,7 +297,7 @@ class FoodSuitabilityChecker {
         foreach ( $posts as $post ) {
             $alternatives[] = [
                 'id' => $post->ID,
-                'name' => get_the_title( $post->ID ),
+                'name' => html_entity_decode( get_the_title( $post->ID ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
                 'slug' => $post->post_name,
                 'image' => get_the_post_thumbnail_url( $post->ID, 'thumbnail' ),
                 'start_age' => get_post_meta( $post->ID, '_kg_start_age', true ),
