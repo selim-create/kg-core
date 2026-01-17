@@ -4,6 +4,7 @@ namespace KG_Core\API;
 use KG_Core\Auth\JWTHandler;
 use KG_Core\Auth\GoogleAuth;
 use KG_Core\Utils\PrivacyHelper;
+use KG_Core\Health\VaccineRecordManager;
 
 class UserController {
 
@@ -875,6 +876,23 @@ class UserController {
 
         $children[] = $child;
         update_user_meta( $user_id, '_kg_children', $children );
+
+        // Automatically create vaccine schedule for the child
+        try {
+            $vaccine_record_manager = new VaccineRecordManager();
+            $vaccine_result = $vaccine_record_manager->create_schedule_for_child(
+                $user_id,
+                $uuid,           // child_id
+                $birth_date,     // birth_date
+                false            // include_private = false (only mandatory vaccines)
+            );
+            
+            if ( is_wp_error( $vaccine_result ) ) {
+                error_log( 'Failed to create vaccine schedule for child ' . $uuid . ': ' . $vaccine_result->get_error_message() );
+            }
+        } catch ( \Exception $e ) {
+            error_log( 'Exception creating vaccine schedule for child ' . $uuid . ': ' . $e->getMessage() );
+        }
 
         return new \WP_REST_Response( $child, 201 );
     }

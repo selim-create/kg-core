@@ -41,7 +41,7 @@ class VaccineRecordManager {
         
         // Check if schedule already exists for this child
         $existing = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM {$this->table_name} WHERE child_id = %d",
+            "SELECT COUNT(*) FROM {$this->table_name} WHERE child_id = %s",
             $child_id
         ));
         
@@ -85,7 +85,7 @@ class VaccineRecordManager {
                     'created_at' => current_time('mysql'),
                     'updated_at' => current_time('mysql')
                 ],
-                ['%d', '%d', '%s', '%s', '%s', '%d', '%s', '%s']
+                ['%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s']
             );
             
             if ($result) {
@@ -115,7 +115,7 @@ class VaccineRecordManager {
             return new \WP_Error('invalid_child_id', 'Child ID is required');
         }
         
-        $where = $wpdb->prepare("WHERE child_id = %d", $child_id);
+        $where = $wpdb->prepare("WHERE child_id = %s", $child_id);
         
         if (!empty($status)) {
             $where .= $wpdb->prepare(" AND status = %s", $status);
@@ -310,7 +310,7 @@ class VaccineRecordManager {
                 'created_at' => current_time('mysql'),
                 'updated_at' => current_time('mysql')
             ],
-            ['%d', '%d', '%s', '%s', '%s', '%d', '%s', '%s']
+            ['%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s']
         );
         
         if (!$result) {
