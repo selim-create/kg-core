@@ -60,6 +60,12 @@ if ( file_exists( KG_CORE_PATH . 'includes/Services/AllergenPlanner.php' ) ) req
 if ( file_exists( KG_CORE_PATH . 'includes/Services/FoodSuitabilityChecker.php' ) ) require_once KG_CORE_PATH . 'includes/Services/FoodSuitabilityChecker.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Services/SolidFoodReadinessChecker.php' ) ) require_once KG_CORE_PATH . 'includes/Services/SolidFoodReadinessChecker.php';
 
+// 2.9.1. RECOMMENDATION AND SAFETY SERVICES (NEW)
+if ( file_exists( KG_CORE_PATH . 'includes/Services/RecommendationService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/RecommendationService.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Services/SafetyCheckService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/SafetyCheckService.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Services/NutritionTrackerService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/NutritionTrackerService.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Services/FoodIntroductionService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/FoodIntroductionService.php';
+
 // 2.10. TOOLS DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Tools/WHOGrowthData.php' ) ) require_once KG_CORE_PATH . 'includes/Tools/WHOGrowthData.php';
 
@@ -144,6 +150,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/FoodTrialController.php' ) ) requ
 if ( file_exists( KG_CORE_PATH . 'includes/API/SponsoredToolController.php' ) ) require_once KG_CORE_PATH . 'includes/API/SponsoredToolController.php';
 // Lookup Controller (Slug Lookup Endpoint)
 if ( file_exists( KG_CORE_PATH . 'includes/API/LookupController.php' ) ) require_once KG_CORE_PATH . 'includes/API/LookupController.php';
+// Recommendation Controller (Personalization & Safety)
+if ( file_exists( KG_CORE_PATH . 'includes/API/RecommendationController.php' ) ) require_once KG_CORE_PATH . 'includes/API/RecommendationController.php';
 
 // 6.5. VACCINATION TRACKER API CONTROLLERS (NEW)
 if ( file_exists( KG_CORE_PATH . 'includes/API/VaccineController.php' ) ) require_once KG_CORE_PATH . 'includes/API/VaccineController.php';
@@ -299,6 +307,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\FoodTrialController' ) ) new \KG_Core\API\FoodTrialController();
     if ( class_exists( '\KG_Core\API\SponsoredToolController' ) ) new \KG_Core\API\SponsoredToolController();
     if ( class_exists( '\KG_Core\API\LookupController' ) ) new \KG_Core\API\LookupController();
+    if ( class_exists( '\KG_Core\API\RecommendationController' ) ) new \KG_Core\API\RecommendationController();
     
     // Vaccination Tracker API Controllers
     if ( class_exists( '\KG_Core\API\VaccineController' ) ) new \KG_Core\API\VaccineController();
