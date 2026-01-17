@@ -206,6 +206,30 @@ class VaccinationSchema {
         // Suppress dbDelta output
         @dbDelta($sql_notification_preferences);
         
+        // 9. kg_newsletter_subscribers - Newsletter Subscribers
+        $sql_newsletter_subscribers = "CREATE TABLE {$prefix}kg_newsletter_subscribers (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(255) NOT NULL UNIQUE,
+            name VARCHAR(255) DEFAULT NULL,
+            status ENUM('pending', 'active', 'unsubscribed') DEFAULT 'pending',
+            source VARCHAR(100) DEFAULT 'website',
+            interests JSON DEFAULT NULL,
+            confirmation_token VARCHAR(64) DEFAULT NULL,
+            ip_address VARCHAR(45) DEFAULT NULL,
+            user_agent TEXT DEFAULT NULL,
+            subscribed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            confirmed_at DATETIME DEFAULT NULL,
+            unsubscribed_at DATETIME DEFAULT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_email (email),
+            INDEX idx_status (status),
+            INDEX idx_token (confirmation_token)
+        ) $charset_collate;";
+        
+        // Suppress dbDelta output
+        @dbDelta($sql_newsletter_subscribers);
+        
         // Seed default email templates
         self::seed_email_templates();
         
@@ -767,6 +791,106 @@ class VaccinationSchema {
                 'body_text' => 'Merhaba {{parent_name}}, KidsGourmet\'te {{years}} yıl geçti! Teşekkür ederiz.',
                 'placeholders' => '["parent_name", "years", "join_date", "recipes_tried", "vaccines_tracked", "measurements", "app_url"]',
                 'is_active' => true
+            ],
+            
+            // ===== NEWSLETTER TEMPLATES =====
+            [
+                'template_key' => 'newsletter_confirmation',
+                'name' => 'Bülten Abonelik Onayı',
+                'category' => 'marketing',
+                'subject' => '✉️ KidsGourmet Bülten Aboneliğinizi Onaylayın',
+                'body_html' => '<h2 style="color: #E91E63; margin: 0 0 20px 0;">Merhaba!</h2>
+                    <p style="font-size: 16px; line-height: 1.6; color: #333;">KidsGourmet bültenine abone olmak için başvurunuz alındı! 🎉</p>
+                    <p style="color: #666; line-height: 1.6;">E-posta adresinizi doğrulamak için lütfen aşağıdaki butona tıklayın:</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{{confirmation_url}}" style="display: inline-block; background: #E91E63; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Aboneliğimi Onayla</a>
+                    </div>
+                    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 15px 0; color: #E91E63;">📬 Bültenimizde Neler Var?</h3>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.8; color: #666;">
+                            <li>Haftalık besin önerileri</li>
+                            <li>En popüler tarifler</li>
+                            <li>Gelişim ve sağlık ipuçları</li>
+                            <li>Özel kampanyalar</li>
+                        </ul>
+                    </div>
+                    <p style="color: #999; font-size: 12px; line-height: 1.6;">Eğer bu talebi siz yapmadıysanız, bu e-postayı görmezden gelebilirsiniz.</p>',
+                'body_text' => 'KidsGourmet bültenine abone olmak için e-posta adresinizi doğrulayın: {{confirmation_url}}',
+                'placeholders' => '["confirmation_url"]',
+                'is_active' => true
+            ],
+            [
+                'template_key' => 'newsletter_welcome',
+                'name' => 'Bülten Hoş Geldin',
+                'category' => 'marketing',
+                'subject' => '🎉 KidsGourmet Bültenine Hoş Geldiniz!',
+                'body_html' => '<h2 style="color: #E91E63; margin: 0 0 20px 0;">Hoş Geldiniz!</h2>
+                    <p style="font-size: 16px; line-height: 1.6; color: #333;">KidsGourmet bülten ailemize katıldığınız için teşekkür ederiz! 🎊</p>
+                    <div style="background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%); padding: 30px; border-radius: 12px; margin: 25px 0; text-align: center;">
+                        <div style="font-size: 64px; margin-bottom: 15px;">📬</div>
+                        <h3 style="margin: 0 0 10px 0; color: #E91E63; font-size: 20px;">Bültenimize Hoş Geldiniz!</h3>
+                        <p style="margin: 0; color: #666; font-size: 14px;">Her hafta en güncel içeriklerimizi e-postanızda bulacaksınız</p>
+                    </div>
+                    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 15px 0; color: #E91E63;">📅 Bülten Programımız:</h3>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="8" style="color: #666;">
+                            <tr>
+                                <td style="border-bottom: 1px solid #ddd;"><strong>Pazartesi:</strong></td>
+                                <td style="border-bottom: 1px solid #ddd;">Haftalık tarif önerileri</td>
+                            </tr>
+                            <tr>
+                                <td style="border-bottom: 1px solid #ddd;"><strong>Çarşamba:</strong></td>
+                                <td style="border-bottom: 1px solid #ddd;">Gelişim ipuçları</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cuma:</strong></td>
+                                <td>Haftalık özet ve özel içerikler</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <p style="color: #666; line-height: 1.6;">Dilediğiniz zaman bülten tercihlerinizi değiştirebilir veya abonelikten çıkabilirsiniz.</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{{app_url}}" style="display: inline-block; background: #E91E63; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">KidsGourmet\'i Keşfet</a>
+                    </div>',
+                'body_text' => 'KidsGourmet bültenine hoş geldiniz! Her hafta en güncel içeriklerimizi e-postanızda bulacaksınız.',
+                'placeholders' => '["app_url"]',
+                'is_active' => true
+            ],
+            [
+                'template_key' => 'newsletter_weekly',
+                'name' => 'Haftalık Bülten',
+                'category' => 'marketing',
+                'subject' => '📰 Bu Hafta KidsGourmet\'de: {{title}}',
+                'body_html' => '<h2 style="color: #E91E63; margin: 0 0 20px 0;">Bu Haftanın Öne Çıkanları</h2>
+                    <p style="font-size: 16px; line-height: 1.6; color: #333;">{{title}}</p>
+                    
+                    <div style="background: #fce4ec; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 15px 0; color: #E91E63;">🍳 Öne Çıkan Tarifler</h3>
+                        <p style="margin: 0; color: #666; line-height: 1.6;">{{featured_recipes}}</p>
+                    </div>
+                    
+                    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 15px 0; color: #E91E63;">💡 Haftanın İpuçları</h3>
+                        <p style="margin: 0; color: #666; line-height: 1.6;">{{tips}}</p>
+                    </div>
+                    
+                    <div style="background: #fff3e0; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 15px 0; color: #FF9800;">📝 Yeni Makaleler</h3>
+                        <p style="margin: 0; color: #666; line-height: 1.6;">{{new_articles}}</p>
+                    </div>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{{app_url}}" style="display: inline-block; background: #E91E63; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Tümünü Görüntüle</a>
+                    </div>
+                    
+                    <p style="color: #999; font-size: 12px; line-height: 1.6; margin-top: 30px;">
+                        Bu bülteni artık almak istemiyorsanız, 
+                        <a href="{{unsubscribe_url}}" style="color: #E91E63;">buraya tıklayarak</a> 
+                        abonelikten çıkabilirsiniz.
+                    </p>',
+                'body_text' => 'Bu Hafta KidsGourmet\'de: {{title}}. Detaylar: {{app_url}}',
+                'placeholders' => '["title", "featured_recipes", "tips", "new_articles", "app_url", "unsubscribe_url"]',
+                'is_active' => true
             ]
         ];
         
@@ -789,6 +913,7 @@ class VaccinationSchema {
         global $wpdb;
         $prefix = $wpdb->prefix;
         
+        $wpdb->query("DROP TABLE IF EXISTS {$prefix}kg_newsletter_subscribers");
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}kg_notification_preferences");
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}kg_push_subscriptions");
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}kg_notification_queue");
