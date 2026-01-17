@@ -124,7 +124,7 @@ class VaccineRecordManager {
         $results = $wpdb->get_results(
             "SELECT vr.*, v.name, v.name_short, v.description, v.brand_options
              FROM {$this->table_name} vr
-             LEFT JOIN {$wpdb->prefix}kg_vaccines v ON vr.vaccine_code = v.code
+             LEFT JOIN {$wpdb->prefix}kg_vaccine_master v ON vr.vaccine_code = v.code
              {$where}
              ORDER BY vr.scheduled_date ASC",
             ARRAY_A
@@ -340,7 +340,7 @@ class VaccineRecordManager {
         $results = $wpdb->get_results($wpdb->prepare(
             "SELECT vr.*, v.name, v.name_short, v.description
              FROM {$this->table_name} vr
-             LEFT JOIN {$wpdb->prefix}kg_vaccines v ON vr.vaccine_code = v.code
+             LEFT JOIN {$wpdb->prefix}kg_vaccine_master v ON vr.vaccine_code = v.code
              WHERE vr.child_id = %d
              AND vr.status = 'scheduled'
              AND vr.scheduled_date BETWEEN %s AND %s
@@ -380,7 +380,7 @@ class VaccineRecordManager {
         $results = $wpdb->get_results($wpdb->prepare(
             "SELECT vr.*, v.name, v.name_short, v.description, v.max_age_days
              FROM {$this->table_name} vr
-             LEFT JOIN {$wpdb->prefix}kg_vaccines v ON vr.vaccine_code = v.code
+             LEFT JOIN {$wpdb->prefix}kg_vaccine_master v ON vr.vaccine_code = v.code
              WHERE vr.child_id = %d
              AND vr.status = 'scheduled'
              AND vr.scheduled_date < %s

@@ -70,7 +70,29 @@ class VaccinationSchema {
         
         dbDelta($sql_vaccine_records);
         
-        // 3. kg_email_templates - Email Templates
+        // 3. kg_vaccine_side_effects - Detailed Side Effect Records
+        $sql_vaccine_side_effects = "CREATE TABLE {$prefix}kg_vaccine_side_effects (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            vaccine_record_id BIGINT UNSIGNED NOT NULL,
+            child_id VARCHAR(36) NOT NULL,
+            vaccine_code VARCHAR(50) NOT NULL,
+            side_effects JSON NOT NULL COMMENT 'Array of side effects with details',
+            severity ENUM('mild', 'moderate', 'severe') NOT NULL,
+            reported_at DATETIME NOT NULL,
+            notes TEXT DEFAULT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_record (vaccine_record_id),
+            INDEX idx_child (child_id),
+            INDEX idx_vaccine (vaccine_code),
+            INDEX idx_severity (severity),
+            INDEX idx_reported (reported_at),
+            FOREIGN KEY (vaccine_record_id) REFERENCES {$prefix}kg_vaccine_records(id) ON DELETE CASCADE
+        ) $charset_collate;";
+        
+        dbDelta($sql_vaccine_side_effects);
+        
+        // 4. kg_email_templates - Email Templates
         $sql_email_templates = "CREATE TABLE {$prefix}kg_email_templates (
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             template_key VARCHAR(100) NOT NULL UNIQUE,
@@ -93,7 +115,7 @@ class VaccinationSchema {
         
         dbDelta($sql_email_templates);
         
-        // 4. kg_email_logs - Email Logs
+        // 5. kg_email_logs - Email Logs
         $sql_email_logs = "CREATE TABLE {$prefix}kg_email_logs (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             user_id BIGINT UNSIGNED NOT NULL,
@@ -113,7 +135,7 @@ class VaccinationSchema {
         
         dbDelta($sql_email_logs);
         
-        // 5. kg_notification_queue - Notification Queue
+        // 6. kg_notification_queue - Notification Queue
         $sql_notification_queue = "CREATE TABLE {$prefix}kg_notification_queue (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             user_id BIGINT UNSIGNED NOT NULL,
@@ -135,7 +157,7 @@ class VaccinationSchema {
         
         dbDelta($sql_notification_queue);
         
-        // 6. kg_push_subscriptions - Push Notification Subscriptions
+        // 7. kg_push_subscriptions - Push Notification Subscriptions
         $sql_push_subscriptions = "CREATE TABLE {$prefix}kg_push_subscriptions (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             user_id BIGINT UNSIGNED NOT NULL,
@@ -155,7 +177,7 @@ class VaccinationSchema {
         
         dbDelta($sql_push_subscriptions);
         
-        // 7. kg_notification_preferences - Notification Preferences
+        // 8. kg_notification_preferences - Notification Preferences
         $sql_notification_preferences = "CREATE TABLE {$prefix}kg_notification_preferences (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             user_id BIGINT UNSIGNED NOT NULL UNIQUE,
@@ -260,6 +282,7 @@ class VaccinationSchema {
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}kg_notification_queue");
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}kg_email_logs");
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}kg_email_templates");
+        $wpdb->query("DROP TABLE IF EXISTS {$prefix}kg_vaccine_side_effects");
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}kg_vaccine_records");
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}kg_vaccine_master");
     }

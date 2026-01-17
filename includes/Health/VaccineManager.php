@@ -10,7 +10,7 @@ class VaccineManager {
     
     public function __construct() {
         global $wpdb;
-        $this->table_name = $wpdb->prefix . 'kg_vaccines';
+        $this->table_name = $wpdb->prefix . 'kg_vaccine_master';
     }
     
     /**

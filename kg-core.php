@@ -167,7 +167,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/VaccineStatsAdminPage.php' ) ) 
 if ( file_exists( KG_CORE_PATH . 'includes/Health/VaccineManager.php' ) ) require_once KG_CORE_PATH . 'includes/Health/VaccineManager.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Health/VaccineScheduleCalculator.php' ) ) require_once KG_CORE_PATH . 'includes/Health/VaccineScheduleCalculator.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Health/VaccineRecordManager.php' ) ) require_once KG_CORE_PATH . 'includes/Health/VaccineRecordManager.php';
-if ( file_exists( KG_CORE_PATH . 'includes/Health/SideEffectTracker.php' ) ) require_once KG_CORE_PATH . 'includes/Health/SideEffectTracker.php';
+// SideEffectTracker is deprecated - use SideEffectManager instead
+// if ( file_exists( KG_CORE_PATH . 'includes/Health/SideEffectTracker.php' ) ) require_once KG_CORE_PATH . 'includes/Health/SideEffectTracker.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Health/SideEffectManager.php' ) ) require_once KG_CORE_PATH . 'includes/Health/SideEffectManager.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Health/PrivateVaccineWizard.php' ) ) require_once KG_CORE_PATH . 'includes/Health/PrivateVaccineWizard.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Health/VaccineStatsCalculator.php' ) ) require_once KG_CORE_PATH . 'includes/Health/VaccineStatsCalculator.php';

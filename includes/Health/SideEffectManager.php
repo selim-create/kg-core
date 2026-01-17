@@ -326,4 +326,34 @@ class SideEffectManager {
         
         return $stats;
     }
+    
+    /**
+     * Get complete side effect history for a child
+     * 
+     * @param string $child_id Child ID
+     * @return array Side effect history
+     */
+    public function get_child_history($child_id) {
+        global $wpdb;
+        
+        $results = $wpdb->get_results($wpdb->prepare(
+            "SELECT vr.*, v.name as vaccine_name, v.name_short
+             FROM {$wpdb->prefix}kg_vaccine_records vr
+             LEFT JOIN {$wpdb->prefix}kg_vaccine_master v ON vr.vaccine_code = v.code
+             WHERE vr.child_id = %s 
+             AND vr.side_effects IS NOT NULL 
+             AND vr.side_effects != 'null'
+             AND vr.side_effects != '{}'
+             ORDER BY vr.actual_date DESC",
+            $child_id
+        ), ARRAY_A);
+        
+        foreach ($results as &$record) {
+            if (isset($record['side_effects']) && !empty($record['side_effects'])) {
+                $record['side_effects'] = json_decode($record['side_effects'], true);
+            }
+        }
+        
+        return $results;
+    }
 }

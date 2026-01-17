@@ -101,7 +101,7 @@ class SideEffectTracker {
         $results = $wpdb->get_results($wpdb->prepare(
             "SELECT se.*, v.name as vaccine_name, v.name_short
              FROM {$this->table_name} se
-             LEFT JOIN {$wpdb->prefix}kg_vaccines v ON se.vaccine_code = v.code
+             LEFT JOIN {$wpdb->prefix}kg_vaccine_master v ON se.vaccine_code = v.code
              WHERE se.vaccine_record_id = %d
              ORDER BY se.reported_at DESC",
             $record_id
@@ -137,7 +137,7 @@ class SideEffectTracker {
         $results = $wpdb->get_results($wpdb->prepare(
             "SELECT se.*, v.name as vaccine_name, v.name_short, vr.actual_date, vr.scheduled_date
              FROM {$this->table_name} se
-             LEFT JOIN {$wpdb->prefix}kg_vaccines v ON se.vaccine_code = v.code
+             LEFT JOIN {$wpdb->prefix}kg_vaccine_master v ON se.vaccine_code = v.code
              LEFT JOIN {$wpdb->prefix}kg_vaccine_records vr ON se.vaccine_record_id = vr.id
              WHERE se.child_id = %d
              ORDER BY se.reported_at DESC",
