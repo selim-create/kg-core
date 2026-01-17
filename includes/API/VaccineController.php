@@ -184,6 +184,19 @@ class VaccineController {
                 ],
             ],
         ]);
+
+        register_rest_route( 'kg/v1', '/health/vaccines/overdue', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_overdue_vaccines' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+            'args' => [
+                'child_id' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ]);
     }
 
     /**
@@ -507,6 +520,47 @@ class VaccineController {
     }
 
     /**
+     * Get overdue vaccines
+     * 
+     * @param \WP_REST_Request $request The request object
+     * @return \WP_REST_Response|\WP_Error Response object or error
+     */
+    public function get_overdue_vaccines( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+        $child_id = $request->get_param( 'child_id' );
+
+        $record_manager = new VaccineRecordManager();
+        
+        if ( $child_id ) {
+            // Verify child ownership
+            if ( ! $this->verify_child_ownership( $user_id, $child_id ) ) {
+                return new \WP_Error( 'forbidden', 'Child does not belong to user', [ 'status' => 403 ] );
+            }
+            $overdue = $record_manager->get_overdue_vaccines( $child_id );
+        } else {
+            // Get all overdue for all user's children
+            $children = $this->get_user_children( $user_id );
+            $overdue = [];
+            foreach ( $children as $child ) {
+                $child_overdue = $record_manager->get_overdue_vaccines( $child['id'] );
+                if ( ! is_wp_error( $child_overdue ) ) {
+                    $overdue = array_merge( $overdue, $child_overdue );
+                }
+            }
+        }
+
+        if ( is_wp_error( $overdue ) ) {
+            return $overdue;
+        }
+
+        return new \WP_REST_Response( [
+            'success' => true,
+            'data' => $overdue,
+            'count' => count( $overdue ),
+        ], 200 );
+    }
+
+    /**
      * Get side effects for a vaccine record
      * 
      * @param \WP_REST_Request $request The request object
@@ -632,6 +686,22 @@ class VaccineController {
         }
 
         return $this->verify_child_ownership( $user_id, $record->child_id );
+    }
+
+    /**
+     * Get all children for a user
+     * 
+     * @param int $user_id User ID
+     * @return array Array of children
+     */
+    private function get_user_children( $user_id ) {
+        $children = get_user_meta( $user_id, '_kg_children', true );
+        
+        if ( ! is_array( $children ) ) {
+            return [];
+        }
+
+        return $children;
     }
 
     /**
