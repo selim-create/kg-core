@@ -146,7 +146,8 @@ class CORSHandler {
      */
     public function send_cors_headers() {
         // Sadece REST API istekleri için
-        if (strpos($_SERVER['REQUEST_URI'] ?? '', '/wp-json/') === false) {
+        $request_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
+        if (strpos($request_uri, '/wp-json/') === false) {
             return;
         }
         
