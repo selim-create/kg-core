@@ -89,28 +89,28 @@ if (preg_match('/public function get_tools.*?^\s*public function get_tool\(/ms',
         $failed++;
     }
     
-    // Check correct meta field names are used
-    if (strpos($methodContent, '_kg_tool_is_sponsored') !== false) {
-        echo "   ✓ Correct meta field '_kg_tool_is_sponsored' used\n";
+    // Check correct method is used (get_tool_field instead of direct get_post_meta)
+    if (preg_match("/get_tool_field\(\s*'tool_is_sponsored'/", $methodContent)) {
+        echo "   ✓ Using get_tool_field() for is_sponsored (consistent with other fields)\n";
         $passed++;
     } else {
-        echo "   ✗ Meta field '_kg_tool_is_sponsored' not found\n";
+        echo "   ✗ Not using get_tool_field() for is_sponsored\n";
         $failed++;
     }
     
-    if (strpos($methodContent, '_kg_tool_sponsor_name') !== false) {
-        echo "   ✓ Correct meta field '_kg_tool_sponsor_name' used\n";
+    if (preg_match("/get_tool_field\(\s*'tool_sponsor_name'/", $methodContent)) {
+        echo "   ✓ Using get_tool_field() for sponsor_name (consistent with other fields)\n";
         $passed++;
     } else {
-        echo "   ✗ Meta field '_kg_tool_sponsor_name' not found\n";
+        echo "   ✗ Not using get_tool_field() for sponsor_name\n";
         $failed++;
     }
     
-    if (strpos($methodContent, '_kg_tool_sponsor_url') !== false) {
-        echo "   ✓ Correct meta field '_kg_tool_sponsor_url' used\n";
+    if (preg_match("/get_tool_field\(\s*'tool_sponsor_url'/", $methodContent)) {
+        echo "   ✓ Using get_tool_field() for sponsor_url (consistent with other fields)\n";
         $passed++;
     } else {
-        echo "   ✗ Meta field '_kg_tool_sponsor_url' not found\n";
+        echo "   ✗ Not using get_tool_field() for sponsor_url\n";
         $failed++;
     }
 } else {
@@ -179,28 +179,28 @@ if (preg_match('/public function get_tool\(.*?^\s*public function get_blw_test_c
         $failed++;
     }
     
-    // Check correct meta field names are used
-    if (strpos($methodContent, '_kg_tool_is_sponsored') !== false) {
-        echo "   ✓ Correct meta field '_kg_tool_is_sponsored' used\n";
+    // Check correct method is used (get_tool_field instead of direct get_post_meta)
+    if (preg_match("/get_tool_field\(\s*'tool_is_sponsored'/", $methodContent)) {
+        echo "   ✓ Using get_tool_field() for is_sponsored (consistent with other fields)\n";
         $passed++;
     } else {
-        echo "   ✗ Meta field '_kg_tool_is_sponsored' not found\n";
+        echo "   ✗ Not using get_tool_field() for is_sponsored\n";
         $failed++;
     }
     
-    if (strpos($methodContent, '_kg_tool_sponsor_name') !== false) {
-        echo "   ✓ Correct meta field '_kg_tool_sponsor_name' used\n";
+    if (preg_match("/get_tool_field\(\s*'tool_sponsor_name'/", $methodContent)) {
+        echo "   ✓ Using get_tool_field() for sponsor_name (consistent with other fields)\n";
         $passed++;
     } else {
-        echo "   ✗ Meta field '_kg_tool_sponsor_name' not found\n";
+        echo "   ✗ Not using get_tool_field() for sponsor_name\n";
         $failed++;
     }
     
-    if (strpos($methodContent, '_kg_tool_sponsor_url') !== false) {
-        echo "   ✓ Correct meta field '_kg_tool_sponsor_url' used\n";
+    if (preg_match("/get_tool_field\(\s*'tool_sponsor_url'/", $methodContent)) {
+        echo "   ✓ Using get_tool_field() for sponsor_url (consistent with other fields)\n";
         $passed++;
     } else {
-        echo "   ✗ Meta field '_kg_tool_sponsor_url' not found\n";
+        echo "   ✗ Not using get_tool_field() for sponsor_url\n";
         $failed++;
     }
 } else {
