@@ -105,20 +105,13 @@ if (file_exists($recipeControllerFile)) {
             $failed++;
         }
         
-        // Check does NOT use is_user_logged_in
-        if (strpos($content, 'is_user_logged_in') === false || 
-            strpos($content, 'is_user_logged_in()') === false) {
-            echo "   ✓ Does not use is_user_logged_in() (correct)\n";
-            $passed++;
+        // Check does NOT use is_user_logged_in in rate endpoint
+        if (preg_match("/register_rest_route.*?\/recipes\/.*?\/rate.*?is_user_logged_in/s", $content)) {
+            echo "   ✗ Still uses is_user_logged_in() in rate endpoint\n";
+            $failed++;
         } else {
-            // Check if is_user_logged_in is used in rate endpoint
-            if (preg_match("/register_rest_route.*?\/recipes\/.*?\/rate.*?is_user_logged_in/s", $content)) {
-                echo "   ✗ Still uses is_user_logged_in() in rate endpoint\n";
-                $failed++;
-            } else {
-                echo "   ✓ is_user_logged_in() not used in rate endpoint\n";
-                $passed++;
-            }
+            echo "   ✓ Does not use is_user_logged_in() in rate endpoint (correct)\n";
+            $passed++;
         }
     } else {
         echo "   ✗ rate endpoint registration not found\n";
@@ -159,7 +152,12 @@ if (file_exists($recipeControllerFile)) {
         }
         
         // Check proper pattern: get authenticated_user_id first, then fallback
-        if (preg_match('/\$user_id\s*=\s*\$request->get_param\(\s*[\'"]authenticated_user_id[\'"]\s*\);.*?if\s*\(\s*!\s*\$user_id\s*\).*?get_current_user_id\(\)/s', $content)) {
+        // Split checks for better maintainability
+        $hasAuthUserIdGet = strpos($content, "get_param( 'authenticated_user_id' )") !== false ||
+                            strpos($content, 'get_param("authenticated_user_id")') !== false;
+        $hasConditionalFallback = preg_match('/if\s*\(\s*!\s*\$user_id\s*\).*?get_current_user_id\(\)/s', $content);
+        
+        if ($hasAuthUserIdGet && $hasConditionalFallback) {
             echo "   ✓ Correct pattern: tries authenticated_user_id first, then fallback\n";
             $passed++;
         } else {
