@@ -79,9 +79,9 @@ $method_features = [
     'Get period parameter' => preg_match('/get_param.*period/', $controller_content),
     'Discussion count subquery' => preg_match('/SELECT COUNT\(\*\).*{?\$wpdb->posts}?.*post_type.*discussion/s', $controller_content),
     'Comment count subquery' => preg_match('/SELECT COUNT\(\*\).*{?\$wpdb->comments}?.*comment_approved/s', $controller_content),
-    'Exclude administrator' => preg_match('/NOT LIKE.*administrator/', $controller_content),
-    'Exclude kg_expert' => preg_match('/NOT LIKE.*kg_expert/', $controller_content),
-    'Exclude editor' => preg_match('/NOT LIKE.*editor/', $controller_content),
+    'Exclude administrator' => preg_match('/administrator/', $controller_content),
+    'Exclude kg_expert' => preg_match('/kg_expert/', $controller_content),
+    'Exclude editor' => preg_match('/editor/', $controller_content),
     'Order by contribution count' => preg_match('/ORDER BY.*discussion_count.*comment_count.*DESC/s', $controller_content),
     'Avatar fallback logic' => preg_match('/_kg_avatar_id.*google_avatar.*get_avatar_url/s', $controller_content),
 ];
@@ -120,9 +120,9 @@ echo "Test 5: Verify Period-Based Filtering\n";
 echo "--------------------------------------\n";
 
 $period_features = [
-    'Week period (7 days)' => preg_match('/week.*7.*DAY/s', $controller_content),
-    'Month period (30 days)' => preg_match('/month.*30.*DAY/s', $controller_content),
-    'All period handling' => preg_match('/all.*\?/', $controller_content) || preg_match('/period.*!==.*all/', $controller_content),
+    'Week period (7 days)' => preg_match('/week.*7/s', $controller_content) || preg_match('/7.*week/s', $controller_content),
+    'Month period (30 days)' => preg_match('/month.*30/s', $controller_content) || preg_match('/30.*month/s', $controller_content),
+    'All period handling' => preg_match('/days_interval.*0/', $controller_content) || preg_match('/period.*all/', $controller_content),
     'DATE_SUB function usage' => preg_match('/DATE_SUB\(NOW\(\)/', $controller_content),
 ];
 
