@@ -60,6 +60,22 @@ class RecipeController {
                 ]
             ]
         ]);
+        
+        // GET /wp-json/kg/v1/recipes/{id}/related
+        register_rest_route( 'kg/v1', '/recipes/(?P<id>\d+)/related', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_related_recipes' ],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'limit' => [
+                    'default' => 4,
+                    'validate_callback' => function( $value ) {
+                        return is_numeric( $value ) && $value >= 1 && $value <= 10;
+                    },
+                    'sanitize_callback' => 'absint'
+                ]
+            ]
+        ]);
     }
 
     public function get_featured_recipes( $request ) {
@@ -154,6 +170,16 @@ class RecipeController {
             'approved' => get_post_meta( $post_id, '_kg_expert_approved', true ) === '1',
         ];
         
+        // Get rating data with base rating fallback
+        $real_rating = get_post_meta( $post_id, '_kg_rating', true );
+        $real_count = get_post_meta( $post_id, '_kg_rating_count', true );
+        $base_rating = $this->get_base_rating( $post_id );
+        $base_count = $this->get_base_rating_count( $post_id );
+        
+        // Use real rating if exists, otherwise use base
+        $display_rating = ! empty( $real_rating ) ? $real_rating : $base_rating;
+        $display_count = ! empty( $real_count ) ? $real_count : $base_count;
+        
         $data = [
             'id'              => $post_id,
             'title'           => $title,
@@ -171,6 +197,10 @@ class RecipeController {
             'diet_types'      => $diet_types,
             'author'          => $author_data,
             'expert'          => $expert_data,
+            
+            // Rating fields
+            'rating'          => round( floatval( $display_rating ), 1 ),
+            'rating_count'    => intval( $display_count ),
             
             // Mevcut alanlar
             'age_groups'      => wp_get_post_terms( $post_id, 'age-group', ['fields' => 'names'] ),
@@ -457,8 +487,146 @@ class RecipeController {
 
     /**
      * Get related recipes based on shared taxonomies
+     * Can be called as REST endpoint or as internal method
      */
-    private function get_related_recipes( $post_id, $limit = 3 ) {
+    public function get_related_recipes( $request_or_id, $limit = 3 ) {
+        // Handle both REST request and direct ID calls
+        if ( $request_or_id instanceof \WP_REST_Request ) {
+            // Called as REST endpoint
+            $recipe_id = $request_or_id->get_param( 'id' );
+            $limit = $request_or_id->get_param( 'limit' ) ?: 4;
+            $is_rest_call = true;
+        } else {
+            // Called internally
+            $recipe_id = $request_or_id;
+            $is_rest_call = false;
+        }
+        
+        $recipe = get_post( $recipe_id );
+        if ( ! $recipe || $recipe->post_type !== 'recipe' ) {
+            if ( $is_rest_call ) {
+                return new \WP_Error( 'recipe_not_found', 'Recipe not found', [ 'status' => 404 ] );
+            }
+            return [];
+        }
+        
+        // Get recipe taxonomies for matching
+        $age_groups = wp_get_post_terms( $recipe_id, 'age-group', ['fields' => 'ids'] );
+        $meal_types = wp_get_post_terms( $recipe_id, 'meal-type', ['fields' => 'ids'] );
+        
+        $args = [
+            'post_type' => 'recipe',
+            'post_status' => 'publish',
+            'posts_per_page' => $limit,
+            'post__not_in' => [ $recipe_id ],
+        ];
+        
+        // Only add tax_query if we have taxonomies to match
+        // Using OR relation: recipes matching either age_group OR meal_type are considered related
+        if ( ! empty( $age_groups ) || ! empty( $meal_types ) ) {
+            $args['tax_query'] = [
+                'relation' => 'OR',
+            ];
+            
+            if ( ! empty( $age_groups ) ) {
+                $args['tax_query'][] = [
+                    'taxonomy' => 'age-group',
+                    'field' => 'term_id',
+                    'terms' => $age_groups,
+                ];
+            }
+            
+            if ( ! empty( $meal_types ) ) {
+                $args['tax_query'][] = [
+                    'taxonomy' => 'meal-type',
+                    'field' => 'term_id',
+                    'terms' => $meal_types,
+                ];
+            }
+        }
+        
+        $query = new \WP_Query( $args );
+        $related = [];
+        
+        foreach ( $query->posts as $post ) {
+            $related[] = $this->prepare_recipe_card_data( $post->ID );
+        }
+        
+        // If not enough related recipes, fill with random recipes
+        if ( count( $related ) < $limit ) {
+            $remaining = $limit - count( $related );
+            $exclude_ids = array_merge( [ $recipe_id ], array_column( $related, 'id' ) );
+            
+            $random_args = [
+                'post_type' => 'recipe',
+                'post_status' => 'publish',
+                'posts_per_page' => $remaining,
+                'post__not_in' => $exclude_ids,
+                'orderby' => 'rand',
+            ];
+            
+            $random_query = new \WP_Query( $random_args );
+            foreach ( $random_query->posts as $post ) {
+                $related[] = $this->prepare_recipe_card_data( $post->ID );
+            }
+        }
+        
+        if ( $is_rest_call ) {
+            return new \WP_REST_Response( $related, 200 );
+        }
+        
+        return $related;
+    }
+    
+    /**
+     * Prepare simplified recipe card data for listings
+     */
+    private function prepare_recipe_card_data( $post_id ) {
+        // Get age group info
+        $age_group_terms = wp_get_post_terms( $post_id, 'age-group', ['fields' => 'all'] );
+        $age_group = '';
+        $age_group_color = '';
+        if ( ! empty( $age_group_terms ) && ! is_wp_error( $age_group_terms ) ) {
+            $first_term = $age_group_terms[0];
+            $age_group = \KG_Core\Utils\Helper::decode_html_entities( $first_term->name );
+            $age_group_color = get_term_meta( $first_term->term_id, '_kg_color_code', true );
+        }
+        
+        // Get meal type
+        $meal_type_terms = wp_get_post_terms( $post_id, 'meal-type', ['fields' => 'names'] );
+        $meal_type = ! empty( $meal_type_terms ) && ! is_wp_error( $meal_type_terms ) 
+            ? \KG_Core\Utils\Helper::decode_html_entities( $meal_type_terms[0] ) 
+            : '';
+        
+        // Get rating data with base rating fallback
+        $real_rating = get_post_meta( $post_id, '_kg_rating', true );
+        $real_count = get_post_meta( $post_id, '_kg_rating_count', true );
+        $base_rating = $this->get_base_rating( $post_id );
+        $base_count = $this->get_base_rating_count( $post_id );
+        
+        // Use real rating if exists, otherwise use base
+        $display_rating = ! empty( $real_rating ) ? $real_rating : $base_rating;
+        $display_count = ! empty( $real_count ) ? $real_count : $base_count;
+        
+        return [
+            'id'    => $post_id,
+            'title' => \KG_Core\Utils\Helper::decode_html_entities( get_the_title( $post_id ) ),
+            'slug'  => get_post_field( 'post_name', $post_id ),
+            'image' => get_the_post_thumbnail_url( $post_id, 'medium' ),
+            'age_group' => $age_group,
+            'age_group_color' => $age_group_color,
+            'meal_type' => $meal_type,
+            'prep_time' => get_post_meta( $post_id, '_kg_prep_time', true ),
+            'rating' => round( floatval( $display_rating ), 1 ),
+            'rating_count' => intval( $display_count ),
+        ];
+    }
+
+    /**
+     * Get related recipes based on shared taxonomies (legacy internal method)
+     * @deprecated Use get_related_recipes instead
+     */
+    private function get_related_recipes_legacy( $post_id, $limit = 3 ) {
         $age_groups = wp_get_post_terms( $post_id, 'age-group', ['fields' => 'ids'] );
         
         if ( empty( $age_groups ) ) {
@@ -496,6 +664,42 @@ class RecipeController {
         wp_reset_postdata();
 
         return $related;
+    }
+    
+    /**
+     * Get or generate deterministic base rating for a recipe
+     * @param int $post_id Recipe post ID
+     * @return float Base rating (4.0-4.9)
+     */
+    private function get_base_rating( $post_id ) {
+        $base_rating = get_post_meta( $post_id, '_kg_base_rating', true );
+        
+        if ( empty( $base_rating ) ) {
+            // Generate deterministic rating: 4.0-4.9 based on post ID
+            // Using modulo 10 ensures consistent rating for same recipe
+            $base_rating = 4.0 + ( ( $post_id % 10 ) / 10 ); // 4.0, 4.1, 4.2, ... 4.9
+            update_post_meta( $post_id, '_kg_base_rating', $base_rating );
+        }
+        
+        return floatval( $base_rating );
+    }
+    
+    /**
+     * Get or generate deterministic base rating count for a recipe
+     * @param int $post_id Recipe post ID
+     * @return int Base rating count (10-150)
+     */
+    private function get_base_rating_count( $post_id ) {
+        $base_count = get_post_meta( $post_id, '_kg_base_rating_count', true );
+        
+        if ( empty( $base_count ) ) {
+            // Generate deterministic count: 10-150 based on post ID
+            // Using modulo 141 gives range 0-140, adding 10 gives 10-150
+            $base_count = 10 + ( $post_id % 141 ); // 10-150
+            update_post_meta( $post_id, '_kg_base_rating_count', $base_count );
+        }
+        
+        return intval( $base_count );
     }
 
     /**
@@ -565,29 +769,43 @@ class RecipeController {
             return new \WP_Error( 'recipe_not_found', 'Recipe not found', [ 'status' => 404 ] );
         }
         
-        // Get existing ratings
+        // Get existing real ratings
         $all_ratings = get_post_meta( $recipe_id, '_kg_ratings', true );
         if ( ! is_array( $all_ratings ) ) {
             $all_ratings = [];
         }
         
-        // Store user's rating (overwrites if user already rated)
+        // Store user's rating
         $all_ratings[ $user_id ] = floatval( $rating );
         
-        // Calculate new average
-        $total_ratings = count( $all_ratings );
-        $sum = array_sum( $all_ratings );
-        $average = $sum / $total_ratings;
+        // Get base rating for calculation using helper methods
+        $base_rating = $this->get_base_rating( $recipe_id );
+        $base_count = $this->get_base_rating_count( $recipe_id );
+        
+        // Calculate new average including base rating weight
+        $real_count = count( $all_ratings );
+        $real_sum = array_sum( $all_ratings );
+        
+        // Weighted average: (base_rating * base_count + real_sum) / (base_count + real_count)
+        $total_count = intval( $base_count ) + $real_count;
+        
+        // Safety check for division by zero (should never happen with base rating system)
+        if ( $total_count === 0 ) {
+            return new \WP_Error( 'calculation_error', 'Unable to calculate rating', [ 'status' => 500 ] );
+        }
+        
+        $weighted_sum = ( floatval( $base_rating ) * intval( $base_count ) ) + $real_sum;
+        $average = $weighted_sum / $total_count;
         
         // Update meta fields
         update_post_meta( $recipe_id, '_kg_ratings', $all_ratings );
         update_post_meta( $recipe_id, '_kg_rating', round( $average, 1 ) );
-        update_post_meta( $recipe_id, '_kg_rating_count', $total_ratings );
+        update_post_meta( $recipe_id, '_kg_rating_count', $total_count );
         
         return new \WP_REST_Response( [
             'success' => true,
             'rating' => round( $average, 1 ),
-            'rating_count' => $total_ratings,
+            'rating_count' => $total_count,
             'user_rating' => floatval( $rating )
         ], 200 );
     }
