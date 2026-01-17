@@ -62,6 +62,9 @@ class SafetyCheckService {
             $alternatives = $this->get_safe_alternatives( $recipe_id, $child );
         }
         
+        // 6. Decode HTML entities in all alert messages
+        $alerts = $this->decode_alert_messages( $alerts );
+        
         return [
             'recipe_id' => $recipe_id,
             'is_safe' => $is_safe,
@@ -70,6 +73,33 @@ class SafetyCheckService {
             'alternatives' => $alternatives,
             'checked_at' => current_time( 'c' ),
         ];
+    }
+    
+    /**
+     * Decode HTML entities in all alert messages
+     * 
+     * Ensures that API responses never contain HTML entities like &amp;, &lt;, &gt;
+     * All messages are decoded to their plain text equivalents for frontend display.
+     * 
+     * @param array $alerts Array of alerts
+     * @return array Alerts with decoded messages
+     */
+    private function decode_alert_messages( $alerts ) {
+        foreach ( $alerts as &$alert ) {
+            if ( isset( $alert['message'] ) ) {
+                $alert['message'] = html_entity_decode( $alert['message'], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+            }
+            if ( isset( $alert['alternative'] ) ) {
+                $alert['alternative'] = html_entity_decode( $alert['alternative'], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+            }
+            if ( isset( $alert['reason'] ) ) {
+                $alert['reason'] = html_entity_decode( $alert['reason'], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+            }
+            if ( isset( $alert['ingredient'] ) ) {
+                $alert['ingredient'] = html_entity_decode( $alert['ingredient'], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+            }
+        }
+        return $alerts;
     }
     
     /**
@@ -106,6 +136,7 @@ class SafetyCheckService {
                 $alerts[] = [
                     'type' => 'age',
                     'severity' => 'warning',
+                    'severity_color' => 'yellow',
                     'message' => sprintf( 
                         '%s için önerilen minimum yaş %d ay. Çocuğunuz %d aylık.',
                         $ingredient->post_title,
@@ -125,10 +156,12 @@ class SafetyCheckService {
         if ( ! $is_introduced ) {
             $allergy_risk = get_post_meta( $ingredient_id, '_kg_allergy_risk', true );
             $severity = ( $allergy_risk === 'Yüksek' ) ? 'warning' : 'info';
+            $severity_color = ( $allergy_risk === 'Yüksek' ) ? 'yellow' : 'blue';
             
             $alerts[] = [
                 'type' => 'nutrition',
                 'severity' => $severity,
+                'severity_color' => $severity_color,
                 'message' => sprintf( 
                     '%s daha önce denenmemiş. İlk kez vereceğiniz için dikkatli olun. Alerji riski: %s',
                     $ingredient->post_title,
@@ -139,9 +172,12 @@ class SafetyCheckService {
             ];
         }
         
+        // Decode HTML entities in all alert messages
+        $alerts = $this->decode_alert_messages( $alerts );
+        
         return [
             'ingredient_id' => $ingredient_id,
-            'ingredient_name' => $ingredient->post_title,
+            'ingredient_name' => html_entity_decode( $ingredient->post_title, ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
             'is_safe' => $is_safe,
             'is_introduced' => $is_introduced,
             'alerts' => $alerts,
@@ -177,6 +213,8 @@ class SafetyCheckService {
     
     /**
      * Check for allergens in recipe
+     * 
+     * Allergy alerts are always CRITICAL (red) since they pose immediate health risks.
      */
     private function check_allergens( $recipe_id, $child ) {
         $alerts = [];
@@ -198,6 +236,7 @@ class SafetyCheckService {
                 $alerts[] = [
                     'type' => 'allergy',
                     'severity' => 'critical',
+                    'severity_color' => 'red',
                     'message' => sprintf(
                         'KESİNLİKLE VERMEYİN! Bu tarif %s içeriyor. Çocuğunuzun bu alerjeni var.',
                         $allergen->name
@@ -212,7 +251,14 @@ class SafetyCheckService {
     }
     
     /**
-     * Check age appropriateness
+     * Check age appropriateness using centralized mapping
+     * 
+     * Centralized Age Compatibility Mapping:
+     * - Matching age groups → success (green, safe)
+     * - Older child with younger recipe → info (blue/yellow, can still use)
+     * - Younger child with older recipe → warning/critical (red, dangerous)
+     *   - Small gap (1 level) → warning
+     *   - Large gap (2+ levels) → critical
      */
     private function check_age_appropriateness( $recipe_id, $child ) {
         $alerts = [];
@@ -233,44 +279,115 @@ class SafetyCheckService {
         
         // Check if current age group is in recipe's age groups
         if ( ! in_array( $current_age_group, $age_group_slugs ) ) {
-            $message = sprintf(
-                'Bu tarif %s yaş grubu için önerilmiş. Çocuğunuz %d aylık.',
-                $age_groups[0]->name,
-                $age_in_months
+            // Get severity and message based on centralized mapping
+            $severity_data = $this->get_age_compatibility_severity( 
+                $current_age_group, 
+                $age_groups[0]->slug,
+                $age_in_months,
+                $age_groups[0]->name
             );
             
-            // Check if recipe is for older children
-            if ( $this->is_age_group_older( $age_groups[0]->slug, $current_age_group ) ) {
-                // Recipe is for older age group - this is critical
-                $severity = 'critical';
-                $message .= ' Bu tarif çocuğunuz için erken olabilir.';
-                
-                $alerts[] = [
-                    'type' => 'age',
-                    'severity' => $severity,
-                    'message' => $message,
-                    'alternative' => 'Yaş grubunuza uygun tariflere göz atın.',
-                    'is_for_older' => true,
-                ];
-            } else {
-                // Recipe is for younger age group - just informational
-                $severity = 'info';
-                
-                $alerts[] = [
-                    'type' => 'age',
-                    'severity' => $severity,
-                    'message' => $message,
-                    'alternative' => 'Bu tarifi yine de verebilirsiniz.',
-                    'is_for_older' => false,
-                ];
-            }
+            $alerts[] = [
+                'type' => 'age',
+                'severity' => $severity_data['severity'],
+                'severity_color' => $severity_data['color'],
+                'message' => $severity_data['message'],
+                'alternative' => $severity_data['alternative'],
+                'is_for_older' => $severity_data['is_for_older'],
+                'child_age_months' => $age_in_months,
+                'child_age_group' => $current_age_group,
+                'recipe_age_group' => $age_groups[0]->slug,
+            ];
         }
         
         return $alerts;
     }
     
     /**
+     * Centralized Age Compatibility Severity Mapping
+     * 
+     * This function implements a deterministic mapping table for all age group combinations.
+     * It ensures consistent severity levels across the entire application.
+     * 
+     * Mapping Logic:
+     * ┌────────────────────────────────────────────────────────────────────────────┐
+     * │ Child Age vs Recipe Age                    │ Severity  │ Color  │ Safe?  │
+     * ├────────────────────────────────────────────────────────────────────────────┤
+     * │ Exact match (same age group)               │ success   │ green  │ Yes    │
+     * │ Older child, younger recipe (1-2 levels)   │ info      │ blue   │ Yes    │
+     * │ Younger child, older recipe (1 level gap)  │ warning   │ yellow │ No     │
+     * │ Younger child, older recipe (2+ level gap) │ critical  │ red    │ No     │
+     * │ 0-6 months with 9-11 months recipe         │ warning   │ yellow │ No     │
+     * │ 0-6 months with 2+ years recipe            │ critical  │ red    │ No     │
+     * └────────────────────────────────────────────────────────────────────────────┘
+     * 
+     * @param string $child_age_group Child's current age group slug
+     * @param string $recipe_age_group Recipe's age group slug
+     * @param int $child_age_months Child's age in months
+     * @param string $recipe_age_name Recipe's age group name (for messages)
+     * @return array Severity data with severity, color, message, alternative, is_for_older
+     */
+    private function get_age_compatibility_severity( $child_age_group, $recipe_age_group, $child_age_months, $recipe_age_name ) {
+        $age_order = [
+            '0-6-ay-sadece-sut' => 0,
+            '6-8-ay-baslangic' => 1,
+            '9-11-ay-kesif' => 2,
+            '12-24-ay-gecis' => 3,
+            '2-yas-ve-uzeri' => 4,
+        ];
+        
+        $child_level = isset( $age_order[ $child_age_group ] ) ? $age_order[ $child_age_group ] : 1;
+        $recipe_level = isset( $age_order[ $recipe_age_group ] ) ? $age_order[ $recipe_age_group ] : 1;
+        $level_gap = $recipe_level - $child_level;
+        
+        $base_message = sprintf(
+            'Bu tarif %s yaş grubu için önerilmiş. Çocuğunuz %d aylık.',
+            $recipe_age_name,
+            $child_age_months
+        );
+        
+        // Recipe is for older children (dangerous)
+        if ( $level_gap > 0 ) {
+            // Determine severity based on gap size
+            if ( $level_gap >= 2 ) {
+                // Large gap (2+ levels) → CRITICAL
+                return [
+                    'severity' => 'critical',
+                    'color' => 'red',
+                    'message' => $base_message . ' KESİNLİKLE VERMEYİN! Bu tarif çocuğunuz için çok erken ve tehlikeli olabilir.',
+                    'alternative' => 'Yaş grubunuza uygun tariflere göz atın.',
+                    'is_for_older' => true,
+                ];
+            } else {
+                // Small gap (1 level) → WARNING
+                return [
+                    'severity' => 'warning',
+                    'color' => 'yellow',
+                    'message' => $base_message . ' Bu tarif çocuğunuz için erken olabilir. Dikkatli olun.',
+                    'alternative' => 'Yaş grubunuza daha uygun tariflere öncelik verin.',
+                    'is_for_older' => true,
+                ];
+            }
+        }
+        
+        // Recipe is for younger children (safe, but informational)
+        // Older children can eat food designed for younger ones
+        return [
+            'severity' => 'info',
+            'color' => 'blue',
+            'message' => $base_message . ' Çocuğunuz bu tarifi yiyebilir.',
+            'alternative' => 'Bu tarifi güvenle verebilirsiniz. Yaşına uygun daha gelişmiş tarifler de mevcuttur.',
+            'is_for_older' => false,
+        ];
+    }
+    
+    /**
      * Check for forbidden ingredients
+     * 
+     * Forbidden ingredient severity mapping:
+     * - Honey for <12 months → CRITICAL (red, botulism risk)
+     * - Whole nuts for <48 months → CRITICAL (red, choking hazard)
+     * - Cow's milk as main drink <12 months → WARNING (yellow, nutritional concern)
      */
     private function check_forbidden_ingredients( $recipe_id, $child ) {
         $alerts = [];
@@ -292,6 +409,7 @@ class SafetyCheckService {
                     $alerts[] = [
                         'type' => 'forbidden',
                         'severity' => 'critical',
+                        'severity_color' => 'red',
                         'message' => 'KESİNLİKLE VERMEYİN! Bal 12 aydan önce botulizm riski taşır.',
                         'ingredient' => 'Bal',
                         'alternative' => 'Bal yerine muz veya elma püresi kullanabilirsiniz.',
@@ -313,6 +431,7 @@ class SafetyCheckService {
                             $alerts[] = [
                                 'type' => 'forbidden',
                                 'severity' => 'critical',
+                                'severity_color' => 'red',
                                 'message' => 'TAM FİNDIK/CEVİZ VERMEYİN! Boğulma riski. Sadece toz veya ezme formu verin.',
                                 'ingredient' => $ingredient->post_title,
                                 'alternative' => 'Fındık tozu veya fındık ezmesi kullanın.',
@@ -329,6 +448,7 @@ class SafetyCheckService {
                 $alerts[] = [
                     'type' => 'forbidden',
                     'severity' => 'warning',
+                    'severity_color' => 'yellow',
                     'message' => 'İnek sütü 12 aydan önce ana içecek olarak önerilmez. Yemeklerde az miktarda kullanılabilir.',
                     'ingredient' => 'İnek Sütü',
                     'alternative' => 'Anne sütü veya devam formülü tercih edin.',
@@ -341,6 +461,10 @@ class SafetyCheckService {
     
     /**
      * Check nutrition concerns
+     * 
+     * Nutrition alert severity mapping:
+     * - Salt for <12 months → WARNING (yellow, kidney concern)
+     * - Sugar for young children → INFO (blue, nutritional advice)
      */
     private function check_nutrition_concerns( $recipe_id, $child ) {
         $alerts = [];
@@ -361,6 +485,7 @@ class SafetyCheckService {
                     $alerts[] = [
                         'type' => 'nutrition',
                         'severity' => 'warning',
+                        'severity_color' => 'yellow',
                         'message' => '12 aydan küçük bebeklere tuz eklenmemeli. Böbrekler henüz yeterince gelişmemiştir.',
                         'ingredient' => 'Tuz',
                         'alternative' => 'Tuz eklemeden pişirin, doğal tatlar yeterlidir.',
@@ -372,6 +497,7 @@ class SafetyCheckService {
                     $alerts[] = [
                         'type' => 'nutrition',
                         'severity' => 'info',
+                        'severity_color' => 'blue',
                         'message' => 'Eklenen şeker küçük çocuklar için önerilmez. Meyvelerin doğal şekeri tercih edilmelidir.',
                         'ingredient' => 'Şeker',
                         'alternative' => 'Muz, hurma veya elma kullanarak tatlandırın.',
@@ -464,6 +590,7 @@ class SafetyCheckService {
                 return [
                     'type' => 'allergy',
                     'severity' => 'critical',
+                    'severity_color' => 'red',
                     'message' => sprintf(
                         'Bu malzeme %s içeriyor. Çocuğunuzun bu alerjeni var.',
                         $allergen->name
