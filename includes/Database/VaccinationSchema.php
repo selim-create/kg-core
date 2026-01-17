@@ -12,37 +12,39 @@ class VaccinationSchema {
     public static function create_tables() {
         global $wpdb;
         
-        $charset_collate = $wpdb->get_charset_collate();
-        $prefix = $wpdb->prefix;
-        
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        
-        // 1. kg_vaccine_master - Vaccine Definitions (Admin Managed)
-        $sql_vaccine_master = "CREATE TABLE {$prefix}kg_vaccine_master (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            code VARCHAR(50) NOT NULL UNIQUE,
-            name VARCHAR(255) NOT NULL,
-            name_short VARCHAR(100),
-            description TEXT,
-            timing_rule JSON NOT NULL COMMENT 'Zamanlama kuralı',
-            min_age_days INT UNSIGNED DEFAULT 0,
-            max_age_days INT UNSIGNED DEFAULT NULL,
-            is_mandatory BOOLEAN DEFAULT TRUE,
-            depends_on VARCHAR(50) DEFAULT NULL COMMENT 'Bağımlı olduğu önceki doz kodu',
-            brand_options JSON DEFAULT NULL COMMENT 'Marka seçenekleri (özel aşılar için)',
-            schedule_version VARCHAR(20) DEFAULT 'TR_2026_v1',
-            source_url VARCHAR(500) DEFAULT NULL,
-            sort_order INT UNSIGNED DEFAULT 0,
-            is_active BOOLEAN DEFAULT TRUE,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            INDEX idx_code (code),
-            INDEX idx_mandatory (is_mandatory),
-            INDEX idx_active (is_active),
-            INDEX idx_sort (sort_order)
-        ) $charset_collate;";
-        
-        dbDelta($sql_vaccine_master);
+        try {
+            $charset_collate = $wpdb->get_charset_collate();
+            $prefix = $wpdb->prefix;
+            
+            require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+            
+            // 1. kg_vaccine_master - Vaccine Definitions (Admin Managed)
+            $sql_vaccine_master = "CREATE TABLE {$prefix}kg_vaccine_master (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                code VARCHAR(50) NOT NULL UNIQUE,
+                name VARCHAR(255) NOT NULL,
+                name_short VARCHAR(100),
+                description TEXT,
+                timing_rule JSON NOT NULL COMMENT 'Zamanlama kuralı',
+                min_age_days INT UNSIGNED DEFAULT 0,
+                max_age_days INT UNSIGNED DEFAULT NULL,
+                is_mandatory BOOLEAN DEFAULT TRUE,
+                depends_on VARCHAR(50) DEFAULT NULL COMMENT 'Bağımlı olduğu önceki doz kodu',
+                brand_options JSON DEFAULT NULL COMMENT 'Marka seçenekleri (özel aşılar için)',
+                schedule_version VARCHAR(20) DEFAULT 'TR_2026_v1',
+                source_url VARCHAR(500) DEFAULT NULL,
+                sort_order INT UNSIGNED DEFAULT 0,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_code (code),
+                INDEX idx_mandatory (is_mandatory),
+                INDEX idx_active (is_active),
+                INDEX idx_sort (sort_order)
+            ) $charset_collate;";
+            
+            // Suppress dbDelta output
+            @dbDelta($sql_vaccine_master);
         
         // 2. kg_vaccine_records - User Vaccine Records
         $sql_vaccine_records = "CREATE TABLE {$prefix}kg_vaccine_records (
@@ -68,7 +70,8 @@ class VaccinationSchema {
             INDEX idx_reminders (reminder_sent_3day, reminder_sent_1day)
         ) $charset_collate;";
         
-        dbDelta($sql_vaccine_records);
+        // Suppress dbDelta output
+        @dbDelta($sql_vaccine_records);
         
         // 3. kg_vaccine_side_effects - Detailed Side Effect Records
         $sql_vaccine_side_effects = "CREATE TABLE {$prefix}kg_vaccine_side_effects (
@@ -90,7 +93,8 @@ class VaccinationSchema {
             FOREIGN KEY (vaccine_record_id) REFERENCES {$prefix}kg_vaccine_records(id) ON DELETE CASCADE
         ) $charset_collate;";
         
-        dbDelta($sql_vaccine_side_effects);
+        // Suppress dbDelta output
+        @dbDelta($sql_vaccine_side_effects);
         
         // 4. kg_email_templates - Email Templates
         $sql_email_templates = "CREATE TABLE {$prefix}kg_email_templates (
@@ -113,7 +117,8 @@ class VaccinationSchema {
             INDEX idx_active (is_active)
         ) $charset_collate;";
         
-        dbDelta($sql_email_templates);
+        // Suppress dbDelta output
+        @dbDelta($sql_email_templates);
         
         // 5. kg_email_logs - Email Logs
         $sql_email_logs = "CREATE TABLE {$prefix}kg_email_logs (
@@ -133,7 +138,8 @@ class VaccinationSchema {
             INDEX idx_sent (sent_at)
         ) $charset_collate;";
         
-        dbDelta($sql_email_logs);
+        // Suppress dbDelta output
+        @dbDelta($sql_email_logs);
         
         // 6. kg_notification_queue - Notification Queue
         $sql_notification_queue = "CREATE TABLE {$prefix}kg_notification_queue (
@@ -155,7 +161,8 @@ class VaccinationSchema {
             INDEX idx_processing (status, scheduled_at)
         ) $charset_collate;";
         
-        dbDelta($sql_notification_queue);
+        // Suppress dbDelta output
+        @dbDelta($sql_notification_queue);
         
         // 7. kg_push_subscriptions - Push Notification Subscriptions
         $sql_push_subscriptions = "CREATE TABLE {$prefix}kg_push_subscriptions (
@@ -175,7 +182,8 @@ class VaccinationSchema {
             INDEX idx_last_used (last_used_at)
         ) $charset_collate;";
         
-        dbDelta($sql_push_subscriptions);
+        // Suppress dbDelta output
+        @dbDelta($sql_push_subscriptions);
         
         // 8. kg_notification_preferences - Notification Preferences
         $sql_notification_preferences = "CREATE TABLE {$prefix}kg_notification_preferences (
@@ -195,10 +203,17 @@ class VaccinationSchema {
             INDEX idx_user (user_id)
         ) $charset_collate;";
         
-        dbDelta($sql_notification_preferences);
+        // Suppress dbDelta output
+        @dbDelta($sql_notification_preferences);
         
         // Seed default email templates
         self::seed_email_templates();
+        
+        } catch ( \Exception $e ) {
+            error_log( 'VaccinationSchema::create_tables Error: ' . $e->getMessage() );
+        } catch ( \Error $e ) {
+            error_log( 'VaccinationSchema::create_tables Fatal Error: ' . $e->getMessage() );
+        }
     }
     
     /**
