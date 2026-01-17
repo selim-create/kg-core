@@ -744,45 +744,66 @@ class DiscussionController {
         }
         // If period is 'all', days_interval remains 0 (no date filter)
         
-        // Build the date filter condition
-        $discussion_date_filter = '';
-        $comment_date_filter = '';
-        
+        // Build the query based on whether we need date filtering
         if ( $days_interval > 0 ) {
-            $discussion_date_filter = $wpdb->prepare( "AND p.post_date >= DATE_SUB(NOW(), INTERVAL %d DAY)", $days_interval );
-            $comment_date_filter = $wpdb->prepare( "AND c.comment_date >= DATE_SUB(NOW(), INTERVAL %d DAY)", $days_interval );
+            // Query with date filtering
+            $query = $wpdb->prepare("
+                SELECT 
+                    u.ID as user_id,
+                    u.display_name as name,
+                    (
+                        SELECT COUNT(*) 
+                        FROM {$wpdb->posts} p 
+                        WHERE p.post_author = u.ID 
+                        AND p.post_type = 'discussion' 
+                        AND p.post_status = 'publish'
+                        AND p.post_date >= DATE_SUB(NOW(), INTERVAL %d DAY)
+                    ) as discussion_count,
+                    (
+                        SELECT COUNT(*) 
+                        FROM {$wpdb->comments} c 
+                        WHERE c.user_id = u.ID 
+                        AND c.comment_approved = '1'
+                        AND c.comment_date >= DATE_SUB(NOW(), INTERVAL %d DAY)
+                    ) as comment_count
+                FROM {$wpdb->users} u
+                INNER JOIN {$wpdb->usermeta} um ON u.ID = um.user_id AND um.meta_key = '{$wpdb->prefix}capabilities'
+                WHERE um.meta_value NOT LIKE %s
+                AND um.meta_value NOT LIKE %s
+                AND um.meta_value NOT LIKE %s
+                HAVING (discussion_count + comment_count) > 0
+                ORDER BY (discussion_count + comment_count) DESC
+                LIMIT %d
+            ", $days_interval, $days_interval, '%administrator%', '%kg_expert%', '%editor%', $limit );
+        } else {
+            // Query without date filtering (all time)
+            $query = $wpdb->prepare("
+                SELECT 
+                    u.ID as user_id,
+                    u.display_name as name,
+                    (
+                        SELECT COUNT(*) 
+                        FROM {$wpdb->posts} p 
+                        WHERE p.post_author = u.ID 
+                        AND p.post_type = 'discussion' 
+                        AND p.post_status = 'publish'
+                    ) as discussion_count,
+                    (
+                        SELECT COUNT(*) 
+                        FROM {$wpdb->comments} c 
+                        WHERE c.user_id = u.ID 
+                        AND c.comment_approved = '1'
+                    ) as comment_count
+                FROM {$wpdb->users} u
+                INNER JOIN {$wpdb->usermeta} um ON u.ID = um.user_id AND um.meta_key = '{$wpdb->prefix}capabilities'
+                WHERE um.meta_value NOT LIKE %s
+                AND um.meta_value NOT LIKE %s
+                AND um.meta_value NOT LIKE %s
+                HAVING (discussion_count + comment_count) > 0
+                ORDER BY (discussion_count + comment_count) DESC
+                LIMIT %d
+            ", '%administrator%', '%kg_expert%', '%editor%', $limit );
         }
-        
-        // Tartışma sayısı + yorum sayısı ile sıralama
-        // NOT: Administrator ve expert kullanıcıları hariç tut (sadece normal anneler)
-        $query = $wpdb->prepare("
-            SELECT 
-                u.ID as user_id,
-                u.display_name as name,
-                (
-                    SELECT COUNT(*) 
-                    FROM {$wpdb->posts} p 
-                    WHERE p.post_author = u.ID 
-                    AND p.post_type = 'discussion' 
-                    AND p.post_status = 'publish'
-                    {$discussion_date_filter}
-                ) as discussion_count,
-                (
-                    SELECT COUNT(*) 
-                    FROM {$wpdb->comments} c 
-                    WHERE c.user_id = u.ID 
-                    AND c.comment_approved = '1'
-                    {$comment_date_filter}
-                ) as comment_count
-            FROM {$wpdb->users} u
-            INNER JOIN {$wpdb->usermeta} um ON u.ID = um.user_id AND um.meta_key = '{$wpdb->prefix}capabilities'
-            WHERE um.meta_value NOT LIKE %s
-            AND um.meta_value NOT LIKE %s
-            AND um.meta_value NOT LIKE %s
-            HAVING (discussion_count + comment_count) > 0
-            ORDER BY (discussion_count + comment_count) DESC
-            LIMIT %d
-        ", '%administrator%', '%kg_expert%', '%editor%', $limit );
         
         $results = $wpdb->get_results( $query );
         
