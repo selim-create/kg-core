@@ -200,7 +200,7 @@ class VaccinePrivateController {
 		}
 
 		$wizard = new PrivateVaccineWizard();
-		$result = $wizard->validate_addition( $child_id, $type, $brand_code, $options );
+		$result = $wizard->validate_addition( $user_id, $child_id, $type, $brand_code, $options );
 
 		if ( is_wp_error( $result ) ) {
 			return new \WP_REST_Response( [
