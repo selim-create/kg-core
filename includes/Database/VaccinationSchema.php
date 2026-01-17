@@ -770,16 +770,13 @@ class VaccinationSchema {
             ]
         ];
         
-        // Use UPSERT logic - only insert templates that don't exist yet
+        // Use UPSERT logic - fetch all existing template_keys at once to minimize DB queries
+        $existing_keys = $wpdb->get_col("SELECT template_key FROM {$table}");
+        $existing_keys_map = array_flip($existing_keys);
+        
+        // Only insert templates that don't exist yet
         foreach ($templates as $template) {
-            // Check if template already exists
-            $exists = $wpdb->get_var($wpdb->prepare(
-                "SELECT id FROM {$table} WHERE template_key = %s",
-                $template['template_key']
-            ));
-            
-            // Only insert if template doesn't exist
-            if (!$exists) {
+            if (!isset($existing_keys_map[$template['template_key']])) {
                 $wpdb->insert($table, $template);
             }
         }

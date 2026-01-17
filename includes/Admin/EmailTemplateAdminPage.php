@@ -394,7 +394,7 @@ class EmailTemplateAdminPage {
         // Wrap preview with EmailTemplateRenderer for full HTML experience
         $full_preview = EmailTemplateRenderer::wrap_content($preview_html, $template['category']);
         
-        // Replace unsubscribe_url placeholder
+        // Replace unsubscribe_url placeholder in wrapped content (needed in footer)
         $full_preview = str_replace('{{unsubscribe_url}}', $sample_data['{{unsubscribe_url}}'], $full_preview);
 
         echo '<div style="max-width: 800px; margin: 0 auto; padding: 20px;">';
@@ -544,7 +544,7 @@ class EmailTemplateAdminPage {
         // Wrap body with EmailTemplateRenderer for modern HTML design
         $wrapped_body = EmailTemplateRenderer::wrap_content($body, $template['category']);
         
-        // Replace unsubscribe_url placeholder in wrapped content
+        // Replace unsubscribe_url placeholder in wrapped content (needed in footer)
         $wrapped_body = str_replace('{{unsubscribe_url}}', $sample_data['{{unsubscribe_url}}'], $wrapped_body);
 
         $headers = ['Content-Type: text/html; charset=UTF-8'];

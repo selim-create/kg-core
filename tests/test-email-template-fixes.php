@@ -23,6 +23,19 @@ require_once __DIR__ . '/../includes/Admin/SocialMediaSettings.php';
 use KG_Core\Notifications\EmailTemplateRenderer;
 use KG_Core\Admin\SocialMediaSettings;
 
+// Mock WordPress functions if not already defined
+if (!function_exists('get_option')) {
+    function get_option($key, $default = '') {
+        $mock_options = [
+            'kg_social_instagram' => 'https://instagram.com/test',
+            'kg_social_facebook' => 'https://facebook.com/test',
+            'kg_social_twitter' => 'https://twitter.com/test',
+            'kg_social_youtube' => 'https://youtube.com/@test',
+        ];
+        return $mock_options[$key] ?? $default;
+    }
+}
+
 $test_results = [];
 
 // TEST 1: Verify EmailTemplateRenderer::get_social_urls() method exists
@@ -30,19 +43,6 @@ echo "TEST 1: Checking EmailTemplateRenderer::get_social_urls() method\n";
 echo "-------------------------------------------------------------------\n";
 if (method_exists('KG_Core\Notifications\EmailTemplateRenderer', 'get_social_urls')) {
     echo "✅ PASS: get_social_urls() method exists\n";
-    
-    // Mock get_option function
-    if (!function_exists('get_option')) {
-        function get_option($key, $default = '') {
-            $mock_options = [
-                'kg_social_instagram' => 'https://instagram.com/test',
-                'kg_social_facebook' => 'https://facebook.com/test',
-                'kg_social_twitter' => 'https://twitter.com/test',
-                'kg_social_youtube' => 'https://youtube.com/@test',
-            ];
-            return $mock_options[$key] ?? $default;
-        }
-    }
     
     $social_urls = EmailTemplateRenderer::get_social_urls();
     if (is_array($social_urls) && 
@@ -136,10 +136,11 @@ if (strpos($schema_content, 'if ($count > 0)') === false) {
     $test_results['upsert_logic'] = 'FAIL';
 }
 
-// Check if new UPSERT logic exists
-if (strpos($schema_content, 'SELECT id FROM') !== false && 
-    strpos($schema_content, 'WHERE template_key') !== false) {
-    echo "✅ PASS: New UPSERT logic detected (template_key check)\n";
+// Check if new UPSERT logic exists (optimized version with array_flip)
+if (strpos($schema_content, 'get_col') !== false && 
+    strpos($schema_content, 'array_flip') !== false &&
+    strpos($schema_content, '$existing_keys_map') !== false) {
+    echo "✅ PASS: New optimized UPSERT logic detected (single query with array_flip)\n";
 } else {
     echo "❌ FAIL: UPSERT logic not found\n";
     $test_results['upsert_logic'] = 'FAIL';
