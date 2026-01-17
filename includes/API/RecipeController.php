@@ -519,25 +519,29 @@ class RecipeController {
             'post_status' => 'publish',
             'posts_per_page' => $limit,
             'post__not_in' => [ $recipe_id ],
-            'tax_query' => [
-                'relation' => 'OR',
-            ],
         ];
         
-        if ( ! empty( $age_groups ) ) {
-            $args['tax_query'][] = [
-                'taxonomy' => 'age-group',
-                'field' => 'term_id',
-                'terms' => $age_groups,
+        // Only add tax_query if we have taxonomies to match
+        if ( ! empty( $age_groups ) || ! empty( $meal_types ) ) {
+            $args['tax_query'] = [
+                'relation' => 'OR',
             ];
-        }
-        
-        if ( ! empty( $meal_types ) ) {
-            $args['tax_query'][] = [
-                'taxonomy' => 'meal-type',
-                'field' => 'term_id',
-                'terms' => $meal_types,
-            ];
+            
+            if ( ! empty( $age_groups ) ) {
+                $args['tax_query'][] = [
+                    'taxonomy' => 'age-group',
+                    'field' => 'term_id',
+                    'terms' => $age_groups,
+                ];
+            }
+            
+            if ( ! empty( $meal_types ) ) {
+                $args['tax_query'][] = [
+                    'taxonomy' => 'meal-type',
+                    'field' => 'term_id',
+                    'terms' => $meal_types,
+                ];
+            }
         }
         
         $query = new \WP_Query( $args );
