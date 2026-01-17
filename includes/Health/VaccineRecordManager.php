@@ -151,13 +151,23 @@ class VaccineRecordManager {
         $today_timestamp = strtotime($today);
         
         foreach ($results as &$record) {
-            // Calculate dynamic status based on dates if not already done/skipped
-            if (!in_array($record['status'], ['done', 'skipped'])) {
+            // Calculate dynamic status based on dates
+            // Skip recalculation for manually set statuses (done/skipped)
+            // But ensure consistency: if actual_date exists, status must be 'done'
+            if (!empty($record['actual_date'])) {
+                $record['status'] = 'done';
+            } elseif (in_array($record['status'], ['done', 'skipped'])) {
+                // Keep manually set status, but only if no actual_date
+                // (done without actual_date is inconsistent, but we preserve skipped)
+                if ($record['status'] === 'done') {
+                    // Fix inconsistent state: done but no actual_date
+                    $record['status'] = 'scheduled';
+                }
+            } else {
+                // Calculate dynamic status for non-final statuses
                 $scheduled_date = $record['scheduled_date'];
                 
-                if (!empty($record['actual_date'])) {
-                    $record['status'] = 'done';
-                } elseif ($scheduled_date < $today) {
+                if ($scheduled_date < $today) {
                     $record['status'] = 'overdue';
                 } else {
                     // Check if within upcoming threshold
