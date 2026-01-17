@@ -216,7 +216,7 @@ class FeaturedController {
                     'category' => $category_name,
                     'category_slug' => $category_slug,
                     'author' => $author_name,
-                    'author_avatar' => $this->get_user_avatar_url( $post->post_author ),
+                    'author_avatar' => \KG_Core\Utils\Helper::get_user_avatar_url( $post->post_author ),
                     'read_time' => $read_time . ' dk'
                 ]
             ];
@@ -279,7 +279,7 @@ class FeaturedController {
                 'meta' => [
                     'author_name' => $author_name,
                     'author_initials' => $initials,
-                    'author_avatar' => $this->get_user_avatar_url( $post->post_author ),
+                    'author_avatar' => \KG_Core\Utils\Helper::get_user_avatar_url( $post->post_author ),
                     'answer_count' => (int) $answer_count
                 ]
             ];
@@ -450,32 +450,5 @@ class FeaturedController {
             }
         }
         return mb_substr( $initials, 0, 2, 'UTF-8' );
-    }
-    
-    /**
-     * Get user avatar URL - custom > google > gravatar
-     */
-    private function get_user_avatar_url( $user_id ) {
-        if ( ! $user_id ) {
-            return get_avatar_url( 0, [ 'size' => 96 ] );
-        }
-        
-        // 1. Custom avatar
-        $avatar_id = get_user_meta( $user_id, '_kg_avatar_id', true );
-        if ( $avatar_id ) {
-            $avatar_url = wp_get_attachment_url( $avatar_id );
-            if ( $avatar_url ) {
-                return $avatar_url;
-            }
-        }
-        
-        // 2. Google avatar
-        $google_avatar = get_user_meta( $user_id, 'google_avatar', true );
-        if ( ! empty( $google_avatar ) ) {
-            return $google_avatar;
-        }
-        
-        // 3. Gravatar
-        return get_avatar_url( $user_id, [ 'size' => 96 ] );
     }
 }

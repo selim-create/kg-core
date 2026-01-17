@@ -229,4 +229,35 @@ class Helper {
         // Replace English months with Turkish
         return str_replace(array_keys($turkish_months), array_values($turkish_months), $english_date);
     }
+    
+    /**
+     * Get user avatar URL with priority: custom > google > gravatar
+     * 
+     * @param int $user_id User ID
+     * @param int $size Avatar size in pixels (default: 96)
+     * @return string Avatar URL
+     */
+    public static function get_user_avatar_url( $user_id, $size = 96 ) {
+        if ( ! $user_id ) {
+            return get_avatar_url( 0, [ 'size' => $size ] );
+        }
+        
+        // 1. Custom avatar - check _kg_avatar_id user meta
+        $avatar_id = get_user_meta( $user_id, '_kg_avatar_id', true );
+        if ( $avatar_id ) {
+            $avatar_url = wp_get_attachment_url( $avatar_id );
+            if ( $avatar_url ) {
+                return $avatar_url;
+            }
+        }
+        
+        // 2. Google avatar - check google_avatar user meta
+        $google_avatar = get_user_meta( $user_id, 'google_avatar', true );
+        if ( ! empty( $google_avatar ) ) {
+            return $google_avatar;
+        }
+        
+        // 3. Gravatar - fallback to WordPress default
+        return get_avatar_url( $user_id, [ 'size' => $size ] );
+    }
 }

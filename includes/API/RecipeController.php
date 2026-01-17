@@ -142,7 +142,7 @@ class RecipeController {
                     'id' => $author_id,
                     'name' => $author->display_name,
                     'slug' => $author->user_nicename,
-                    'avatar' => $this->get_user_avatar_url( $author_id ),
+                    'avatar' => \KG_Core\Utils\Helper::get_user_avatar_url( $author_id ),
                 ];
             }
         }
@@ -590,32 +590,5 @@ class RecipeController {
             'rating_count' => $total_ratings,
             'user_rating' => floatval( $rating )
         ], 200 );
-    }
-    
-    /**
-     * Get user avatar URL - custom > google > gravatar
-     */
-    private function get_user_avatar_url( $user_id ) {
-        if ( ! $user_id ) {
-            return get_avatar_url( 0, [ 'size' => 96 ] );
-        }
-        
-        // 1. Custom avatar
-        $avatar_id = get_user_meta( $user_id, '_kg_avatar_id', true );
-        if ( $avatar_id ) {
-            $avatar_url = wp_get_attachment_url( $avatar_id );
-            if ( $avatar_url ) {
-                return $avatar_url;
-            }
-        }
-        
-        // 2. Google avatar
-        $google_avatar = get_user_meta( $user_id, 'google_avatar', true );
-        if ( ! empty( $google_avatar ) ) {
-            return $google_avatar;
-        }
-        
-        // 3. Gravatar
-        return get_avatar_url( $user_id, [ 'size' => 96 ] );
     }
 }

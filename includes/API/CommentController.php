@@ -7,6 +7,11 @@ use KG_Core\Auth\JWTHandler;
  * CommentController - Generic comment endpoints for recipes and posts
  */
 class CommentController {
+    
+    /**
+     * Allowed post types for comments
+     */
+    private const ALLOWED_COMMENT_TYPES = [ 'recipe', 'post', 'discussion' ];
 
     public function __construct() {
         add_action( 'rest_api_init', [ $this, 'register_routes' ] );
@@ -109,8 +114,7 @@ class CommentController {
         }
         
         // Allow comments for recipe, post, discussion
-        $allowed_types = [ 'recipe', 'post', 'discussion' ];
-        if ( ! in_array( $post->post_type, $allowed_types ) ) {
+        if ( ! in_array( $post->post_type, self::ALLOWED_COMMENT_TYPES ) ) {
             return new \WP_Error( 'invalid_type', 'Bu içerik türü için yorum desteklenmiyor', [ 'status' => 400 ] );
         }
         
@@ -132,8 +136,7 @@ class CommentController {
         }
         
         // Allow comments for recipe, post, discussion
-        $allowed_types = [ 'recipe', 'post', 'discussion' ];
-        if ( ! in_array( $post->post_type, $allowed_types ) ) {
+        if ( ! in_array( $post->post_type, self::ALLOWED_COMMENT_TYPES ) ) {
             return new \WP_Error( 'invalid_type', 'Bu içerik türü için yorum desteklenmiyor', [ 'status' => 400 ] );
         }
         
@@ -273,7 +276,7 @@ class CommentController {
         $user_id = $comment->user_id;
         
         // Get user avatar using priority: custom > google > gravatar
-        $avatar_url = $this->get_user_avatar_url( $user_id );
+        $avatar_url = \KG_Core\Utils\Helper::get_user_avatar_url( $user_id );
         
         return [
             'id' => (int) $comment->comment_ID,
@@ -286,32 +289,5 @@ class CommentController {
                 'avatar' => $avatar_url,
             ],
         ];
-    }
-    
-    /**
-     * Get user avatar URL - custom > google > gravatar
-     */
-    private function get_user_avatar_url( $user_id ) {
-        if ( ! $user_id ) {
-            return get_avatar_url( 0, [ 'size' => 96 ] );
-        }
-        
-        // 1. Custom avatar
-        $avatar_id = get_user_meta( $user_id, '_kg_avatar_id', true );
-        if ( $avatar_id ) {
-            $avatar_url = wp_get_attachment_url( $avatar_id );
-            if ( $avatar_url ) {
-                return $avatar_url;
-            }
-        }
-        
-        // 2. Google avatar
-        $google_avatar = get_user_meta( $user_id, 'google_avatar', true );
-        if ( ! empty( $google_avatar ) ) {
-            return $google_avatar;
-        }
-        
-        // 3. Gravatar
-        return get_avatar_url( $user_id, [ 'size' => 96 ] );
     }
 }
