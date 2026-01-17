@@ -162,8 +162,9 @@ class PrivateVaccineWizard {
                 $errors[] = "Çocuk {$brand['min_age_months']} aylıktan küçük";
             }
             
+            // Age window for first dose - show as warning instead of error
             if (isset($brand['max_age_weeks_first_dose']) && $age_weeks > $brand['max_age_weeks_first_dose']) {
-                $errors[] = "İlk doz için yaş penceresi kaçırılmış ({$brand['max_age_weeks_first_dose']} hafta)";
+                $warnings[] = "İlk doz için önerilen yaş penceresi geçilmiş ({$brand['max_age_weeks_first_dose']} hafta). Doktorunuza danışmanız önerilir.";
             }
         }
         

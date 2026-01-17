@@ -10,6 +10,16 @@ class VaccineRecordManager {
     private $vaccine_manager;
     private $schedule_calculator;
     
+    /**
+     * Number of days before scheduled date to consider a vaccine as 'upcoming'
+     */
+    const UPCOMING_THRESHOLD_DAYS = 7;
+    
+    /**
+     * Number of seconds in a day (for timestamp calculations)
+     */
+    const SECONDS_PER_DAY = 86400;
+    
     public function __construct() {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'kg_vaccine_records';
@@ -73,6 +83,8 @@ class VaccineRecordManager {
         $created = 0;
         
         foreach ($schedule as $vaccine) {
+            // Set initial status to 'upcoming' for all new records
+            // Dynamic status will be calculated when retrieved via get_child_vaccines()
             $result = $wpdb->insert(
                 $this->table_name,
                 [
@@ -80,7 +92,7 @@ class VaccineRecordManager {
                     'child_id' => $child_id,
                     'vaccine_code' => $vaccine['vaccine_code'],
                     'scheduled_date' => $vaccine['scheduled_date'],
-                    'status' => 'scheduled',
+                    'status' => 'upcoming',
                     'is_mandatory' => $vaccine['is_mandatory'] ? 1 : 0,
                     'created_at' => current_time('mysql'),
                     'updated_at' => current_time('mysql')
@@ -134,8 +146,42 @@ class VaccineRecordManager {
             return new \WP_Error('database_error', $wpdb->last_error);
         }
         
-        // Transform to nested structure
+        // Transform to nested structure and calculate dynamic status
+        $today = current_time('Y-m-d');
+        $today_timestamp = strtotime($today);
+        
         foreach ($results as &$record) {
+            // Calculate dynamic status based on dates
+            // Skip recalculation for manually set statuses (done/skipped)
+            // But ensure consistency: if actual_date exists, status must be 'done'
+            if (!empty($record['actual_date'])) {
+                $record['status'] = 'done';
+            } elseif (in_array($record['status'], ['done', 'skipped'])) {
+                // Keep manually set status, but only if no actual_date
+                // (done without actual_date is inconsistent, but we preserve skipped)
+                if ($record['status'] === 'done') {
+                    // Fix inconsistent state: done but no actual_date
+                    $record['status'] = 'scheduled';
+                }
+            } else {
+                // Calculate dynamic status for non-final statuses
+                $scheduled_date = $record['scheduled_date'];
+                
+                if ($scheduled_date < $today) {
+                    $record['status'] = 'overdue';
+                } else {
+                    // Check if within upcoming threshold
+                    $scheduled_timestamp = strtotime($scheduled_date);
+                    $days_until = ($scheduled_timestamp - $today_timestamp) / self::SECONDS_PER_DAY;
+                    
+                    if ($days_until <= self::UPCOMING_THRESHOLD_DAYS && $days_until >= 0) {
+                        $record['status'] = 'upcoming';
+                    } else {
+                        $record['status'] = 'scheduled';
+                    }
+                }
+            }
+            
             // Parse timing_rule JSON
             $timing_rule = null;
             if (isset($record['timing_rule']) && !empty($record['timing_rule'])) {
@@ -335,7 +381,7 @@ class VaccineRecordManager {
                 'child_id' => $child_id,
                 'vaccine_code' => $vaccine_code,
                 'scheduled_date' => $scheduled_date,
-                'status' => 'scheduled',
+                'status' => 'upcoming',
                 'is_mandatory' => $vaccine['is_mandatory'] ? 1 : 0,
                 'created_at' => current_time('mysql'),
                 'updated_at' => current_time('mysql')
@@ -428,7 +474,7 @@ class VaccineRecordManager {
             $record['is_mandatory'] = (bool)$record['is_mandatory'];
             $scheduled_timestamp = strtotime($record['scheduled_date']);
             $today_timestamp = strtotime($today);
-            $record['days_overdue'] = floor(($today_timestamp - $scheduled_timestamp) / 86400);
+            $record['days_overdue'] = floor(($today_timestamp - $scheduled_timestamp) / self::SECONDS_PER_DAY);
         }
         
         return $results;
