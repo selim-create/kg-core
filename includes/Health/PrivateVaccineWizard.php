@@ -381,10 +381,11 @@ class PrivateVaccineWizard {
                 'vaccine_code' => $vaccine_code,
                 'status' => 'upcoming',
                 'scheduled_date' => $scheduled_date,
+                'is_mandatory' => 0, // Private vaccines are always optional
                 'created_at' => current_time('mysql'),
                 'updated_at' => current_time('mysql')
             ],
-            ['%s', '%d', '%s', '%s', '%s', '%s', '%s']
+            ['%s', '%d', '%s', '%s', '%s', '%d', '%s', '%s']
         );
         
         if (!$result) {
@@ -392,6 +393,180 @@ class PrivateVaccineWizard {
         }
         
         return $wpdb->insert_id;
+    }
+    
+    /**
+     * Get timing rule for a private vaccine code
+     * 
+     * @param string $vaccine_code Vaccine code (e.g., "rotavirus-rotarix-1")
+     * @return array|null Timing rule array or null if not found
+     */
+    public function get_timing_rule_for_vaccine($vaccine_code) {
+        // Parse vaccine_code to extract type, brand, and dose number
+        // Format: type-brand-dose (e.g., "rotavirus-rotarix-1")
+        $parts = explode('-', $vaccine_code);
+        
+        if (count($parts) < 2) {
+            return null;
+        }
+        
+        // Extract dose number if present (last part if it's numeric)
+        $dose_number = null;
+        if (is_numeric($parts[count($parts) - 1])) {
+            $dose_number = (int)array_pop($parts);
+        }
+        
+        // Brand code is everything after the type
+        $type = $parts[0];
+        $brand_code = implode('-', array_slice($parts, 1));
+        
+        // Get configuration
+        $config = $this->get_type_config($type);
+        if (is_wp_error($config) || !isset($config['brands'])) {
+            return null;
+        }
+        
+        // Find brand configuration
+        $brand = null;
+        foreach ($config['brands'] as $b) {
+            if ($b['code'] === $brand_code) {
+                $brand = $b;
+                break;
+            }
+        }
+        
+        if (!$brand) {
+            return null;
+        }
+        
+        // Generate timing_rule based on brand configuration
+        $timing_rule = null;
+        
+        if (isset($brand['schedules'])) {
+            // Multi-schedule vaccines (like Bexsero) - use first schedule as default
+            $first_schedule_key = array_key_first($brand['schedules']);
+            $schedule = $brand['schedules'][$first_schedule_key];
+            
+            if (isset($schedule['dose_intervals_months']) && $dose_number && $dose_number <= count($schedule['dose_intervals_months'])) {
+                $months = $schedule['dose_intervals_months'][$dose_number - 1];
+                $timing_rule = [
+                    'type' => 'month',
+                    'value' => $months,
+                    'tolerance_days_before' => 0,
+                    'tolerance_days_after' => 14
+                ];
+            }
+        } elseif (isset($brand['dose_intervals_weeks']) && $dose_number) {
+            // Week-based intervals (e.g., Rotavirus)
+            // The intervals are cumulative offsets from birth date
+            // Example: [0, 4] means dose 1 at 0 weeks, dose 2 at 0+4=4 weeks
+            if ($dose_number <= count($brand['dose_intervals_weeks'])) {
+                // array_slice($intervals, 0, $dose_number) gives the first $dose_number elements
+                // For dose 1: slice([0, 4], 0, 1) = [0], sum = 0 weeks from birth
+                // For dose 2: slice([0, 4], 0, 2) = [0, 4], sum = 4 weeks from birth
+                $weeks = array_sum(array_slice($brand['dose_intervals_weeks'], 0, $dose_number));
+                $timing_rule = [
+                    'type' => 'week',
+                    'value' => $weeks,
+                    'tolerance_days_before' => 0,
+                    'tolerance_days_after' => 14
+                ];
+            }
+        } elseif (isset($brand['dose_intervals_months']) && $dose_number) {
+            // Month-based intervals
+            // The intervals are cumulative offsets from birth date
+            // Example: [0, 2, 6] means dose 1 at 0 months, dose 2 at 0+2=2 months, dose 3 at 0+2+6=8 months
+            if ($dose_number <= count($brand['dose_intervals_months'])) {
+                // array_slice($intervals, 0, $dose_number) gives the first $dose_number elements
+                $months = array_sum(array_slice($brand['dose_intervals_months'], 0, $dose_number));
+                $timing_rule = [
+                    'type' => 'month',
+                    'value' => $months,
+                    'tolerance_days_before' => 0,
+                    'tolerance_days_after' => 14
+                ];
+            }
+        } elseif (isset($brand['min_age_months'])) {
+            // Single dose vaccine with minimum age
+            $timing_rule = [
+                'type' => 'month',
+                'value' => $brand['min_age_months'],
+                'tolerance_days_before' => 0,
+                'tolerance_days_after' => 30
+            ];
+        } elseif (isset($brand['min_age_weeks'])) {
+            // Single dose vaccine with minimum age in weeks
+            $timing_rule = [
+                'type' => 'week',
+                'value' => $brand['min_age_weeks'],
+                'tolerance_days_before' => 0,
+                'tolerance_days_after' => 14
+            ];
+        }
+        
+        return $timing_rule;
+    }
+    
+    /**
+     * Get name and description for a private vaccine code
+     * 
+     * @param string $vaccine_code Vaccine code (e.g., "rotavirus-rotarix-1")
+     * @return array|null Array with 'name', 'name_short', 'description' or null if not found
+     */
+    public function get_vaccine_metadata($vaccine_code) {
+        // Parse vaccine_code to extract type, brand, and dose number
+        $parts = explode('-', $vaccine_code);
+        
+        if (count($parts) < 2) {
+            return null;
+        }
+        
+        // Extract dose number if present
+        $dose_number = null;
+        if (is_numeric($parts[count($parts) - 1])) {
+            $dose_number = (int)array_pop($parts);
+        }
+        
+        // Brand code is everything after the type
+        $type = $parts[0];
+        $brand_code = implode('-', array_slice($parts, 1));
+        
+        // Get configuration
+        $config = $this->get_type_config($type);
+        if (is_wp_error($config) || !isset($config['brands'])) {
+            return null;
+        }
+        
+        // Find brand configuration
+        $brand = null;
+        foreach ($config['brands'] as $b) {
+            if ($b['code'] === $brand_code) {
+                $brand = $b;
+                break;
+            }
+        }
+        
+        if (!$brand) {
+            return null;
+        }
+        
+        // Build name with dose number
+        $name = $config['name'] . ' - ' . $brand['name'];
+        if ($dose_number) {
+            $name .= ' (Doz ' . $dose_number . ')';
+        }
+        
+        // Build short name
+        $name_short = $config['name'];
+        if ($dose_number) {
+            $name_short .= '-' . $dose_number;
+        }
+        
+        return [
+            'name' => $name,
+            'name_short' => $name_short,
+            'description' => $config['description']
+        ];
     }
     
     /**

@@ -188,6 +188,35 @@ class VaccineRecordManager {
                 $timing_rule = json_decode($record['timing_rule'], true);
             }
             
+            // Handle private vaccines that don't have master data
+            $is_private_vaccine = empty($record['name']) && isset($record['is_mandatory']) && !$record['is_mandatory'];
+            
+            if ($is_private_vaccine) {
+                // Try to get metadata from PrivateVaccineWizard
+                $private_metadata = $this->get_private_vaccine_metadata($record['vaccine_code']);
+                
+                if ($private_metadata) {
+                    $record['name'] = $private_metadata['name'];
+                    $record['name_short'] = $private_metadata['name_short'];
+                    $record['description'] = $private_metadata['description'];
+                    
+                    // Get timing rule if not already set
+                    if (empty($timing_rule)) {
+                        $timing_rule = $private_metadata['timing_rule'];
+                    }
+                }
+            }
+            
+            // Fallback: if timing_rule is still null, provide a default to prevent frontend crashes
+            if (empty($timing_rule)) {
+                $timing_rule = [
+                    'type' => 'custom',
+                    'value' => null,
+                    'tolerance_days_before' => 7,
+                    'tolerance_days_after' => 7
+                ];
+            }
+            
             // Create nested vaccine object
             $vaccine = [
                 'code' => $record['vaccine_code'],
@@ -219,6 +248,42 @@ class VaccineRecordManager {
         }
         
         return $results;
+    }
+    
+    /**
+     * Get metadata for private vaccines from PrivateVaccineWizard
+     * 
+     * @param string $vaccine_code Vaccine code
+     * @return array|null Array with name, name_short, description, timing_rule or null
+     */
+    private function get_private_vaccine_metadata($vaccine_code) {
+        // Check if this looks like a private vaccine code
+        if (empty($vaccine_code)) {
+            return null;
+        }
+        
+        try {
+            // PrivateVaccineWizard is in the same namespace (KG_Core\Health)
+            if (!class_exists('KG_Core\Health\PrivateVaccineWizard')) {
+                error_log('PrivateVaccineWizard class not found');
+                return null;
+            }
+            
+            $wizard = new PrivateVaccineWizard();
+            
+            // Get metadata and timing rule
+            $metadata = $wizard->get_vaccine_metadata($vaccine_code);
+            $timing_rule = $wizard->get_timing_rule_for_vaccine($vaccine_code);
+            
+            if ($metadata) {
+                $metadata['timing_rule'] = $timing_rule;
+                return $metadata;
+            }
+        } catch (\Exception $e) {
+            error_log('Error getting private vaccine metadata: ' . $e->getMessage());
+        }
+        
+        return null;
     }
     
     /**
