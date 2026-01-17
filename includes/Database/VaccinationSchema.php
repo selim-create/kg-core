@@ -143,14 +143,37 @@ class VaccinationSchema {
             p256dh_key VARCHAR(500) NOT NULL,
             auth_key VARCHAR(500) NOT NULL,
             user_agent VARCHAR(500),
+            device_type ENUM('desktop', 'mobile', 'tablet') DEFAULT 'desktop',
             is_active BOOLEAN DEFAULT TRUE,
+            last_used_at DATETIME,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_user (user_id),
-            INDEX idx_active (is_active)
+            INDEX idx_active (is_active),
+            INDEX idx_last_used (last_used_at)
         ) $charset_collate;";
         
         dbDelta($sql_push_subscriptions);
+        
+        // 7. kg_notification_preferences - Notification Preferences
+        $sql_notification_preferences = "CREATE TABLE {$prefix}kg_notification_preferences (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            user_id BIGINT UNSIGNED NOT NULL UNIQUE,
+            email_enabled BOOLEAN DEFAULT TRUE,
+            push_enabled BOOLEAN DEFAULT TRUE,
+            vaccine_reminder_3day BOOLEAN DEFAULT TRUE,
+            vaccine_reminder_1day BOOLEAN DEFAULT TRUE,
+            vaccine_overdue BOOLEAN DEFAULT TRUE,
+            growth_tracking BOOLEAN DEFAULT TRUE,
+            weekly_digest BOOLEAN DEFAULT FALSE,
+            quiet_hours_start TIME DEFAULT NULL,
+            quiet_hours_end TIME DEFAULT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_user (user_id)
+        ) $charset_collate;";
+        
+        dbDelta($sql_notification_preferences);
         
         // Seed default email templates
         self::seed_email_templates();
@@ -232,6 +255,7 @@ class VaccinationSchema {
         global $wpdb;
         $prefix = $wpdb->prefix;
         
+        $wpdb->query("DROP TABLE IF EXISTS {$prefix}kg_notification_preferences");
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}kg_push_subscriptions");
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}kg_notification_queue");
         $wpdb->query("DROP TABLE IF EXISTS {$prefix}kg_email_logs");
