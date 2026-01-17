@@ -60,7 +60,7 @@ class MediaController {
         require_once(ABSPATH . 'wp-admin/includes/file.php');
         require_once(ABSPATH . 'wp-admin/includes/media.php');
         
-        $attachment_id = media_handle_upload('file', 0);
+        $attachment_id = media_handle_upload('file', null);
         
         if (is_wp_error($attachment_id)) {
             return new \WP_Error('upload_failed', $attachment_id->get_error_message(), ['status' => 500]);

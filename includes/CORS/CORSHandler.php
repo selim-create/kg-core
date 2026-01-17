@@ -101,7 +101,7 @@ class CORSHandler {
             return $result;
         }
         
-        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+        $request_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
         
         // Media ve comments endpoint'leri için JWT auth aktifleştir
         $jwt_endpoints = ['/wp/v2/media', '/wp/v2/comments'];
