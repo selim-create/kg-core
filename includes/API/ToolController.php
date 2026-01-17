@@ -92,6 +92,33 @@ class ToolController {
     }
 
     /**
+     * Get field value with ACF fallback
+     * First tries ACF get_field, then falls back to get_post_meta
+     * 
+     * @param string $field_name Field name
+     * @param int $post_id Post ID
+     * @return mixed Field value
+     */
+    private function get_tool_field( $field_name, $post_id ) {
+        // Try ACF first if available
+        if ( function_exists( 'get_field' ) ) {
+            $value = get_field( $field_name, $post_id );
+            if ( $value !== null ) {
+                return $value;
+            }
+        }
+        
+        // Fallback to post_meta with _kg_ prefix
+        $value = get_post_meta( $post_id, '_kg_' . $field_name, true );
+        if ( $value !== '' && $value !== false ) {
+            return $value;
+        }
+        
+        // Try without prefix
+        return get_post_meta( $post_id, $field_name, true );
+    }
+
+    /**
      * Get all tools
      */
     public function get_tools( $request ) {
@@ -105,7 +132,7 @@ class ToolController {
         $result = [];
 
         foreach ( $tools as $tool ) {
-            $is_active = get_field( 'is_active', $tool->ID );
+            $is_active = $this->get_tool_field( 'is_active', $tool->ID );
             
             // Skip inactive tools
             if ( ! $is_active ) {
@@ -117,9 +144,9 @@ class ToolController {
                 'title' => $tool->post_title,
                 'slug' => $tool->post_name,
                 'description' => $tool->post_content,
-                'tool_type' => get_field( 'tool_type', $tool->ID ),
-                'icon' => get_field( 'tool_icon', $tool->ID ),
-                'requires_auth' => (bool) get_field( 'requires_auth', $tool->ID ),
+                'tool_type' => $this->get_tool_field( 'tool_type', $tool->ID ),
+                'icon' => $this->get_tool_field( 'tool_icon', $tool->ID ),
+                'requires_auth' => (bool) $this->get_tool_field( 'requires_auth', $tool->ID ),
                 'thumbnail' => get_the_post_thumbnail_url( $tool->ID, 'medium' ),
             ];
         }
@@ -147,7 +174,7 @@ class ToolController {
         }
 
         $tool = $tools[0];
-        $is_active = get_field( 'is_active', $tool->ID );
+        $is_active = $this->get_tool_field( 'is_active', $tool->ID );
 
         if ( ! $is_active ) {
             return new \WP_Error( 'tool_inactive', 'This tool is currently inactive', [ 'status' => 403 ] );
@@ -158,9 +185,9 @@ class ToolController {
             'title' => $tool->post_title,
             'slug' => $tool->post_name,
             'description' => $tool->post_content,
-            'tool_type' => get_field( 'tool_type', $tool->ID ),
-            'icon' => get_field( 'tool_icon', $tool->ID ),
-            'requires_auth' => (bool) get_field( 'requires_auth', $tool->ID ),
+            'tool_type' => $this->get_tool_field( 'tool_type', $tool->ID ),
+            'icon' => $this->get_tool_field( 'tool_icon', $tool->ID ),
+            'requires_auth' => (bool) $this->get_tool_field( 'requires_auth', $tool->ID ),
             'thumbnail' => get_the_post_thumbnail_url( $tool->ID, 'medium' ),
         ];
 
@@ -187,10 +214,10 @@ class ToolController {
         }
 
         $tool = $tools[0];
-        $questions = get_field( 'blw_questions', $tool->ID );
-        $result_buckets = get_field( 'result_buckets', $tool->ID );
-        $disclaimer = get_field( 'disclaimer_text', $tool->ID );
-        $emergency = get_field( 'emergency_text', $tool->ID );
+        $questions = $this->get_tool_field( 'blw_questions', $tool->ID );
+        $result_buckets = $this->get_tool_field( 'result_buckets', $tool->ID );
+        $disclaimer = $this->get_tool_field( 'disclaimer_text', $tool->ID );
+        $emergency = $this->get_tool_field( 'emergency_text', $tool->ID );
 
         // If fields are not set, use default
         if ( empty( $questions ) || empty( $result_buckets ) ) {
