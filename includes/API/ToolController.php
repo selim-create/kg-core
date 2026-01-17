@@ -140,6 +140,9 @@ class ToolController {
                 'icon' => $this->get_tool_field( 'tool_icon', $tool->ID ),
                 'requires_auth' => (bool) $this->get_tool_field( 'requires_auth', $tool->ID ),
                 'thumbnail' => get_the_post_thumbnail_url( $tool->ID, 'medium' ),
+                'is_sponsored' => (bool) get_post_meta( $tool->ID, '_kg_tool_is_sponsored', true ),
+                'sponsor_name' => get_post_meta( $tool->ID, '_kg_tool_sponsor_name', true ) ?: null,
+                'sponsor_url' => get_post_meta( $tool->ID, '_kg_tool_sponsor_url', true ) ?: null,
             ];
         }
 
@@ -181,6 +184,9 @@ class ToolController {
             'icon' => $this->get_tool_field( 'tool_icon', $tool->ID ),
             'requires_auth' => (bool) $this->get_tool_field( 'requires_auth', $tool->ID ),
             'thumbnail' => get_the_post_thumbnail_url( $tool->ID, 'medium' ),
+            'is_sponsored' => (bool) get_post_meta( $tool->ID, '_kg_tool_is_sponsored', true ),
+            'sponsor_name' => get_post_meta( $tool->ID, '_kg_tool_sponsor_name', true ) ?: null,
+            'sponsor_url' => get_post_meta( $tool->ID, '_kg_tool_sponsor_url', true ) ?: null,
         ];
 
         return new \WP_REST_Response( $result, 200 );
