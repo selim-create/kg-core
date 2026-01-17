@@ -142,7 +142,7 @@ class RecipeController {
                     'id' => $author_id,
                     'name' => $author->display_name,
                     'slug' => $author->user_nicename,
-                    'avatar' => get_avatar_url( $author_id, ['size' => 48] ),
+                    'avatar' => \KG_Core\Utils\Helper::get_user_avatar_url( $author_id ),
                 ];
             }
         }

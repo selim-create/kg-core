@@ -155,6 +155,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/SponsoredToolController.php' ) ) 
 if ( file_exists( KG_CORE_PATH . 'includes/API/LookupController.php' ) ) require_once KG_CORE_PATH . 'includes/API/LookupController.php';
 // Recommendation Controller (Personalization & Safety)
 if ( file_exists( KG_CORE_PATH . 'includes/API/RecommendationController.php' ) ) require_once KG_CORE_PATH . 'includes/API/RecommendationController.php';
+// Comment Controller (Generic Comments for Recipes and Posts)
+if ( file_exists( KG_CORE_PATH . 'includes/API/CommentController.php' ) ) require_once KG_CORE_PATH . 'includes/API/CommentController.php';
 
 // 6.5. VACCINATION TRACKER API CONTROLLERS (NEW)
 if ( file_exists( KG_CORE_PATH . 'includes/API/VaccineController.php' ) ) require_once KG_CORE_PATH . 'includes/API/VaccineController.php';
@@ -337,6 +339,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\SponsoredToolController' ) ) new \KG_Core\API\SponsoredToolController();
     if ( class_exists( '\KG_Core\API\LookupController' ) ) new \KG_Core\API\LookupController();
     if ( class_exists( '\KG_Core\API\RecommendationController' ) ) new \KG_Core\API\RecommendationController();
+    if ( class_exists( '\KG_Core\API\CommentController' ) ) new \KG_Core\API\CommentController();
     
     // Vaccination Tracker API Controllers
     if ( class_exists( '\KG_Core\API\VaccineController' ) ) new \KG_Core\API\VaccineController();

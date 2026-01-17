@@ -216,7 +216,7 @@ class FeaturedController {
                     'category' => $category_name,
                     'category_slug' => $category_slug,
                     'author' => $author_name,
-                    'author_avatar' => get_avatar_url( $post->post_author, [ 'size' => 96 ] ),
+                    'author_avatar' => \KG_Core\Utils\Helper::get_user_avatar_url( $post->post_author ),
                     'read_time' => $read_time . ' dk'
                 ]
             ];
@@ -262,16 +262,24 @@ class FeaturedController {
             // Decode HTML entities
             $title = \KG_Core\Utils\Helper::decode_html_entities( $post->post_title );
             
+            // Generate excerpt - use post_excerpt if available, otherwise generate from content
+            $excerpt_text = $post->post_excerpt;
+            if ( empty( $excerpt_text ) ) {
+                $excerpt_text = wp_strip_all_tags( $post->post_content );
+            }
+            $excerpt = \KG_Core\Utils\Helper::decode_html_entities( wp_trim_words( $excerpt_text, 20 ) );
+            
             $questions[] = [
                 'id' => $post->ID,
                 'type' => 'question',
                 'title' => $title,
                 'slug' => $post->post_name,
+                'excerpt' => $excerpt,
                 'date' => get_the_date( 'c', $post->ID ),
                 'meta' => [
                     'author_name' => $author_name,
                     'author_initials' => $initials,
-                    'author_avatar' => get_avatar_url( $post->post_author, [ 'size' => 96 ] ),
+                    'author_avatar' => \KG_Core\Utils\Helper::get_user_avatar_url( $post->post_author ),
                     'answer_count' => (int) $answer_count
                 ]
             ];
