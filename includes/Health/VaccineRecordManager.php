@@ -73,10 +73,10 @@ class VaccineRecordManager {
         $created = 0;
         
         foreach ($schedule as $vaccine) {
-            // Set initial status based on scheduled date
+            // Set initial status to 'upcoming' for all new records
+            // Dynamic status will be calculated when retrieved via get_child_vaccines()
             $scheduled_date = $vaccine['scheduled_date'];
-            $today = current_time('Y-m-d');
-            $initial_status = 'upcoming'; // Default to upcoming for new records
+            $initial_status = 'upcoming';
             
             $result = $wpdb->insert(
                 $this->table_name,

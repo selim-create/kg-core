@@ -350,8 +350,8 @@ class VaccineController {
             'done' => 0,
             'upcoming' => 0,
             'overdue' => 0,
-            'skipped' => 0,
             'scheduled' => 0,
+            'skipped' => 0,
             'completion_percentage' => 0
         ];
 
