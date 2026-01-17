@@ -351,10 +351,10 @@ class VaccineController {
             'upcoming' => 0,
             'overdue' => 0,
             'skipped' => 0,
+            'scheduled' => 0,
             'completion_percentage' => 0
         ];
 
-        $today = current_time( 'Y-m-d' );
         foreach ( $vaccines as $vaccine ) {
             switch ( $vaccine['status'] ) {
                 case 'done':
@@ -364,15 +364,13 @@ class VaccineController {
                     $stats['skipped']++;
                     break;
                 case 'upcoming':
-                case 'scheduled':
-                    if ( $vaccine['scheduled_date'] < $today ) {
-                        $stats['overdue']++;
-                    } else {
-                        $stats['upcoming']++;
-                    }
+                    $stats['upcoming']++;
                     break;
-                case 'delayed':
+                case 'overdue':
                     $stats['overdue']++;
+                    break;
+                case 'scheduled':
+                    $stats['scheduled']++;
                     break;
             }
         }
