@@ -6,6 +6,8 @@ class Tool {
         add_action( 'init', [ $this, 'register_post_type' ] );
         add_action( 'init', [ $this, 'register_taxonomy' ] );
         add_action( 'acf/init', [ $this, 'register_acf_fields' ] );
+        add_filter( 'manage_tool_posts_columns', [ $this, 'add_custom_columns' ] );
+        add_action( 'manage_tool_posts_custom_column', [ $this, 'render_custom_columns' ], 10, 2 );
     }
 
     public function register_post_type() {
@@ -337,5 +339,39 @@ class Tool {
                 ],
             ],
         ]);
+    }
+    
+    public function add_custom_columns($columns) {
+        $new_columns = [];
+        
+        foreach ($columns as $key => $value) {
+            $new_columns[$key] = $value;
+            
+            if ($key === 'title') {
+                $new_columns['kg_sponsored'] = __('Sponsorlu', 'kg-core');
+                $new_columns['kg_active'] = __('Aktif', 'kg-core');
+            }
+        }
+        
+        return $new_columns;
+    }
+    
+    public function render_custom_columns($column, $post_id) {
+        switch ($column) {
+            case 'kg_sponsored':
+                $is_sponsored = get_post_meta($post_id, '_kg_tool_is_sponsored', true);
+                if ($is_sponsored) {
+                    $sponsor_name = get_post_meta($post_id, '_kg_tool_sponsor_name', true);
+                    echo '<span style="color: green; font-weight: bold;">✅ ' . esc_html($sponsor_name ?: 'Evet') . '</span>';
+                } else {
+                    echo '<span style="color: gray;">—</span>';
+                }
+                break;
+                
+            case 'kg_active':
+                $is_active = get_field('is_active', $post_id);
+                echo $is_active ? '<span style="color: green;">✅ Aktif</span>' : '<span style="color: red;">❌ Pasif</span>';
+                break;
+        }
     }
 }
