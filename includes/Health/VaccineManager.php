@@ -22,27 +22,40 @@ class VaccineManager {
     public function load_vaccine_master_data($schedule_version = 'TR_2026_v1') {
         global $wpdb;
         
-        // Determine JSON file path based on schedule version
-        $json_file = $this->get_json_file_path($schedule_version);
-        
-        if (!file_exists($json_file)) {
-            return new \WP_Error('file_not_found', "Vaccine data file not found: {$json_file}");
-        }
-        
-        // Read and parse JSON
-        $json_data = file_get_contents($json_file);
-        $vaccines = json_decode($json_data, true);
-        
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return new \WP_Error('json_parse_error', 'Failed to parse vaccine data: ' . json_last_error_msg());
-        }
-        
-        if (empty($vaccines) || !is_array($vaccines)) {
-            return new \WP_Error('invalid_data', 'Invalid vaccine data structure');
-        }
-        
-        // Begin transaction for data integrity
-        $wpdb->query('START TRANSACTION');
+        try {
+            // Determine JSON file path based on schedule version
+            $json_file = $this->get_json_file_path($schedule_version);
+            
+            if (!file_exists($json_file)) {
+                $error_msg = "Vaccine data file not found: {$json_file}";
+                error_log('VaccineManager::load_vaccine_master_data Error: ' . $error_msg);
+                return new \WP_Error('file_not_found', $error_msg);
+            }
+            
+            // Read and parse JSON - suppress warnings
+            $json_data = @file_get_contents($json_file);
+            if ($json_data === false) {
+                $error_msg = "Failed to read vaccine data file: {$json_file}";
+                error_log('VaccineManager::load_vaccine_master_data Error: ' . $error_msg);
+                return new \WP_Error('file_read_error', $error_msg);
+            }
+            
+            $vaccines = json_decode($json_data, true);
+            
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $error_msg = 'Failed to parse vaccine data: ' . json_last_error_msg();
+                error_log('VaccineManager::load_vaccine_master_data Error: ' . $error_msg);
+                return new \WP_Error('json_parse_error', $error_msg);
+            }
+            
+            if (empty($vaccines) || !is_array($vaccines)) {
+                $error_msg = 'Invalid vaccine data structure';
+                error_log('VaccineManager::load_vaccine_master_data Error: ' . $error_msg);
+                return new \WP_Error('invalid_data', $error_msg);
+            }
+            
+            // Begin transaction for data integrity
+            $wpdb->query('START TRANSACTION');
         
         $inserted = 0;
         $updated = 0;
@@ -51,7 +64,9 @@ class VaccineManager {
             // Validate required fields
             if (!isset($vaccine['code']) || !isset($vaccine['name'])) {
                 $wpdb->query('ROLLBACK');
-                return new \WP_Error('invalid_vaccine_data', 'Vaccine missing required fields (code, name)');
+                $error_msg = 'Vaccine missing required fields (code, name)';
+                error_log('VaccineManager::load_vaccine_master_data Error: ' . $error_msg);
+                return new \WP_Error('invalid_vaccine_data', $error_msg);
             }
             
             // Check if vaccine already exists
@@ -120,6 +135,20 @@ class VaccineManager {
         error_log("Vaccine data loaded: {$inserted} inserted, {$updated} updated");
         
         return true;
+        
+        } catch ( \Exception $e ) {
+            if (isset($wpdb)) {
+                $wpdb->query('ROLLBACK');
+            }
+            error_log( 'VaccineManager::load_vaccine_master_data Exception: ' . $e->getMessage() );
+            return new \WP_Error('exception', $e->getMessage());
+        } catch ( \Error $e ) {
+            if (isset($wpdb)) {
+                $wpdb->query('ROLLBACK');
+            }
+            error_log( 'VaccineManager::load_vaccine_master_data Fatal Error: ' . $e->getMessage() );
+            return new \WP_Error('fatal_error', $e->getMessage());
+        }
     }
     
     /**

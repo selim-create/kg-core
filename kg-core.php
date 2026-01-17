@@ -602,31 +602,44 @@ add_filter( 'rest_prepare_category', 'kg_decode_taxonomy_response', 10, 2 );
 
 // 10. ACTIVATION HOOK - Seed tools on plugin activation
 register_activation_hook( __FILE__, function() {
-    // Register roles first
-    if ( class_exists( '\KG_Core\Roles\RoleManager' ) ) {
-        $role_manager = new \KG_Core\Roles\RoleManager();
-        $role_manager->register_custom_roles();
+    // Start output buffering - guarantee no output is produced
+    ob_start();
+    
+    try {
+        // Register roles first
+        if ( class_exists( '\KG_Core\Roles\RoleManager' ) ) {
+            $role_manager = new \KG_Core\Roles\RoleManager();
+            $role_manager->register_custom_roles();
+            
+            // Update existing expert users
+            \KG_Core\Roles\RoleManager::update_expert_capabilities();
+        }
         
-        // Update existing expert users
-        \KG_Core\Roles\RoleManager::update_expert_capabilities();
+        // Seed tools on plugin activation
+        if ( class_exists( '\KG_Core\Admin\ToolSeeder' ) ) {
+            \KG_Core\Admin\ToolSeeder::seed_on_activation();
+        }
+        
+        // Create vaccination tracker database tables
+        if ( class_exists( '\KG_Core\Database\VaccinationSchema' ) ) {
+            \KG_Core\Database\VaccinationSchema::create_tables();
+        }
+        
+        // Load vaccine master data from JSON
+        if ( class_exists( '\KG_Core\Health\VaccineManager' ) ) {
+            $vaccine_manager = new \KG_Core\Health\VaccineManager();
+            $vaccine_manager->load_vaccine_master_data();
+        }
+        
+        // Flush rewrite rules
+        flush_rewrite_rules();
+        
+    } catch ( \Exception $e ) {
+        error_log( 'KG Core Activation Error: ' . $e->getMessage() );
+    } catch ( \Error $e ) {
+        error_log( 'KG Core Activation Fatal Error: ' . $e->getMessage() );
     }
     
-    // Seed tools on plugin activation
-    if ( class_exists( '\KG_Core\Admin\ToolSeeder' ) ) {
-        \KG_Core\Admin\ToolSeeder::seed_on_activation();
-    }
-    
-    // Create vaccination tracker database tables
-    if ( class_exists( '\KG_Core\Database\VaccinationSchema' ) ) {
-        \KG_Core\Database\VaccinationSchema::create_tables();
-    }
-    
-    // Load vaccine master data from JSON
-    if ( class_exists( '\KG_Core\Health\VaccineManager' ) ) {
-        $vaccine_manager = new \KG_Core\Health\VaccineManager();
-        $vaccine_manager->load_vaccine_master_data();
-    }
-    
-    // Flush rewrite rules
-    flush_rewrite_rules();
+    // Clean all output
+    ob_end_clean();
 } );
