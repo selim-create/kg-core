@@ -113,6 +113,19 @@ class VaccineController {
             ],
         ]);
 
+        register_rest_route( 'kg/v1', '/health/vaccines/generate-schedule', [
+            'methods'  => 'POST',
+            'callback' => [ $this, 'generate_schedule' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+            'args' => [
+                'child_id' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ]);
+
         register_rest_route( 'kg/v1', '/health/vaccines/side-effects', [
             'methods'  => 'POST',
             'callback' => [ $this, 'report_side_effects' ],
@@ -294,6 +307,35 @@ class VaccineController {
         $record_manager = new VaccineRecordManager();
         $schedule = $record_manager->get_child_vaccines( $child_id );
 
+        // If schedule is empty, try to auto-generate it
+        if ( ! is_wp_error( $schedule ) && empty( $schedule ) ) {
+            // Get child's birth date
+            $children = get_user_meta( $user_id, '_kg_children', true );
+            $child = null;
+            if ( is_array( $children ) ) {
+                foreach ( $children as $c ) {
+                    if ( isset( $c['id'] ) && $c['id'] === $child_id ) {
+                        $child = $c;
+                        break;
+                    }
+                }
+            }
+
+            if ( $child && ! empty( $child['birth_date'] ) ) {
+                $create_result = $record_manager->create_schedule_for_child(
+                    $user_id,
+                    $child_id,
+                    $child['birth_date'],
+                    false
+                );
+
+                if ( ! is_wp_error( $create_result ) ) {
+                    // Fetch the newly created schedule
+                    $schedule = $record_manager->get_child_vaccines( $child_id );
+                }
+            }
+        }
+
         if ( is_wp_error( $schedule ) ) {
             return $schedule;
         }
@@ -404,6 +446,68 @@ class VaccineController {
             'success' => true,
             'message' => 'Private vaccine added successfully',
             'data' => $result,
+        ], 201 );
+    }
+
+    /**
+     * Generate vaccine schedule for a child (manual trigger)
+     * 
+     * @param \WP_REST_Request $request The request object
+     * @return \WP_REST_Response|\WP_Error Response object or error
+     */
+    public function generate_schedule( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+        $child_id = $request->get_param( 'child_id' );
+
+        // Verify child belongs to user
+        if ( ! $this->verify_child_ownership( $user_id, $child_id ) ) {
+            return new \WP_Error( 'forbidden', 'Child does not belong to user', [ 'status' => 403 ] );
+        }
+
+        // Get child's birth date
+        $children = get_user_meta( $user_id, '_kg_children', true );
+        $child = null;
+        if ( is_array( $children ) ) {
+            foreach ( $children as $c ) {
+                if ( $c['id'] === $child_id ) {
+                    $child = $c;
+                    break;
+                }
+            }
+        }
+
+        if ( ! $child || empty( $child['birth_date'] ) ) {
+            return new \WP_Error( 'invalid_child', 'Child not found or missing birth date', [ 'status' => 400 ] );
+        }
+
+        $record_manager = new VaccineRecordManager();
+        $result = $record_manager->create_schedule_for_child(
+            $user_id,
+            $child_id,
+            $child['birth_date'],
+            false
+        );
+
+        if ( is_wp_error( $result ) ) {
+            // If schedule already exists, return the existing schedule
+            if ( $result->get_error_code() === 'schedule_exists' ) {
+                $schedule = $record_manager->get_child_vaccines( $child_id );
+                return new \WP_REST_Response( [
+                    'success' => true,
+                    'message' => 'Schedule already exists',
+                    'data' => $schedule,
+                ], 200 );
+            }
+            return $result;
+        }
+
+        // Return the newly created schedule
+        $schedule = $record_manager->get_child_vaccines( $child_id );
+        
+        return new \WP_REST_Response( [
+            'success' => true,
+            'message' => 'Vaccine schedule created successfully',
+            'data' => $schedule,
         ], 201 );
     }
 
