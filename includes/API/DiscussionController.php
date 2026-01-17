@@ -91,6 +91,29 @@ class DiscussionController {
             'callback' => [ $this, 'get_comments' ],
             'permission_callback' => '__return_true',
         ]);
+
+        // Top contributors endpoint (Haftanın Anneleri)
+        register_rest_route( 'kg/v1', '/community/top-contributors', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_top_contributors' ],
+            'permission_callback' => '__return_true', // Public endpoint
+            'args' => [
+                'limit' => [
+                    'default' => 5,
+                    'sanitize_callback' => 'absint',
+                    'validate_callback' => function( $param ) {
+                        return is_numeric( $param ) && $param > 0 && $param <= 20;
+                    }
+                ],
+                'period' => [
+                    'default' => 'week',
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'validate_callback' => function( $param ) {
+                        return in_array( $param, [ 'week', 'month', 'all' ] );
+                    }
+                ]
+            ]
+        ]);
     }
 
     /**
@@ -699,5 +722,131 @@ class DiscussionController {
         }
 
         return $response;
+    }
+
+    /**
+     * GET /kg/v1/community/top-contributors
+     * Haftanın en aktif kullanıcılarını (annelerini) döndürür
+     * Sıralama: Toplam tartışma + yorum sayısı
+     */
+    public function get_top_contributors( $request ) {
+        global $wpdb;
+        
+        $limit = $request->get_param( 'limit' ) ?: 5;
+        $period = $request->get_param( 'period' ) ?: 'week';
+        
+        // Calculate the date interval based on period (validated by WordPress)
+        $days_interval = 0;
+        if ( $period === 'week' ) {
+            $days_interval = 7;
+        } elseif ( $period === 'month' ) {
+            $days_interval = 30;
+        }
+        // If period is 'all', days_interval remains 0 (no date filter)
+        
+        // Build the query based on whether we need date filtering
+        if ( $days_interval > 0 ) {
+            // Query with date filtering
+            $query = $wpdb->prepare("
+                SELECT 
+                    u.ID as user_id,
+                    u.display_name as name,
+                    (
+                        SELECT COUNT(*) 
+                        FROM {$wpdb->posts} p 
+                        WHERE p.post_author = u.ID 
+                        AND p.post_type = 'discussion' 
+                        AND p.post_status = 'publish'
+                        AND p.post_date >= DATE_SUB(NOW(), INTERVAL %d DAY)
+                    ) as discussion_count,
+                    (
+                        SELECT COUNT(*) 
+                        FROM {$wpdb->comments} c 
+                        WHERE c.user_id = u.ID 
+                        AND c.comment_approved = '1'
+                        AND c.comment_date >= DATE_SUB(NOW(), INTERVAL %d DAY)
+                    ) as comment_count
+                FROM {$wpdb->users} u
+                INNER JOIN {$wpdb->usermeta} um ON u.ID = um.user_id AND um.meta_key = '{$wpdb->prefix}capabilities'
+                WHERE um.meta_value NOT LIKE %s
+                AND um.meta_value NOT LIKE %s
+                AND um.meta_value NOT LIKE %s
+                HAVING (discussion_count + comment_count) > 0
+                ORDER BY (discussion_count + comment_count) DESC
+                LIMIT %d
+            ", $days_interval, $days_interval, '%administrator%', '%kg_expert%', '%editor%', $limit );
+        } else {
+            // Query without date filtering (all time)
+            $query = $wpdb->prepare("
+                SELECT 
+                    u.ID as user_id,
+                    u.display_name as name,
+                    (
+                        SELECT COUNT(*) 
+                        FROM {$wpdb->posts} p 
+                        WHERE p.post_author = u.ID 
+                        AND p.post_type = 'discussion' 
+                        AND p.post_status = 'publish'
+                    ) as discussion_count,
+                    (
+                        SELECT COUNT(*) 
+                        FROM {$wpdb->comments} c 
+                        WHERE c.user_id = u.ID 
+                        AND c.comment_approved = '1'
+                    ) as comment_count
+                FROM {$wpdb->users} u
+                INNER JOIN {$wpdb->usermeta} um ON u.ID = um.user_id AND um.meta_key = '{$wpdb->prefix}capabilities'
+                WHERE um.meta_value NOT LIKE %s
+                AND um.meta_value NOT LIKE %s
+                AND um.meta_value NOT LIKE %s
+                HAVING (discussion_count + comment_count) > 0
+                ORDER BY (discussion_count + comment_count) DESC
+                LIMIT %d
+            ", '%administrator%', '%kg_expert%', '%editor%', $limit );
+        }
+        
+        $results = $wpdb->get_results( $query );
+        
+        $contributors = [];
+        $rank = 1;
+        
+        foreach ( $results as $row ) {
+            $user_id = (int) $row->user_id;
+            
+            // Avatar URL'ini al
+            $avatar_id = get_user_meta( $user_id, '_kg_avatar_id', true );
+            $avatar_url = null;
+            
+            if ( $avatar_id ) {
+                $avatar_url = wp_get_attachment_image_url( $avatar_id, 'thumbnail' );
+            }
+            
+            if ( ! $avatar_url ) {
+                // Google avatar kontrolü
+                $google_avatar = get_user_meta( $user_id, 'google_avatar', true );
+                if ( $google_avatar ) {
+                    $avatar_url = $google_avatar;
+                } else {
+                    // Gravatar fallback
+                    $avatar_url = get_avatar_url( $user_id, [ 'size' => 96 ] );
+                }
+            }
+            
+            $contribution_count = (int) $row->discussion_count + (int) $row->comment_count;
+            
+            $contributors[] = [
+                'id' => $user_id,
+                'name' => $row->name,
+                'avatar' => $avatar_url,
+                'contribution_count' => $contribution_count,
+                'discussion_count' => (int) $row->discussion_count,
+                'comment_count' => (int) $row->comment_count,
+                'rank' => $rank,
+            ];
+            
+            $rank++;
+        }
+        
+        return new \WP_REST_Response( $contributors, 200 );
     }
 }
