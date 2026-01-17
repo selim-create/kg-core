@@ -280,7 +280,7 @@ class UserController {
         $name = sanitize_text_field( $request->get_param( 'name' ) );
         $username = sanitize_user( $request->get_param( 'username' ) );
         $baby_birth_date = sanitize_text_field( $request->get_param( 'baby_birth_date' ) );
-        $child_data = $request->get_param( 'child' ); // Yeni: çocuk profili
+        $child_data = $request->get_param( 'child' ); // New: child profile support
 
         if ( empty( $email ) || empty( $password ) ) {
             return new \WP_Error( 'missing_fields', 'Email and password are required', [ 'status' => 400 ] );
@@ -299,15 +299,15 @@ class UserController {
             return new \WP_Error( 'email_exists', 'Email already registered', [ 'status' => 409 ] );
         }
 
-        // Username kontrolü
-        $user_login = $email; // Varsayılan olarak email kullan
+        // Username validation
+        $user_login = $email; // Default to email if no username provided
         if ( ! empty( $username ) ) {
-            // Username benzersizlik kontrolü
+            // Check username uniqueness
             if ( username_exists( $username ) ) {
                 return new \WP_Error( 'username_exists', 'Bu kullanıcı adı zaten kullanılıyor', [ 'status' => 409 ] );
             }
             
-            // Username format kontrolü
+            // Validate username format
             if ( ! validate_username( $username ) ) {
                 return new \WP_Error( 'invalid_username', 'Geçersiz kullanıcı adı formatı', [ 'status' => 400 ] );
             }
@@ -332,12 +332,12 @@ class UserController {
             ] );
         }
 
-        // Register sonrası otomatik çember atama (legacy - baby_birth_date)
+        // Auto-assign circle after registration (legacy - baby_birth_date support)
         if ( ! empty( $baby_birth_date ) ) {
             $this->assign_default_circle( $user_id, $baby_birth_date );
         }
 
-        // YENİ: Çocuk profili oluşturma
+        // NEW: Child profile creation during registration
         $children = [];
         if ( ! empty( $child_data ) && is_array( $child_data ) ) {
             $child_name = sanitize_text_field( $child_data['name'] ?? '' );
@@ -357,14 +357,14 @@ class UserController {
                         'allergies' => [],
                         'feeding_style' => 'mixed',
                         'photo_id' => null,
-                        'kvkk_consent' => true, // Kayıt sırasında otomatik onay
+                        'kvkk_consent' => true, // Auto-approved during registration
                         'created_at' => current_time( 'c' ),
                     ];
                     
                     $children = [ $child ];
                     update_user_meta( $user_id, '_kg_children', $children );
                     
-                    // Otomatik çember atama (çocuk yaşına göre)
+                    // Auto-assign circle based on child's age
                     $this->assign_default_circle( $user_id, $child_birth_date );
                 }
             }
