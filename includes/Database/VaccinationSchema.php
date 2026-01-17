@@ -229,9 +229,10 @@ class VaccinationSchema {
             return; // Already seeded
         }
         
-        // Note: Email templates use inline styles (not CSS classes) because most email clients
-        // strip out <style> tags and external CSS. While this creates some duplication,
-        // it's necessary for cross-client email compatibility.
+        // Note: Email templates use inline styles (not CSS classes) for maximum compatibility.
+        // Most email clients (Gmail, Outlook, Yahoo Mail, Apple Mail) strip <style> tags and
+        // external CSS. Inline styles ensure consistent rendering across all email clients.
+        // While this creates some duplication, it's the industry standard for HTML emails.
         $templates = [
             // ===== VACCINATION TEMPLATES =====
             [

@@ -9,6 +9,12 @@ namespace KG_Core\Notifications;
  */
 class EmailTemplateRenderer {
     
+    // Social media URLs - update these if URLs change
+    const SOCIAL_INSTAGRAM = 'https://instagram.com/kidsgourmet';
+    const SOCIAL_FACEBOOK = 'https://facebook.com/kidsgourmet';
+    const SOCIAL_TWITTER = 'https://twitter.com/kidsgourmet';
+    const SOCIAL_YOUTUBE = 'https://youtube.com/@kidsgourmet';
+    
     /**
      * Wrap content in HTML email template
      * 
@@ -98,16 +104,16 @@ class EmailTemplateRenderer {
                                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="display: inline-block;">
                                             <tr>
                                                 <td style="padding: 0 8px;">
-                                                    <a href="https://instagram.com/kidsgourmet" style="display: inline-block; width: 36px; height: 36px; background: #E1306C; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">📷</a>
+                                                    <a href="' . self::SOCIAL_INSTAGRAM . '" style="display: inline-block; width: 36px; height: 36px; background: #E1306C; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">📷</a>
                                                 </td>
                                                 <td style="padding: 0 8px;">
-                                                    <a href="https://facebook.com/kidsgourmet" style="display: inline-block; width: 36px; height: 36px; background: #1877F2; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">👍</a>
+                                                    <a href="' . self::SOCIAL_FACEBOOK . '" style="display: inline-block; width: 36px; height: 36px; background: #1877F2; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">👍</a>
                                                 </td>
                                                 <td style="padding: 0 8px;">
-                                                    <a href="https://twitter.com/kidsgourmet" style="display: inline-block; width: 36px; height: 36px; background: #1DA1F2; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">🐦</a>
+                                                    <a href="' . self::SOCIAL_TWITTER . '" style="display: inline-block; width: 36px; height: 36px; background: #1DA1F2; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">🐦</a>
                                                 </td>
                                                 <td style="padding: 0 8px;">
-                                                    <a href="https://youtube.com/@kidsgourmet" style="display: inline-block; width: 36px; height: 36px; background: #FF0000; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">▶️</a>
+                                                    <a href="' . self::SOCIAL_YOUTUBE . '" style="display: inline-block; width: 36px; height: 36px; background: #FF0000; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">▶️</a>
                                                 </td>
                                             </tr>
                                         </table>
@@ -158,14 +164,24 @@ class EmailTemplateRenderer {
         $g = hexdec(substr($hex, 2, 2));
         $b = hexdec(substr($hex, 4, 2));
         
-        // Adjust brightness
-        $r = (int)min(255, max(0, round($r * $percent)));
-        $g = (int)min(255, max(0, round($g * $percent)));
-        $b = (int)min(255, max(0, round($b * $percent)));
+        // Adjust brightness with clamping helper
+        $r = self::clamp_rgb($r * $percent);
+        $g = self::clamp_rgb($g * $percent);
+        $b = self::clamp_rgb($b * $percent);
         
         // Convert back to hex
         return '#' . str_pad(dechex($r), 2, '0', STR_PAD_LEFT) 
                   . str_pad(dechex($g), 2, '0', STR_PAD_LEFT) 
                   . str_pad(dechex($b), 2, '0', STR_PAD_LEFT);
+    }
+    
+    /**
+     * Clamp RGB value to valid range (0-255)
+     * 
+     * @param float $value RGB value to clamp
+     * @return int Clamped integer value
+     */
+    private static function clamp_rgb($value) {
+        return (int)min(255, max(0, round($value)));
     }
 }
