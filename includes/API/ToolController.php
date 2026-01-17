@@ -92,29 +92,21 @@ class ToolController {
     }
 
     /**
-     * Get field value with ACF fallback
-     * First tries ACF get_field, then falls back to get_post_meta
+     * Get field value from post meta
+     * First tries with _kg_ prefix, then falls back to without prefix for backward compatibility
      * 
      * @param string $field_name Field name
      * @param int $post_id Post ID
      * @return mixed Field value
      */
     private function get_tool_field( $field_name, $post_id ) {
-        // Try ACF first if available
-        if ( function_exists( 'get_field' ) ) {
-            $value = get_field( $field_name, $post_id );
-            if ( $value !== null ) {
-                return $value;
-            }
-        }
-        
-        // Fallback to post_meta with _kg_ prefix
+        // Try with _kg_ prefix first
         $value = get_post_meta( $post_id, '_kg_' . $field_name, true );
         if ( $value !== '' && $value !== false ) {
             return $value;
         }
         
-        // Try without prefix
+        // Fallback to without prefix (backward compatibility)
         return get_post_meta( $post_id, $field_name, true );
     }
 

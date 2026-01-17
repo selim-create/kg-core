@@ -5,7 +5,8 @@ class Tool {
     public function __construct() {
         add_action( 'init', [ $this, 'register_post_type' ] );
         add_action( 'init', [ $this, 'register_taxonomy' ] );
-        add_action( 'acf/init', [ $this, 'register_acf_fields' ] );
+        add_action( 'add_meta_boxes', [ $this, 'add_tool_meta_box' ] );
+        add_action( 'save_post', [ $this, 'save_tool_meta' ] );
         add_filter( 'manage_tool_posts_columns', [ $this, 'add_custom_columns' ] );
         add_action( 'manage_tool_posts_custom_column', [ $this, 'render_custom_columns' ], 10, 2 );
     }
@@ -36,309 +37,123 @@ class Tool {
         ]);
     }
 
-    public function register_acf_fields() {
-        // Check if ACF is available
-        if ( ! function_exists( 'acf_add_local_field_group' ) ) {
+    public function add_tool_meta_box() {
+        add_meta_box(
+            'kg_tool_settings',
+            'Araç Ayarları',
+            [ $this, 'render_tool_meta_box' ],
+            'tool',
+            'normal',
+            'high'
+        );
+    }
+    
+    public function render_tool_meta_box( $post ) {
+        // Get existing values
+        $tool_type = get_post_meta( $post->ID, '_kg_tool_type', true );
+        $tool_icon = get_post_meta( $post->ID, '_kg_tool_icon', true );
+        $is_active = get_post_meta( $post->ID, '_kg_is_active', true );
+        $requires_auth = get_post_meta( $post->ID, '_kg_requires_auth', true );
+        
+        // Security nonce
+        wp_nonce_field( 'kg_tool_settings_save', 'kg_tool_settings_nonce' );
+        
+        // Tool types
+        $tool_types = [
+            'blw_test' => 'BLW Hazırlık Testi',
+            'percentile' => 'Persentil Hesaplayıcı',
+            'water_calculator' => 'Su İhtiyacı Hesaplayıcı',
+            'meal_planner' => 'Yemek Planlayıcı',
+            'bath_planner' => 'Banyo Rutini Planlayıcı',
+            'hygiene_calculator' => 'Günlük Hijyen İhtiyacı Hesaplayıcı',
+            'diaper_calculator' => 'Akıllı Bez Hesaplayıcı',
+            'air_quality_guide' => 'Hava Kalitesi Rehberi',
+            'stain_encyclopedia' => 'Leke Ansiklopedisi',
+            'food_guide' => 'Ek Gıda Rehberi',
+            'solid_food_readiness' => 'Ek Gıdaya Başlama Kontrolü',
+            'food_checker' => 'Bu Gıda Verilir mi?',
+            'allergen_planner' => 'Alerjen Deneme Planlayıcı',
+            'food_trial_calendar' => 'Besin Deneme Takvimi',
+        ];
+        ?>
+        <div class="kg-tool-settings-meta-box">
+            <p>
+                <label for="kg_tool_type"><strong>Araç Tipi:</strong> <span style="color: red;">*</span></label><br>
+                <select id="kg_tool_type" name="kg_tool_type" style="width:100%;" required>
+                    <option value="">Seçiniz...</option>
+                    <?php foreach ( $tool_types as $key => $label ): ?>
+                        <option value="<?php echo esc_attr( $key ); ?>" <?php selected( $tool_type, $key ); ?>>
+                            <?php echo esc_html( $label ); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </p>
+            
+            <p>
+                <label for="kg_tool_icon"><strong>Araç İkonu:</strong></label><br>
+                <input type="text" id="kg_tool_icon" name="kg_tool_icon" value="<?php echo esc_attr( $tool_icon ?: 'fa-calculator' ); ?>" style="width:100%;" placeholder="fa-calculator">
+                <small>FontAwesome class (örn: fa-utensils)</small>
+            </p>
+            
+            <p>
+                <label for="kg_is_active">
+                    <input type="checkbox" id="kg_is_active" name="kg_is_active" value="1" <?php checked( $is_active, '1' ); ?>>
+                    <strong>Aktif mi?</strong>
+                </label>
+            </p>
+            
+            <p>
+                <label for="kg_requires_auth">
+                    <input type="checkbox" id="kg_requires_auth" name="kg_requires_auth" value="1" <?php checked( $requires_auth, '1' ); ?>>
+                    <strong>Giriş Gerekli mi?</strong>
+                </label>
+            </p>
+            
+            <p style="background: #f0f6fc; padding: 10px; border-left: 4px solid #0969da;">
+                <strong>ℹ️ Not:</strong> BLW test soruları ve diğer araç konfigürasyonları API tarafından varsayılan değerler ile sunulmaktadır.
+            </p>
+        </div>
+        <?php
+    }
+    
+    public function save_tool_meta( $post_id ) {
+        // Autosave check
+        if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
             return;
         }
-
-        // Basic Tool Configuration
-        acf_add_local_field_group([
-            'key' => 'group_tool_basic',
-            'title' => 'Araç Ayarları',
-            'fields' => [
-                [
-                    'key' => 'field_tool_type',
-                    'label' => 'Araç Tipi',
-                    'name' => 'tool_type',
-                    'type' => 'select',
-                    'required' => 1,
-                    'choices' => [
-                        'blw_test' => 'BLW Hazırlık Testi',
-                        'percentile' => 'Persentil Hesaplayıcı',
-                        'water_calculator' => 'Su İhtiyacı Hesaplayıcı',
-                        'meal_planner' => 'Yemek Planlayıcı',
-                        'bath_planner' => 'Banyo Rutini Planlayıcı',
-                        'hygiene_calculator' => 'Günlük Hijyen İhtiyacı Hesaplayıcı',
-                        'diaper_calculator' => 'Akıllı Bez Hesaplayıcı',
-                        'air_quality_guide' => 'Hava Kalitesi Rehberi',
-                        'stain_encyclopedia' => 'Leke Ansiklopedisi',
-                        'food_guide' => 'Ek Gıda Rehberi',
-                        'solid_food_readiness' => 'Ek Gıdaya Başlama Kontrolü',
-                        'food_checker' => 'Bu Gıda Verilir mi?',
-                        'allergen_planner' => 'Alerjen Deneme Planlayıcı',
-                        'food_trial_calendar' => 'Besin Deneme Takvimi',
-                    ],
-                    'default_value' => 'blw_test',
-                ],
-                [
-                    'key' => 'field_tool_icon',
-                    'label' => 'Araç İkonu',
-                    'name' => 'tool_icon',
-                    'type' => 'text',
-                    'instructions' => 'FontAwesome class (örn: fa-utensils)',
-                    'default_value' => 'fa-calculator',
-                ],
-                [
-                    'key' => 'field_is_active',
-                    'label' => 'Aktif mi?',
-                    'name' => 'is_active',
-                    'type' => 'true_false',
-                    'default_value' => 1,
-                    'ui' => 1,
-                ],
-                [
-                    'key' => 'field_requires_auth',
-                    'label' => 'Giriş Gerekli mi?',
-                    'name' => 'requires_auth',
-                    'type' => 'true_false',
-                    'default_value' => 0,
-                    'ui' => 1,
-                ],
-            ],
-            'location' => [
-                [
-                    [
-                        'param' => 'post_type',
-                        'operator' => '==',
-                        'value' => 'tool',
-                    ],
-                ],
-            ],
-        ]);
-
-        // BLW Test Configuration
-        acf_add_local_field_group([
-            'key' => 'group_blw_test',
-            'title' => 'BLW Test Ayarları',
-            'fields' => [
-                [
-                    'key' => 'field_blw_questions',
-                    'label' => 'Sorular',
-                    'name' => 'blw_questions',
-                    'type' => 'repeater',
-                    'layout' => 'block',
-                    'button_label' => 'Soru Ekle',
-                    'sub_fields' => [
-                        [
-                            'key' => 'field_question_id',
-                            'label' => 'Soru ID',
-                            'name' => 'id',
-                            'type' => 'text',
-                            'required' => 1,
-                        ],
-                        [
-                            'key' => 'field_question_category',
-                            'label' => 'Kategori',
-                            'name' => 'category',
-                            'type' => 'select',
-                            'choices' => [
-                                'physical_readiness' => 'Fiziksel Hazırlık',
-                                'safety' => 'Güvenlik',
-                                'environment' => 'Çevre',
-                            ],
-                            'required' => 1,
-                        ],
-                        [
-                            'key' => 'field_question_text',
-                            'label' => 'Soru Metni',
-                            'name' => 'question',
-                            'type' => 'text',
-                            'required' => 1,
-                        ],
-                        [
-                            'key' => 'field_question_description',
-                            'label' => 'Açıklama',
-                            'name' => 'description',
-                            'type' => 'textarea',
-                            'rows' => 2,
-                        ],
-                        [
-                            'key' => 'field_question_icon',
-                            'label' => 'İkon',
-                            'name' => 'icon',
-                            'type' => 'text',
-                            'default_value' => 'fa-question-circle',
-                        ],
-                        [
-                            'key' => 'field_question_weight',
-                            'label' => 'Ağırlık (0-100)',
-                            'name' => 'weight',
-                            'type' => 'number',
-                            'default_value' => 50,
-                            'min' => 0,
-                            'max' => 100,
-                        ],
-                        [
-                            'key' => 'field_question_options',
-                            'label' => 'Seçenekler',
-                            'name' => 'options',
-                            'type' => 'repeater',
-                            'layout' => 'table',
-                            'button_label' => 'Seçenek Ekle',
-                            'sub_fields' => [
-                                [
-                                    'key' => 'field_option_id',
-                                    'label' => 'ID',
-                                    'name' => 'id',
-                                    'type' => 'text',
-                                    'required' => 1,
-                                ],
-                                [
-                                    'key' => 'field_option_text',
-                                    'label' => 'Metin',
-                                    'name' => 'text',
-                                    'type' => 'text',
-                                    'required' => 1,
-                                ],
-                                [
-                                    'key' => 'field_option_value',
-                                    'label' => 'Değer (0-100)',
-                                    'name' => 'value',
-                                    'type' => 'number',
-                                    'required' => 1,
-                                    'min' => 0,
-                                    'max' => 100,
-                                ],
-                                [
-                                    'key' => 'field_option_is_red_flag',
-                                    'label' => 'Kırmızı Bayrak',
-                                    'name' => 'is_red_flag',
-                                    'type' => 'true_false',
-                                    'ui' => 1,
-                                ],
-                                [
-                                    'key' => 'field_option_red_flag_message',
-                                    'label' => 'Kırmızı Bayrak Mesajı',
-                                    'name' => 'red_flag_message',
-                                    'type' => 'textarea',
-                                    'rows' => 2,
-                                    'conditional_logic' => [
-                                        [
-                                            [
-                                                'field' => 'field_option_is_red_flag',
-                                                'operator' => '==',
-                                                'value' => '1',
-                                            ],
-                                        ],
-                                    ],
-                                ],
-                            ],
-                        ],
-                    ],
-                ],
-                [
-                    'key' => 'field_result_buckets',
-                    'label' => 'Sonuç Kategorileri',
-                    'name' => 'result_buckets',
-                    'type' => 'repeater',
-                    'layout' => 'block',
-                    'button_label' => 'Kategori Ekle',
-                    'sub_fields' => [
-                        [
-                            'key' => 'field_bucket_id',
-                            'label' => 'ID',
-                            'name' => 'id',
-                            'type' => 'text',
-                            'required' => 1,
-                        ],
-                        [
-                            'key' => 'field_bucket_min_score',
-                            'label' => 'Min Puan',
-                            'name' => 'min_score',
-                            'type' => 'number',
-                            'required' => 1,
-                            'min' => 0,
-                            'max' => 100,
-                        ],
-                        [
-                            'key' => 'field_bucket_max_score',
-                            'label' => 'Max Puan',
-                            'name' => 'max_score',
-                            'type' => 'number',
-                            'required' => 1,
-                            'min' => 0,
-                            'max' => 100,
-                        ],
-                        [
-                            'key' => 'field_bucket_title',
-                            'label' => 'Başlık',
-                            'name' => 'title',
-                            'type' => 'text',
-                            'required' => 1,
-                        ],
-                        [
-                            'key' => 'field_bucket_subtitle',
-                            'label' => 'Alt Başlık',
-                            'name' => 'subtitle',
-                            'type' => 'text',
-                        ],
-                        [
-                            'key' => 'field_bucket_color',
-                            'label' => 'Renk',
-                            'name' => 'color',
-                            'type' => 'select',
-                            'choices' => [
-                                'green' => 'Yeşil',
-                                'yellow' => 'Sarı',
-                                'red' => 'Kırmızı',
-                            ],
-                        ],
-                        [
-                            'key' => 'field_bucket_icon',
-                            'label' => 'İkon',
-                            'name' => 'icon',
-                            'type' => 'text',
-                        ],
-                        [
-                            'key' => 'field_bucket_description',
-                            'label' => 'Açıklama',
-                            'name' => 'description',
-                            'type' => 'textarea',
-                        ],
-                        [
-                            'key' => 'field_bucket_action_items',
-                            'label' => 'Aksiyon Maddeleri',
-                            'name' => 'action_items',
-                            'type' => 'textarea',
-                            'instructions' => 'Her satır bir madde olarak işlenir',
-                        ],
-                        [
-                            'key' => 'field_bucket_next_steps',
-                            'label' => 'Sonraki Adımlar',
-                            'name' => 'next_steps',
-                            'type' => 'textarea',
-                            'instructions' => 'Her satır bir adım olarak işlenir',
-                        ],
-                    ],
-                ],
-                [
-                    'key' => 'field_disclaimer_text',
-                    'label' => 'Sorumluluk Reddi',
-                    'name' => 'disclaimer_text',
-                    'type' => 'wysiwyg',
-                    'toolbar' => 'basic',
-                    'media_upload' => 0,
-                ],
-                [
-                    'key' => 'field_emergency_text',
-                    'label' => 'Acil Durum Metni',
-                    'name' => 'emergency_text',
-                    'type' => 'wysiwyg',
-                    'toolbar' => 'basic',
-                    'media_upload' => 0,
-                ],
-            ],
-            'location' => [
-                [
-                    [
-                        'param' => 'post_type',
-                        'operator' => '==',
-                        'value' => 'tool',
-                    ],
-                ],
-            ],
-        ]);
+        
+        // Post type validation
+        if ( get_post_type( $post_id ) !== 'tool' ) {
+            return;
+        }
+        
+        // Nonce check
+        if ( ! isset( $_POST['kg_tool_settings_nonce'] ) || ! wp_verify_nonce( $_POST['kg_tool_settings_nonce'], 'kg_tool_settings_save' ) ) {
+            return;
+        }
+        
+        // Permission check
+        if ( ! current_user_can( 'edit_post', $post_id ) ) {
+            return;
+        }
+        
+        // Save tool_type
+        if ( isset( $_POST['kg_tool_type'] ) ) {
+            update_post_meta( $post_id, '_kg_tool_type', sanitize_text_field( $_POST['kg_tool_type'] ) );
+        }
+        
+        // Save tool_icon
+        if ( isset( $_POST['kg_tool_icon'] ) ) {
+            update_post_meta( $post_id, '_kg_tool_icon', sanitize_text_field( $_POST['kg_tool_icon'] ) );
+        }
+        
+        // Save is_active checkbox
+        $is_active = isset( $_POST['kg_is_active'] ) ? '1' : '0';
+        update_post_meta( $post_id, '_kg_is_active', $is_active );
+        
+        // Save requires_auth checkbox
+        $requires_auth = isset( $_POST['kg_requires_auth'] ) ? '1' : '0';
+        update_post_meta( $post_id, '_kg_requires_auth', $requires_auth );
     }
     
     public function add_custom_columns($columns) {
@@ -369,8 +184,8 @@ class Tool {
                 break;
                 
             case 'kg_active':
-                $is_active = get_field('is_active', $post_id);
-                echo $is_active ? '<span style="color: green;">✅ Aktif</span>' : '<span style="color: red;">❌ Pasif</span>';
+                $is_active = get_post_meta( $post_id, '_kg_is_active', true );
+                echo $is_active === '1' ? '<span style="color: green;">✅ Aktif</span>' : '<span style="color: red;">❌ Pasif</span>';
                 break;
         }
     }
