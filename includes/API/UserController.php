@@ -190,6 +190,20 @@ class UserController {
             'callback' => [ $this, 'get_child_solid_food_results' ],
             'permission_callback' => [ $this, 'check_authentication' ],
         ]);
+
+        // Dashboard endpoint with recommendations
+        register_rest_route( 'kg/v1', '/user/dashboard', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_dashboard' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+            'args' => [
+                'child_id' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'description' => 'Child ID for personalized recommendations',
+                ],
+            ],
+        ]);
     }
 
     /**
@@ -2260,5 +2274,56 @@ class UserController {
         });
 
         return new \WP_REST_Response( array_values( $formatted_results ), 200 );
+    }
+
+    /**
+     * Get dashboard data with recommendations
+     * GET /kg/v1/user/dashboard
+     */
+    public function get_dashboard( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+        $child_id = sanitize_text_field( $request->get_param( 'child_id' ) );
+        
+        // Get user profile
+        $user = get_user_by( 'id', $user_id );
+        if ( ! $user ) {
+            return new \WP_Error( 'user_not_found', 'User not found', [ 'status' => 404 ] );
+        }
+        
+        // Get children
+        $children = get_user_meta( $user_id, '_kg_children', true );
+        if ( ! is_array( $children ) ) {
+            $children = [];
+        }
+        
+        // Build basic dashboard
+        $dashboard = [
+            'user' => [
+                'id' => $user->ID,
+                'name' => $user->display_name,
+                'email' => $user->user_email,
+            ],
+            'children' => $children,
+            'recommendations' => null,
+        ];
+        
+        // If child_id provided, add personalized recommendations
+        if ( ! empty( $child_id ) && class_exists( '\KG_Core\Services\RecommendationService' ) ) {
+            // Find the child
+            $child = null;
+            foreach ( $children as $c ) {
+                if ( $c['id'] === $child_id ) {
+                    $child = $c;
+                    break;
+                }
+            }
+            
+            if ( $child ) {
+                $recommendation_service = new \KG_Core\Services\RecommendationService();
+                $dashboard['recommendations'] = $recommendation_service->getDashboardRecommendations( $child_id, $user_id );
+            }
+        }
+        
+        return new \WP_REST_Response( $dashboard, 200 );
     }
 }
