@@ -190,10 +190,10 @@ class VaccineReminderCron {
             'child_name' => $child_info['name'],
             'vaccine_name' => $vaccine_info['name'],
             'vaccine_code' => $record['vaccine_code'],
-            'scheduled_date' => date('d F Y', strtotime($record['scheduled_date'])),
+            'scheduled_date' => \KG_Core\Utils\Helper::format_turkish_date($record['scheduled_date']),
             'days_remaining' => $days_before,
-            'app_url' => home_url(),
-            'unsubscribe_url' => home_url('/hesap/bildirim-tercihleri')
+            'app_url' => 'https://kidsgourmet.com.tr',
+            'unsubscribe_url' => 'https://kidsgourmet.com.tr/hesap/bildirim-tercihleri'
         ];
         
         // Schedule email notification
@@ -250,8 +250,8 @@ class VaccineReminderCron {
             'child_name' => $child_info['name'],
             'vaccine_name' => $vaccine_info['name'],
             'vaccine_code' => $record['vaccine_code'],
-            'scheduled_date' => date('d F Y', strtotime($record['scheduled_date'])),
-            'app_url' => home_url(),
+            'scheduled_date' => \KG_Core\Utils\Helper::format_turkish_date($record['scheduled_date']),
+            'app_url' => 'https://kidsgourmet.com.tr',
         ];
         
         $notification_manager->send_immediate_notification(
@@ -287,7 +287,7 @@ class VaccineReminderCron {
             'child_name' => $child_info['name'],
             'vaccine_name' => $vaccine_info['name'],
             'vaccine_code' => $record['vaccine_code'],
-            'app_url' => home_url(),
+            'app_url' => 'https://kidsgourmet.com.tr',
         ];
         
         $notification_manager->send_immediate_notification(

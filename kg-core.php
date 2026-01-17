@@ -109,6 +109,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/UserProfileFields.php' ) ) requ
 
 // 5.5.1. HEALTH ADMIN PAGES (Vaccination Tracker)
 if ( file_exists( KG_CORE_PATH . 'includes/Health/VaccineManager.php' ) ) require_once KG_CORE_PATH . 'includes/Health/VaccineManager.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/KGCoreAdminMenu.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/KGCoreAdminMenu.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/VaccineAdminPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/VaccineAdminPage.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/EmailTemplateAdminPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/EmailTemplateAdminPage.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/NotificationLogAdminPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/NotificationLogAdminPage.php';
@@ -184,6 +185,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/Health/VaccineStatsCalculator.php' ) 
 // 6.9. VACCINATION TRACKER NOTIFICATION SERVICES (NEW)
 if ( file_exists( KG_CORE_PATH . 'includes/Notifications/NotificationManager.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/NotificationManager.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Notifications/EmailService.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/EmailService.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Notifications/EmailConfig.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/EmailConfig.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Notifications/EmailTemplateRenderer.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/EmailTemplateRenderer.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Notifications/TemplateEngine.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/TemplateEngine.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Notifications/NotificationQueue.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/NotificationQueue.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Notifications/VapidKeyManager.php' ) ) require_once KG_CORE_PATH . 'includes/Notifications/VapidKeyManager.php';
@@ -269,6 +272,9 @@ function kg_core_init() {
     }
     
     // Health Admin Pages (Vaccination Tracker)
+    if ( is_admin() && class_exists( '\KG_Core\Admin\KGCoreAdminMenu' ) ) {
+        new \KG_Core\Admin\KGCoreAdminMenu();
+    }
     if ( is_admin() && class_exists( '\KG_Core\Admin\VaccineAdminPage' ) ) {
         new \KG_Core\Admin\VaccineAdminPage();
     }
@@ -283,6 +289,11 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\VaccineStatsAdminPage' ) ) {
         new \KG_Core\Admin\VaccineStatsAdminPage();
+    }
+    
+    // Email Configuration
+    if ( class_exists( '\KG_Core\Notifications\EmailConfig' ) ) {
+        new \KG_Core\Notifications\EmailConfig();
     }
 
     // Role Manager (RBAC)

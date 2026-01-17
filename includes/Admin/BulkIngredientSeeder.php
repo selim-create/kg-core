@@ -80,7 +80,7 @@ class BulkIngredientSeeder {
      */
     public function add_seeder_page() {
         add_submenu_page(
-            'edit.php?post_type=ingredient',
+            'kg-core',
             '🤖 Toplu AI Oluştur',
             '🤖 Toplu AI Oluştur',
             'manage_options',

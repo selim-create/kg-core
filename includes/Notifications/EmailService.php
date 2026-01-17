@@ -38,9 +38,10 @@ class EmailService {
 	 * @param string $subject    Email subject.
 	 * @param string $body_html  HTML email body.
 	 * @param string $body_text  Plain text email body (optional).
+	 * @param string $category   Email category for styling (optional).
 	 * @return bool|WP_Error True on success, WP_Error on failure.
 	 */
-	public function send( $to, $subject, $body_html, $body_text = '' ) {
+	public function send( $to, $subject, $body_html, $body_text = '', $category = 'system' ) {
 		if ( empty( $to ) || ! is_email( $to ) ) {
 			return new WP_Error( 'invalid_email', 'Invalid recipient email address' );
 		}
@@ -49,9 +50,12 @@ class EmailService {
 			return new WP_Error( 'empty_subject', 'Email subject cannot be empty' );
 		}
 
+		// Wrap content in fancy HTML template
+		$wrapped_html = EmailTemplateRenderer::wrap_content( $body_html, $category );
+
 		$headers = array( 'Content-Type: text/html; charset=UTF-8' );
 
-		$sent = wp_mail( $to, $subject, $body_html, $headers );
+		$sent = wp_mail( $to, $subject, $wrapped_html, $headers );
 
 		if ( ! $sent ) {
 			return new WP_Error( 'email_send_failed', 'Failed to send email' );
@@ -93,7 +97,8 @@ class EmailService {
 			$user->user_email,
 			$rendered['subject'],
 			$rendered['body_html'],
-			$rendered['body_text']
+			$rendered['body_text'],
+			$rendered['category']
 		);
 
 		$status = is_wp_error( $result ) ? 'failed' : 'sent';

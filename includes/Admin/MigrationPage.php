@@ -36,14 +36,13 @@ class MigrationPage {
      * Add admin menu page
      */
     public function addMenuPage() {
-        add_menu_page(
+        add_submenu_page(
+            'kg-core',
             'Tarif Migration',
             'Tarif Migration',
             'manage_options',
             'kg-recipe-migration',
-            [$this, 'renderPage'],
-            'dashicons-update',
-            30
+            [$this, 'renderPage']
         );
     }
     
@@ -51,7 +50,7 @@ class MigrationPage {
      * Enqueue admin assets
      */
     public function enqueueAssets($hook) {
-        if ($hook !== 'toplevel_page_kg-recipe-migration') {
+        if ($hook !== 'kg-core_page_kg-recipe-migration') {
             return;
         }
         
