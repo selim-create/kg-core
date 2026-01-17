@@ -583,7 +583,7 @@ class NutritionTrackerService {
      */
     private function generate_variety_recommendation( $score, $repeated ) {
         if ( $score >= 80 ) {
-            return 'Harika! Çocuğunuz çok çeşitli besinlerle besleniy or.';
+            return 'Harika! Çocuğunuz çok çeşitli besinlerle besleniyor.';
         } elseif ( $score >= 60 ) {
             return 'İyi gidiyorsunuz, ancak biraz daha çeşitlilik eklenebilir.';
         } elseif ( $score >= 40 ) {
