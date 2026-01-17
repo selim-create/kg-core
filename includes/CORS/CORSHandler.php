@@ -9,6 +9,9 @@ class CORSHandler {
         
         // Preflight OPTIONS istekleri için
         add_action('init', [$this, 'handle_preflight']);
+        
+        // WordPress standard endpoint'leri için JWT auth desteği
+        add_filter('rest_authentication_errors', [$this, 'enable_jwt_for_wp_endpoints'], 100);
     }
     
     /**
@@ -87,5 +90,48 @@ class CORSHandler {
         }
         
         return null;
+    }
+    
+    /**
+     * WordPress media ve comments endpoint'leri için JWT auth desteği
+     */
+    public function enable_jwt_for_wp_endpoints($result) {
+        // Eğer zaten authenticate olduysa devam et
+        if (true === $result || is_wp_error($result)) {
+            return $result;
+        }
+        
+        $request_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
+        
+        // Media ve comments endpoint'leri için JWT auth aktifleştir
+        $jwt_endpoints = ['/wp/v2/media', '/wp/v2/comments'];
+        $needs_jwt = false;
+        
+        foreach ($jwt_endpoints as $endpoint) {
+            if (strpos($request_uri, $endpoint) !== false) {
+                $needs_jwt = true;
+                break;
+            }
+        }
+        
+        if (!$needs_jwt) {
+            return $result;
+        }
+        
+        // JWT token kontrol et
+        $token = \KG_Core\Auth\JWTHandler::get_token_from_request();
+        
+        if (!$token) {
+            return $result;
+        }
+        
+        $payload = \KG_Core\Auth\JWTHandler::validate_token($token);
+        
+        if ($payload && isset($payload['user_id'])) {
+            wp_set_current_user($payload['user_id']);
+            return true;
+        }
+        
+        return $result;
     }
 }
