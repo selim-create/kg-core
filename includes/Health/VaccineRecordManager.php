@@ -10,6 +10,11 @@ class VaccineRecordManager {
     private $vaccine_manager;
     private $schedule_calculator;
     
+    /**
+     * Number of days before scheduled date to consider a vaccine as 'upcoming'
+     */
+    const UPCOMING_THRESHOLD_DAYS = 7;
+    
     public function __construct() {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'kg_vaccine_records';
@@ -75,8 +80,6 @@ class VaccineRecordManager {
         foreach ($schedule as $vaccine) {
             // Set initial status to 'upcoming' for all new records
             // Dynamic status will be calculated when retrieved via get_child_vaccines()
-            $initial_status = 'upcoming';
-            
             $result = $wpdb->insert(
                 $this->table_name,
                 [
@@ -84,7 +87,7 @@ class VaccineRecordManager {
                     'child_id' => $child_id,
                     'vaccine_code' => $vaccine['vaccine_code'],
                     'scheduled_date' => $vaccine['scheduled_date'],
-                    'status' => $initial_status,
+                    'status' => 'upcoming',
                     'is_mandatory' => $vaccine['is_mandatory'] ? 1 : 0,
                     'created_at' => current_time('mysql'),
                     'updated_at' => current_time('mysql')
@@ -140,6 +143,7 @@ class VaccineRecordManager {
         
         // Transform to nested structure and calculate dynamic status
         $today = current_time('Y-m-d');
+        $today_timestamp = strtotime($today);
         
         foreach ($results as &$record) {
             // Calculate dynamic status based on dates if not already done/skipped
@@ -151,12 +155,11 @@ class VaccineRecordManager {
                 } elseif ($scheduled_date < $today) {
                     $record['status'] = 'overdue';
                 } else {
-                    // Check if within 7 days
+                    // Check if within upcoming threshold
                     $scheduled_timestamp = strtotime($scheduled_date);
-                    $today_timestamp = strtotime($today);
                     $days_until = ($scheduled_timestamp - $today_timestamp) / 86400;
                     
-                    if ($days_until <= 7 && $days_until >= 0) {
+                    if ($days_until <= self::UPCOMING_THRESHOLD_DAYS && $days_until >= 0) {
                         $record['status'] = 'upcoming';
                     } else {
                         $record['status'] = 'scheduled';
