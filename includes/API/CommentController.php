@@ -249,16 +249,13 @@ class CommentController {
         
         $comment_id = wp_insert_comment( $comment_data );
         
-        if ( ! $comment_id ) {
+        if ( ! $comment_id || is_wp_error( $comment_id ) ) {
             return new \WP_Error( 'comment_failed', 'Yorum eklenemedi', [ 'status' => 500 ] );
         }
         
-        // Update comment count meta
-        $post = get_post( $post_id );
-        if ( $post ) {
-            $count = get_comments_number( $post_id );
-            update_post_meta( $post_id, '_kg_comment_count', $count );
-        }
+        // Update comment count meta - increment by 1 for efficiency
+        $current_count = (int) get_post_meta( $post_id, '_kg_comment_count', true );
+        update_post_meta( $post_id, '_kg_comment_count', $current_count + 1 );
         
         $comment = get_comment( $comment_id );
         
