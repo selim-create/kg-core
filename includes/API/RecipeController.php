@@ -1,6 +1,8 @@
 <?php
 namespace KG_Core\API;
 
+use KG_Core\Auth\JWTHandler;
+
 class RecipeController {
 
     public function __construct() {
@@ -47,9 +49,7 @@ class RecipeController {
         register_rest_route( 'kg/v1', '/recipes/(?P<id>\d+)/rate', [
             'methods'  => 'POST',
             'callback' => [ $this, 'rate_recipe' ],
-            'permission_callback' => function() {
-                return is_user_logged_in();
-            },
+            'permission_callback' => [ $this, 'check_authentication' ],
             'args' => [
                 'rating' => [
                     'required' => true,
@@ -76,6 +76,31 @@ class RecipeController {
                 ]
             ]
         ]);
+    }
+
+    /**
+     * Check JWT authentication
+     */
+    public function check_authentication( $request ) {
+        $token = JWTHandler::get_token_from_request();
+        
+        if ( ! $token ) {
+            return false;
+        }
+
+        $payload = JWTHandler::validate_token( $token );
+        
+        if ( ! $payload || ! isset( $payload['user_id'] ) ) {
+            return false;
+        }
+
+        // Set current user for WordPress functions
+        wp_set_current_user( $payload['user_id'] );
+        
+        // Store user_id in request for later use
+        $request->set_param( 'authenticated_user_id', $payload['user_id'] );
+        
+        return true;
     }
 
     public function get_featured_recipes( $request ) {
@@ -761,7 +786,12 @@ class RecipeController {
     public function rate_recipe( $request ) {
         $recipe_id = $request->get_param( 'id' );
         $rating = $request->get_param( 'rating' );
-        $user_id = get_current_user_id();
+        
+        // Use authenticated_user_id from JWT instead of get_current_user_id()
+        $user_id = $request->get_param( 'authenticated_user_id' );
+        if ( ! $user_id ) {
+            $user_id = get_current_user_id(); // Fallback for session auth
+        }
         
         // Verify recipe exists
         $recipe = get_post( $recipe_id );
