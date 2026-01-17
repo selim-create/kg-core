@@ -11,9 +11,11 @@ class EmailTemplateRenderer {
     
     // Default social media URLs (used as fallback)
     const SOCIAL_INSTAGRAM = 'https://instagram.com/kidsgourmet';
-    const SOCIAL_FACEBOOK = 'https://facebook.com/kidsgourmet';
-    const SOCIAL_TWITTER = 'https://twitter.com/kidsgourmet';
     const SOCIAL_YOUTUBE = 'https://youtube.com/@kidsgourmet';
+    const SOCIAL_TWITTER = 'https://twitter.com/kidsgourmet';
+    const SOCIAL_TIKTOK = 'https://tiktok.com/@kidsgourmet';
+    const SOCIAL_PINTEREST = 'https://pinterest.com/kidsgourmet';
+    const SOCIAL_FACEBOOK = 'https://facebook.com/kidsgourmet';
     
     /**
      * Get social media URLs from WordPress options with fallback to defaults
@@ -23,9 +25,11 @@ class EmailTemplateRenderer {
     public static function get_social_urls() {
         return [
             'instagram' => get_option('kg_social_instagram', self::SOCIAL_INSTAGRAM),
-            'facebook' => get_option('kg_social_facebook', self::SOCIAL_FACEBOOK),
-            'twitter' => get_option('kg_social_twitter', self::SOCIAL_TWITTER),
             'youtube' => get_option('kg_social_youtube', self::SOCIAL_YOUTUBE),
+            'twitter' => get_option('kg_social_twitter', self::SOCIAL_TWITTER),
+            'tiktok' => get_option('kg_social_tiktok', self::SOCIAL_TIKTOK),
+            'pinterest' => get_option('kg_social_pinterest', self::SOCIAL_PINTEREST),
+            'facebook' => get_option('kg_social_facebook', self::SOCIAL_FACEBOOK),
         ];
     }
     
@@ -37,21 +41,14 @@ class EmailTemplateRenderer {
      * @return string Complete HTML email
      */
     public static function wrap_content($content, $category = 'system') {
-        $category_colors = [
-            'vaccination' => '#4CAF50', // Green
-            'growth' => '#2196F3',      // Blue
-            'nutrition' => '#FF9800',   // Orange
-            'system' => '#607D8B',      // Gray
-            'marketing' => '#E91E63'    // Pink
-        ];
-        
-        $accent_color = $category_colors[$category] ?? '#FF6B35';
-        
-        // Calculate lighter shade for gradient
-        $accent_light = self::adjust_brightness($accent_color, 0.85);
-        
         // Get social media URLs from options
         $social_urls = self::get_social_urls();
+        
+        // Get logo URL from options
+        $logo_url = get_option('kg_email_logo', '');
+        
+        // Primary brand color
+        $primary_color = '#FF6B35';
         
         return '
 <!DOCTYPE html>
@@ -67,28 +64,29 @@ class EmailTemplateRenderer {
     </style>
     <![endif]-->
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, \'Helvetica Neue\', Arial, sans-serif; background-color: #f5f5f5; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, \'Helvetica Neue\', Arial, sans-serif; background-color: #f8fafc; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
     <!-- Email Client Preview Text (Hidden but readable by email clients) -->
     <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">
         KidsGourmet - Bebeğiniz için en iyi beslenme ve sağlık rehberi
     </div>
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f5f5f5;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f8fafc;">
         <tr>
-            <td align="center" style="padding: 20px 10px;">
+            <td align="center" style="padding: 40px 10px;">
                 <!-- Main Container -->
                 <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 600px; width: 100%;">
                     
-                    <!-- Header with Gradient -->
+                    <!-- Header -->
                     <tr>
-                        <td style="background: linear-gradient(135deg, ' . $accent_color . ' 0%, ' . $accent_light . ' 100%); padding: 40px 30px; text-align: center;">
+                        <td style="background-color: #ffffff; padding: 40px 30px 30px; text-align: center; border-bottom: 3px solid ' . $primary_color . ';">
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                                 <tr>
                                     <td align="center">
-                                        <!-- Logo/Brand -->
-                                        <div style="background: rgba(255,255,255,0.95); border-radius: 12px; padding: 15px 25px; display: inline-block; margin-bottom: 10px;">
-                                            <h1 style="margin: 0; color: ' . $accent_color . '; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">🍎 KidsGourmet</h1>
-                                        </div>
-                                        <p style="margin: 10px 0 0; color: rgba(255,255,255,0.95); font-size: 14px; font-weight: 500;">Bebeğiniz için en iyi beslenme ve sağlık rehberi</p>
+                                        <!-- Logo -->
+                                        ' . (
+                                            $logo_url 
+                                            ? '<img src="' . esc_url($logo_url) . '" alt="KidsGourmet" style="max-height: 60px; display: block; margin: 0 auto;">'
+                                            : '<h1 style="margin: 0; color: ' . $primary_color . '; font-size: 32px; font-weight: 700; letter-spacing: -0.5px;">🍎 KidsGourmet</h1>'
+                                        ) . '
                                     </td>
                                 </tr>
                             </table>
@@ -97,7 +95,7 @@ class EmailTemplateRenderer {
                     
                     <!-- Content -->
                     <tr>
-                        <td style="padding: 40px 30px;">
+                        <td style="padding: 40px 30px; color: #1e293b; font-size: 16px; line-height: 1.6;">
                             ' . $content . '
                         </td>
                     </tr>
@@ -105,32 +103,38 @@ class EmailTemplateRenderer {
                     <!-- Divider -->
                     <tr>
                         <td style="padding: 0 30px;">
-                            <div style="border-top: 2px solid #f0f0f0; margin: 0;"></div>
+                            <div style="border-top: 1px solid #e2e8f0; margin: 0;"></div>
                         </td>
                     </tr>
                     
                     <!-- Footer -->
                     <tr>
-                        <td style="background: linear-gradient(to bottom, #ffffff 0%, #f8f9fa 100%); padding: 30px 30px 20px;">
+                        <td style="background-color: #f8f9fa; padding: 30px 30px 20px;">
                             
                             <!-- Social Media Icons -->
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 20px;">
                                 <tr>
                                     <td align="center">
-                                        <p style="margin: 0 0 15px; color: #666; font-size: 13px; font-weight: 600;">Bizi takip edin</p>
+                                        <p style="margin: 0 0 15px; color: #64748b; font-size: 13px; font-weight: 600;">Bizi takip edin</p>
                                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="display: inline-block;">
                                             <tr>
-                                                <td style="padding: 0 8px;">
-                                                    <a href="' . $social_urls['instagram'] . '" style="display: inline-block; width: 36px; height: 36px; background: #E1306C; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">📷</a>
+                                                <td style="padding: 0 6px;">
+                                                    <a href="' . esc_url($social_urls['instagram']) . '" style="display: inline-block; width: 40px; height: 40px; background: #E1306C; border-radius: 50%; text-align: center; line-height: 40px; color: white; text-decoration: none; font-size: 16px; font-weight: 700; font-family: Arial, sans-serif;">IG</a>
                                                 </td>
-                                                <td style="padding: 0 8px;">
-                                                    <a href="' . $social_urls['facebook'] . '" style="display: inline-block; width: 36px; height: 36px; background: #1877F2; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">👍</a>
+                                                <td style="padding: 0 6px;">
+                                                    <a href="' . esc_url($social_urls['youtube']) . '" style="display: inline-block; width: 40px; height: 40px; background: #FF0000; border-radius: 50%; text-align: center; line-height: 40px; color: white; text-decoration: none; font-size: 16px; font-weight: 700; font-family: Arial, sans-serif;">YT</a>
                                                 </td>
-                                                <td style="padding: 0 8px;">
-                                                    <a href="' . $social_urls['twitter'] . '" style="display: inline-block; width: 36px; height: 36px; background: #1DA1F2; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">🐦</a>
+                                                <td style="padding: 0 6px;">
+                                                    <a href="' . esc_url($social_urls['twitter']) . '" style="display: inline-block; width: 40px; height: 40px; background: #000000; border-radius: 50%; text-align: center; line-height: 40px; color: white; text-decoration: none; font-size: 16px; font-weight: 700; font-family: Arial, sans-serif;">X</a>
                                                 </td>
-                                                <td style="padding: 0 8px;">
-                                                    <a href="' . $social_urls['youtube'] . '" style="display: inline-block; width: 36px; height: 36px; background: #FF0000; border-radius: 50%; text-align: center; line-height: 36px; color: white; text-decoration: none; font-size: 18px;">▶️</a>
+                                                <td style="padding: 0 6px;">
+                                                    <a href="' . esc_url($social_urls['tiktok']) . '" style="display: inline-block; width: 40px; height: 40px; background: #000000; border-radius: 50%; text-align: center; line-height: 40px; color: white; text-decoration: none; font-size: 16px; font-weight: 700; font-family: Arial, sans-serif;">TT</a>
+                                                </td>
+                                                <td style="padding: 0 6px;">
+                                                    <a href="' . esc_url($social_urls['pinterest']) . '" style="display: inline-block; width: 40px; height: 40px; background: #E60023; border-radius: 50%; text-align: center; line-height: 40px; color: white; text-decoration: none; font-size: 18px; font-weight: 700; font-family: Arial, sans-serif;">P</a>
+                                                </td>
+                                                <td style="padding: 0 6px;">
+                                                    <a href="' . esc_url($social_urls['facebook']) . '" style="display: inline-block; width: 40px; height: 40px; background: #1877F2; border-radius: 50%; text-align: center; line-height: 40px; color: white; text-decoration: none; font-size: 18px; font-weight: 700; font-family: Arial, sans-serif;">f</a>
                                                 </td>
                                             </tr>
                                         </table>
@@ -142,14 +146,14 @@ class EmailTemplateRenderer {
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                                 <tr>
                                     <td align="center">
-                                        <p style="margin: 0 0 12px; color: #666; font-size: 13px; line-height: 1.6;">
-                                            Bu e-postayı <strong style="color: ' . $accent_color . ';">KidsGourmet</strong> üzerinden aldınız.
+                                        <p style="margin: 0 0 12px; color: #64748b; font-size: 13px; line-height: 1.6;">
+                                            Bu e-postayı <strong style="color: ' . $primary_color . ';">KidsGourmet</strong> üzerinden aldınız.
                                         </p>
-                                        <p style="margin: 0 0 15px; color: #999; font-size: 12px; line-height: 1.8;">
-                                            <a href="{{unsubscribe_url}}" style="color: #666; text-decoration: none; font-weight: 500; border-bottom: 1px solid #ddd;">📧 Bildirim Tercihlerim</a> · 
-                                            <a href="https://kidsgourmet.com.tr" style="color: #666; text-decoration: none; font-weight: 500; border-bottom: 1px solid #ddd;">🌐 kidsgourmet.com.tr</a>
+                                        <p style="margin: 0 0 15px; color: #64748b; font-size: 12px; line-height: 1.8;">
+                                            <a href="{{unsubscribe_url}}" style="color: ' . $primary_color . '; text-decoration: none; font-weight: 500;">📧 Bildirim Tercihlerim</a> · 
+                                            <a href="https://kidsgourmet.com.tr" style="color: ' . $primary_color . '; text-decoration: none; font-weight: 500;">🌐 kidsgourmet.com.tr</a>
                                         </p>
-                                        <p style="margin: 15px 0 0; padding-top: 15px; border-top: 1px solid #e0e0e0; color: #bbb; font-size: 11px;">
+                                        <p style="margin: 15px 0 0; padding-top: 15px; border-top: 1px solid #e2e8f0; color: #94a3b8; font-size: 11px;">
                                             © ' . date('Y') . ' KidsGourmet · Tüm hakları saklıdır · 🇹🇷 Türkiye\'de yapıldı
                                         </p>
                                     </td>
