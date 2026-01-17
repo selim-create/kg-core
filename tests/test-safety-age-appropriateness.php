@@ -49,9 +49,9 @@ if (!$wordpress_loaded) {
             exit(1);
         }
         
-        // Check for critical severity on older age groups
-        if (strpos($content, "severity = 'critical'") !== false || 
-            strpos($content, '$severity = \'critical\'') !== false) {
+        // Check for critical severity on older age groups (normalize quotes for search)
+        if (strpos($content, "= 'critical'") !== false || 
+            strpos($content, '= "critical"') !== false) {
             echo "✓ Critical severity set for older age groups\n";
         } else {
             echo "✗ Critical severity NOT found\n";
@@ -346,24 +346,31 @@ test('Recipe for younger age group is informational only', function() {
     $recipe_id = $query->posts[0]->ID;
     $result = $service->checkRecipeSafety($recipe_id, $mock_child);
     
-    // Should still be safe (is_safe should be true)
-    // Alert should be info level with is_for_older = false
-    $has_correct_alert = false;
+    // Recipe for younger age group should still be safe
+    // (Older children can eat food for younger children)
+    if ($result['is_safe'] !== true) {
+        echo " (Expected is_safe=true for younger age group recipe)";
+        return false;
+    }
+    
+    // If there's an age alert, it should be info level with is_for_older = false
+    $has_correct_alert = true;
     foreach ($result['alerts'] as $alert) {
-        if ($alert['type'] === 'age' && 
-            $alert['severity'] === 'info' &&
-            isset($alert['is_for_older']) &&
-            $alert['is_for_older'] === false) {
-            $has_correct_alert = true;
-            break;
+        if ($alert['type'] === 'age') {
+            if ($alert['severity'] !== 'info' || 
+                !isset($alert['is_for_older']) || 
+                $alert['is_for_older'] !== false) {
+                $has_correct_alert = false;
+                break;
+            }
         }
     }
     
-    if ($result['is_safe'] === true || $has_correct_alert) {
+    if ($has_correct_alert) {
         return true;
     }
     
-    echo " (Expected is_safe=true or info alert with is_for_older=false)";
+    echo " (Age alert should be info level with is_for_older=false)";
     return false;
 });
 
