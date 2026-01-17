@@ -15,6 +15,11 @@ class VaccineRecordManager {
      */
     const UPCOMING_THRESHOLD_DAYS = 7;
     
+    /**
+     * Number of seconds in a day (for timestamp calculations)
+     */
+    const SECONDS_PER_DAY = 86400;
+    
     public function __construct() {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'kg_vaccine_records';
@@ -157,7 +162,7 @@ class VaccineRecordManager {
                 } else {
                     // Check if within upcoming threshold
                     $scheduled_timestamp = strtotime($scheduled_date);
-                    $days_until = ($scheduled_timestamp - $today_timestamp) / 86400;
+                    $days_until = ($scheduled_timestamp - $today_timestamp) / self::SECONDS_PER_DAY;
                     
                     if ($days_until <= self::UPCOMING_THRESHOLD_DAYS && $days_until >= 0) {
                         $record['status'] = 'upcoming';
@@ -459,7 +464,7 @@ class VaccineRecordManager {
             $record['is_mandatory'] = (bool)$record['is_mandatory'];
             $scheduled_timestamp = strtotime($record['scheduled_date']);
             $today_timestamp = strtotime($today);
-            $record['days_overdue'] = floor(($today_timestamp - $scheduled_timestamp) / 86400);
+            $record['days_overdue'] = floor(($today_timestamp - $scheduled_timestamp) / self::SECONDS_PER_DAY);
         }
         
         return $results;
