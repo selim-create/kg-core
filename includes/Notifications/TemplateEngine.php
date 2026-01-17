@@ -35,6 +35,7 @@ class TemplateEngine {
 			'subject'   => $this->replace_placeholders( $template['subject'], $placeholders ),
 			'body_html' => $this->replace_placeholders( $template['body_html'], $placeholders ),
 			'body_text' => $this->replace_placeholders( $template['body_text'], $placeholders ),
+			'category'  => $template['category'] ?? 'system',
 		);
 
 		return $rendered;
@@ -49,12 +50,12 @@ class TemplateEngine {
 	public function get_template( $template_key ) {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . 'notification_templates';
+		$table_name = $wpdb->prefix . 'kg_email_templates';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$template = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT template_key, subject, body_html, body_text, is_active 
+				"SELECT template_key, subject, body_html, body_text, category, is_active 
 				FROM {$table_name} 
 				WHERE template_key = %s AND is_active = 1 
 				LIMIT 1",

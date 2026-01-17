@@ -38,9 +38,10 @@ class EmailService {
 	 * @param string $subject    Email subject.
 	 * @param string $body_html  HTML email body.
 	 * @param string $body_text  Plain text email body (optional).
+	 * @param string $category   Email category for styling (optional).
 	 * @return bool|WP_Error True on success, WP_Error on failure.
 	 */
-	public function send( $to, $subject, $body_html, $body_text = '' ) {
+	public function send( $to, $subject, $body_html, $body_text = '', $category = 'system' ) {
 		if ( empty( $to ) || ! is_email( $to ) ) {
 			return new WP_Error( 'invalid_email', 'Invalid recipient email address' );
 		}
@@ -49,9 +50,12 @@ class EmailService {
 			return new WP_Error( 'empty_subject', 'Email subject cannot be empty' );
 		}
 
+		// Wrap content in fancy HTML template
+		$wrapped_html = EmailTemplateRenderer::wrap_content( $body_html, $category );
+
 		$headers = array( 'Content-Type: text/html; charset=UTF-8' );
 
-		$sent = wp_mail( $to, $subject, $body_html, $headers );
+		$sent = wp_mail( $to, $subject, $wrapped_html, $headers );
 
 		if ( ! $sent ) {
 			return new WP_Error( 'email_send_failed', 'Failed to send email' );
@@ -93,7 +97,8 @@ class EmailService {
 			$user->user_email,
 			$rendered['subject'],
 			$rendered['body_html'],
-			$rendered['body_text']
+			$rendered['body_text'],
+			$rendered['category']
 		);
 
 		$status = is_wp_error( $result ) ? 'failed' : 'sent';
@@ -125,20 +130,19 @@ class EmailService {
 	public function log_email( $user_id, $template_key, $recipient, $subject, $status, $metadata = array() ) {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . 'notification_logs';
+		$table_name = $wpdb->prefix . 'kg_email_logs';
 
 		$data = array(
-			'user_id'      => $user_id,
-			'channel'      => 'email',
-			'template_key' => $template_key,
-			'recipient'    => $recipient,
-			'subject'      => $subject,
-			'status'       => $status,
-			'metadata'     => wp_json_encode( $metadata ),
-			'sent_at'      => current_time( 'mysql' ),
+			'user_id'        => $user_id,
+			'template_key'   => $template_key,
+			'recipient_email' => $recipient,
+			'subject'        => $subject,
+			'status'         => $status,
+			'metadata'       => wp_json_encode( $metadata ),
+			'sent_at'        => $status === 'sent' ? current_time( 'mysql' ) : null,
 		);
 
-		$format = array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s' );
+		$format = array( '%d', '%s', '%s', '%s', '%s', '%s', '%s' );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Required for email logging functionality
 		$result = $wpdb->insert( $table_name, $data, $format );

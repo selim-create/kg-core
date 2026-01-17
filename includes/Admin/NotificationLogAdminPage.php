@@ -25,7 +25,7 @@ class NotificationLogAdminPage {
      */
     public function add_menu() {
         add_submenu_page(
-            'kg-health',
+            'kg-core',
             __('Bildirim Logları', 'kg-core'),
             __('Bildirim Logları', 'kg-core'),
             'manage_options',

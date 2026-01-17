@@ -195,4 +195,38 @@ class Helper {
         
         return $decoded;
     }
+
+    /**
+     * Format date in Turkish
+     * Converts English month names to Turkish
+     * 
+     * @param string $date Date string or timestamp
+     * @param string $format Date format (default: 'd F Y')
+     * @return string Formatted Turkish date
+     */
+    public static function format_turkish_date( $date, $format = 'd F Y' ) {
+        $turkish_months = [
+            'January' => 'Ocak',
+            'February' => 'Şubat',
+            'March' => 'Mart',
+            'April' => 'Nisan',
+            'May' => 'Mayıs',
+            'June' => 'Haziran',
+            'July' => 'Temmuz',
+            'August' => 'Ağustos',
+            'September' => 'Eylül',
+            'October' => 'Ekim',
+            'November' => 'Kasım',
+            'December' => 'Aralık'
+        ];
+        
+        // Convert date to timestamp if needed
+        $timestamp = is_numeric($date) ? $date : strtotime($date);
+        
+        // Format date in English
+        $english_date = date($format, $timestamp);
+        
+        // Replace English months with Turkish
+        return str_replace(array_keys($turkish_months), array_values($turkish_months), $english_date);
+    }
 }

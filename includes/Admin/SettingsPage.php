@@ -14,7 +14,7 @@ class SettingsPage {
      */
     public function add_settings_page() {
         add_submenu_page(
-            'edit.php?post_type=ingredient',
+            'kg-core',
             '⚙️ AI Ayarları',
             '⚙️ AI Ayarları',
             'manage_options',

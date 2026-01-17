@@ -22,11 +22,29 @@ class EmailTemplateAdminPage {
     }
 
     /**
+     * Get Turkish category label
+     * 
+     * @param string $category Category key
+     * @return string Turkish label
+     */
+    private function get_category_label($category) {
+        $category_labels = [
+            'vaccination' => 'Aşı',
+            'growth' => 'Büyüme',
+            'nutrition' => 'Beslenme',
+            'system' => 'Sistem',
+            'marketing' => 'Pazarlama'
+        ];
+        
+        return $category_labels[$category] ?? ucfirst($category);
+    }
+
+    /**
      * Register admin menu
      */
     public function add_menu() {
         add_submenu_page(
-            'kg-health',
+            'kg-core',
             __('E-posta Şablonları', 'kg-core'),
             __('E-posta Şablonları', 'kg-core'),
             'manage_options',
@@ -144,7 +162,7 @@ class EmailTemplateAdminPage {
                 </option>
                 <?php foreach ($categories as $cat): ?>
                     <option value="<?php echo esc_url(admin_url('admin.php?page=kg-email-templates&category=' . $cat)); ?>" <?php selected($category_filter, $cat); ?>>
-                        <?php echo esc_html(ucfirst($cat)); ?>
+                        <?php echo esc_html($this->get_category_label($cat)); ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -174,7 +192,7 @@ class EmailTemplateAdminPage {
                             <td><?php echo esc_html($template['id']); ?></td>
                             <td><code><?php echo esc_html($template['template_key']); ?></code></td>
                             <td><strong><?php echo esc_html($template['name']); ?></strong></td>
-                            <td><?php echo esc_html(ucfirst($template['category'])); ?></td>
+                            <td><?php echo esc_html($this->get_category_label($template['category'])); ?></td>
                             <td>
                                 <?php if ($template['is_active']): ?>
                                     <span style="color: green;">✓ Aktif</span>
@@ -261,11 +279,11 @@ class EmailTemplateAdminPage {
                         <th scope="row"><label for="category"><?php esc_html_e('Kategori', 'kg-core'); ?> *</label></th>
                         <td>
                             <select name="category" id="category" required>
-                                <option value="vaccination" <?php selected($is_edit ? $template['category'] : '', 'vaccination'); ?>><?php esc_html_e('Vaccination', 'kg-core'); ?></option>
-                                <option value="growth" <?php selected($is_edit ? $template['category'] : '', 'growth'); ?>><?php esc_html_e('Growth', 'kg-core'); ?></option>
-                                <option value="nutrition" <?php selected($is_edit ? $template['category'] : '', 'nutrition'); ?>><?php esc_html_e('Nutrition', 'kg-core'); ?></option>
-                                <option value="system" <?php selected($is_edit ? $template['category'] : '', 'system'); ?>><?php esc_html_e('System', 'kg-core'); ?></option>
-                                <option value="marketing" <?php selected($is_edit ? $template['category'] : '', 'marketing'); ?>><?php esc_html_e('Marketing', 'kg-core'); ?></option>
+                                <option value="vaccination" <?php selected($is_edit ? $template['category'] : '', 'vaccination'); ?>><?php esc_html_e('Aşı', 'kg-core'); ?></option>
+                                <option value="growth" <?php selected($is_edit ? $template['category'] : '', 'growth'); ?>><?php esc_html_e('Büyüme', 'kg-core'); ?></option>
+                                <option value="nutrition" <?php selected($is_edit ? $template['category'] : '', 'nutrition'); ?>><?php esc_html_e('Beslenme', 'kg-core'); ?></option>
+                                <option value="system" <?php selected($is_edit ? $template['category'] : '', 'system'); ?>><?php esc_html_e('Sistem', 'kg-core'); ?></option>
+                                <option value="marketing" <?php selected($is_edit ? $template['category'] : '', 'marketing'); ?>><?php esc_html_e('Pazarlama', 'kg-core'); ?></option>
                             </select>
                         </td>
                     </tr>
@@ -365,8 +383,8 @@ class EmailTemplateAdminPage {
             '{{vaccine_code}}' => 'KKK_1',
             '{{scheduled_date}}' => '15 Ocak 2025',
             '{{days_remaining}}' => '3',
-            '{{app_url}}' => home_url(),
-            '{{unsubscribe_url}}' => home_url('/unsubscribe')
+            '{{app_url}}' => 'https://kidsgourmet.com.tr',
+            '{{unsubscribe_url}}' => 'https://kidsgourmet.com.tr/unsubscribe'
         ];
 
         $preview_html = str_replace(array_keys($sample_data), array_values($sample_data), $template['body_html']);
@@ -503,10 +521,10 @@ class EmailTemplateAdminPage {
             '{{child_name}}' => 'Ahmet (TEST)',
             '{{vaccine_name}}' => 'KKK (Kızamık, Kızamıkçık, Kabakulak) - TEST',
             '{{vaccine_code}}' => 'KKK_1',
-            '{{scheduled_date}}' => date('d F Y'),
+            '{{scheduled_date}}' => \KG_Core\Utils\Helper::format_turkish_date(time()),
             '{{days_remaining}}' => '3',
-            '{{app_url}}' => home_url(),
-            '{{unsubscribe_url}}' => home_url('/unsubscribe')
+            '{{app_url}}' => 'https://kidsgourmet.com.tr',
+            '{{unsubscribe_url}}' => 'https://kidsgourmet.com.tr/unsubscribe'
         ];
 
         $subject = str_replace(array_keys($sample_data), array_values($sample_data), $template['subject']);
