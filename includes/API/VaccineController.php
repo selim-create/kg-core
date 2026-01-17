@@ -304,24 +304,28 @@ class VaccineController {
             return new \WP_Error( 'forbidden', 'Child does not belong to user', [ 'status' => 403 ] );
         }
 
-        $record_manager = new VaccineRecordManager();
-        $schedule = $record_manager->get_child_vaccines( $child_id );
-
-        // If schedule is empty, try to auto-generate it
-        if ( ! is_wp_error( $schedule ) && empty( $schedule ) ) {
-            // Get child's birth date
-            $children = get_user_meta( $user_id, '_kg_children', true );
-            $child = null;
-            if ( is_array( $children ) ) {
-                foreach ( $children as $c ) {
-                    if ( isset( $c['id'] ) && $c['id'] === $child_id ) {
-                        $child = $c;
-                        break;
-                    }
+        // Get child data
+        $children = get_user_meta( $user_id, '_kg_children', true );
+        $child = null;
+        if ( is_array( $children ) ) {
+            foreach ( $children as $c ) {
+                if ( isset( $c['id'] ) && $c['id'] === $child_id ) {
+                    $child = $c;
+                    break;
                 }
             }
+        }
 
-            if ( $child && ! empty( $child['birth_date'] ) ) {
+        if ( ! $child ) {
+            return new \WP_Error( 'child_not_found', 'Child not found', [ 'status' => 404 ] );
+        }
+
+        $record_manager = new VaccineRecordManager();
+        $vaccines = $record_manager->get_child_vaccines( $child_id );
+
+        // If schedule is empty, try to auto-generate it
+        if ( ! is_wp_error( $vaccines ) && empty( $vaccines ) ) {
+            if ( ! empty( $child['birth_date'] ) ) {
                 $create_result = $record_manager->create_schedule_for_child(
                     $user_id,
                     $child_id,
@@ -331,14 +335,62 @@ class VaccineController {
 
                 if ( ! is_wp_error( $create_result ) ) {
                     // Fetch the newly created schedule
-                    $schedule = $record_manager->get_child_vaccines( $child_id );
+                    $vaccines = $record_manager->get_child_vaccines( $child_id );
                 }
             }
         }
 
-        if ( is_wp_error( $schedule ) ) {
-            return $schedule;
+        if ( is_wp_error( $vaccines ) ) {
+            return $vaccines;
         }
+
+        // Calculate statistics
+        $stats = [
+            'total' => count( $vaccines ),
+            'done' => 0,
+            'upcoming' => 0,
+            'overdue' => 0,
+            'skipped' => 0,
+            'completion_percentage' => 0
+        ];
+
+        $today = current_time( 'Y-m-d' );
+        foreach ( $vaccines as $vaccine ) {
+            switch ( $vaccine['status'] ) {
+                case 'done':
+                    $stats['done']++;
+                    break;
+                case 'skipped':
+                    $stats['skipped']++;
+                    break;
+                case 'upcoming':
+                case 'scheduled':
+                    if ( $vaccine['scheduled_date'] < $today ) {
+                        $stats['overdue']++;
+                    } else {
+                        $stats['upcoming']++;
+                    }
+                    break;
+                case 'delayed':
+                    $stats['overdue']++;
+                    break;
+            }
+        }
+
+        if ( $stats['total'] > 0 ) {
+            $stats['completion_percentage'] = round( ( $stats['done'] / $stats['total'] ) * 100, 1 );
+        }
+
+        // Build full schedule response
+        $schedule = [
+            'child_id' => $child_id,
+            'child_name' => isset( $child['name'] ) ? $child['name'] : '',
+            'birth_date' => isset( $child['birth_date'] ) ? $child['birth_date'] : '',
+            'is_premature' => isset( $child['is_premature'] ) ? (bool)$child['is_premature'] : false,
+            'schedule_version' => defined('KG_VACCINE_SCHEDULE_VERSION') ? KG_VACCINE_SCHEDULE_VERSION : 'TR_2026_v1',
+            'vaccines' => $vaccines,
+            'stats' => $stats
+        ];
 
         return new \WP_REST_Response( [
             'success' => true,

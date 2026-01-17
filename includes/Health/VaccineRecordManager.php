@@ -122,7 +122,7 @@ class VaccineRecordManager {
         }
         
         $results = $wpdb->get_results(
-            "SELECT vr.*, v.name, v.name_short, v.description, v.brand_options
+            "SELECT vr.*, v.name, v.name_short, v.description, v.brand_options, v.timing_rule
              FROM {$this->table_name} vr
              LEFT JOIN {$wpdb->prefix}kg_vaccine_master v ON vr.vaccine_code = v.code
              {$where}
@@ -134,12 +134,42 @@ class VaccineRecordManager {
             return new \WP_Error('database_error', $wpdb->last_error);
         }
         
-        // Parse JSON fields and convert booleans
+        // Transform to nested structure
         foreach ($results as &$record) {
-            if (isset($record['brand_options']) && !empty($record['brand_options'])) {
-                $record['brand_options'] = json_decode($record['brand_options'], true);
+            // Parse timing_rule JSON
+            $timing_rule = null;
+            if (isset($record['timing_rule']) && !empty($record['timing_rule'])) {
+                $timing_rule = json_decode($record['timing_rule'], true);
             }
+            
+            // Create nested vaccine object
+            $vaccine = [
+                'code' => $record['vaccine_code'],
+                'name' => $record['name'],
+                'name_short' => $record['name_short'],
+                'description' => $record['description'],
+                'timing_rule' => $timing_rule
+            ];
+            
+            // Parse brand_options if present
+            if (isset($record['brand_options']) && !empty($record['brand_options'])) {
+                $vaccine['brand_options'] = json_decode($record['brand_options'], true);
+            }
+            
+            // Convert record ID to integer with null check
+            $record['id'] = isset($record['id']) ? (int)$record['id'] : null;
+            $record['user_id'] = isset($record['user_id']) ? (int)$record['user_id'] : null;
             $record['is_mandatory'] = (bool)$record['is_mandatory'];
+            
+            // Add nested vaccine object
+            $record['vaccine'] = $vaccine;
+            
+            // Remove redundant fields from top level
+            unset($record['name']);
+            unset($record['name_short']);
+            unset($record['description']);
+            unset($record['brand_options']);
+            unset($record['timing_rule']);
         }
         
         return $results;

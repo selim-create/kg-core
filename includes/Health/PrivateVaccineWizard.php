@@ -70,13 +70,14 @@ class PrivateVaccineWizard {
     /**
      * Validate private vaccine addition
      * 
+     * @param int $user_id User ID
      * @param string $child_id Child ID
      * @param string $type Vaccine type code
      * @param string $brand_code Brand code
      * @param array $options Additional options (schedule_key for multi-schedule vaccines)
      * @return array|WP_Error Validation result or error
      */
-    public function validate_addition($child_id, $type, $brand_code, $options = []) {
+    public function validate_addition($user_id, $child_id, $type, $brand_code, $options = []) {
         // Get vaccine configuration
         $config = $this->get_type_config($type);
         if (is_wp_error($config)) {
@@ -96,18 +97,26 @@ class PrivateVaccineWizard {
             return new \WP_Error('invalid_brand', 'Invalid brand code');
         }
         
-        // Get child's birth date and calculate age
-        global $wpdb;
-        $child = $wpdb->get_row($wpdb->prepare(
-            "SELECT post_content FROM {$wpdb->posts} WHERE ID = %s",
-            $child_id
-        ));
+        // Get child's birth date and calculate age from user meta
+        $children = get_user_meta($user_id, '_kg_children', true);
         
-        if (!$child) {
+        if (!is_array($children)) {
+            return new \WP_Error('children_not_found', 'No children found for user');
+        }
+        
+        // Find the matching child
+        $child_data = null;
+        foreach ($children as $child) {
+            if (isset($child['id']) && $child['id'] === $child_id) {
+                $child_data = $child;
+                break;
+            }
+        }
+        
+        if (!$child_data) {
             return new \WP_Error('child_not_found', 'Child not found');
         }
         
-        $child_data = json_decode($child->post_content, true);
         if (!isset($child_data['birth_date'])) {
             return new \WP_Error('birth_date_missing', 'Child birth date not found');
         }
@@ -189,7 +198,7 @@ class PrivateVaccineWizard {
      */
     public function add_to_schedule($user_id, $child_id, $type, $brand_code, $options = []) {
         // Validate first
-        $validation = $this->validate_addition($child_id, $type, $brand_code, $options);
+        $validation = $this->validate_addition($user_id, $child_id, $type, $brand_code, $options);
         if (is_wp_error($validation)) {
             return $validation;
         }
@@ -204,13 +213,22 @@ class PrivateVaccineWizard {
             }
         }
         
-        // Get child's birth date
-        global $wpdb;
-        $child = $wpdb->get_row($wpdb->prepare(
-            "SELECT post_content FROM {$wpdb->posts} WHERE ID = %s",
-            $child_id
-        ));
-        $child_data = json_decode($child->post_content, true);
+        // Get child's birth date from user meta
+        $children = get_user_meta($user_id, '_kg_children', true);
+        $child_data = null;
+        if (is_array($children)) {
+            foreach ($children as $child) {
+                if (isset($child['id']) && $child['id'] === $child_id) {
+                    $child_data = $child;
+                    break;
+                }
+            }
+        }
+        
+        if (!$child_data || !isset($child_data['birth_date'])) {
+            return new \WP_Error('child_not_found', 'Child birth date not found');
+        }
+        
         $birth_date = new \DateTime($child_data['birth_date']);
         
         $record_ids = [];
