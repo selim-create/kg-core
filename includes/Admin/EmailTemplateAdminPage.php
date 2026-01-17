@@ -1,6 +1,8 @@
 <?php
 namespace KG_Core\Admin;
 
+use KG_Core\Notifications\EmailTemplateRenderer;
+
 /**
  * EmailTemplateAdminPage - Email template management
  * 
@@ -389,13 +391,22 @@ class EmailTemplateAdminPage {
 
         $preview_html = str_replace(array_keys($sample_data), array_values($sample_data), $template['body_html']);
 
+        // Wrap preview with EmailTemplateRenderer for full HTML experience
+        $full_preview = EmailTemplateRenderer::wrap_content($preview_html, $template['category']);
+        
+        // Replace unsubscribe_url placeholder
+        $full_preview = str_replace('{{unsubscribe_url}}', $sample_data['{{unsubscribe_url}}'], $full_preview);
+
         echo '<div style="max-width: 800px; margin: 0 auto; padding: 20px;">';
         echo '<h2>' . esc_html__('Şablon Önizleme', 'kg-core') . '</h2>';
         echo '<p><strong>' . esc_html__('Konu:', 'kg-core') . '</strong> ' . esc_html(str_replace(array_keys($sample_data), array_values($sample_data), $template['subject'])) . '</p>';
         echo '<hr style="margin: 20px 0;">';
-        echo '<div style="border: 1px solid #ddd; padding: 20px; background: #fff;">';
-        echo wp_kses_post($preview_html);
+        
+        // Display full preview in iframe for safe rendering
+        echo '<div style="background:#f5f5f5; padding:20px; border-radius:8px;">';
+        echo '<iframe srcdoc="' . esc_attr($full_preview) . '" style="width:100%; height:800px; border:none; border-radius:8px; background:white;"></iframe>';
         echo '</div>';
+        
         echo '<p style="margin-top: 20px;"><a href="' . esc_url(admin_url('admin.php?page=kg-email-templates')) . '" class="button">&larr; ' . esc_html__('Geri Dön', 'kg-core') . '</a></p>';
         echo '</div>';
     }
@@ -530,9 +541,15 @@ class EmailTemplateAdminPage {
         $subject = str_replace(array_keys($sample_data), array_values($sample_data), $template['subject']);
         $body = str_replace(array_keys($sample_data), array_values($sample_data), $template['body_html']);
 
+        // Wrap body with EmailTemplateRenderer for modern HTML design
+        $wrapped_body = EmailTemplateRenderer::wrap_content($body, $template['category']);
+        
+        // Replace unsubscribe_url placeholder in wrapped content
+        $wrapped_body = str_replace('{{unsubscribe_url}}', $sample_data['{{unsubscribe_url}}'], $wrapped_body);
+
         $headers = ['Content-Type: text/html; charset=UTF-8'];
         
-        $result = wp_mail($current_user->user_email, '[TEST] ' . $subject, $body, $headers);
+        $result = wp_mail($current_user->user_email, '[TEST] ' . $subject, $wrapped_body, $headers);
 
         if ($result) {
             wp_redirect(add_query_arg('message', 'test_sent', admin_url('admin.php?page=kg-email-templates')));

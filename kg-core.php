@@ -113,6 +113,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/KGCoreAdminMenu.php' ) ) requir
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/VaccineAdminPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/VaccineAdminPage.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/EmailTemplateAdminPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/EmailTemplateAdminPage.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/NotificationLogAdminPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/NotificationLogAdminPage.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/SocialMediaSettings.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/SocialMediaSettings.php';
 
 // 5.6. MIGRATION SINIFLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/FieldConsolidation.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/FieldConsolidation.php';
@@ -284,6 +285,9 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\NotificationLogAdminPage' ) ) {
         new \KG_Core\Admin\NotificationLogAdminPage();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\SocialMediaSettings' ) ) {
+        new \KG_Core\Admin\SocialMediaSettings();
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\PushNotificationAdminPage' ) ) {
         new \KG_Core\Admin\PushNotificationAdminPage();
