@@ -193,7 +193,7 @@ class VaccineReminderCron {
             'scheduled_date' => \KG_Core\Utils\Helper::format_turkish_date($record['scheduled_date']),
             'days_remaining' => $days_before,
             'app_url' => 'https://kidsgourmet.com.tr',
-            'unsubscribe_url' => 'https://kidsgourmet.com.tr/hesap/bildirim-tercihleri'
+            'unsubscribe_url' => 'https://kidsgourmet.com.tr/profil'
         ];
         
         // Schedule email notification

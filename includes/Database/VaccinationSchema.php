@@ -250,7 +250,7 @@ class VaccinationSchema {
                         <li>Bol sıvı tüketimi</li>
                     </ul>
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="{{app_url}}/saglik/asilar" style="display: inline-block; background: #4CAF50; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Aşı Takvimini Görüntüle</a>
+                        <a href="{{app_url}}/dashboard/saglik/asilar" style="display: inline-block; background: #4CAF50; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Aşı Takvimini Görüntüle</a>
                     </div>',
                 'body_text' => 'Merhaba {{parent_name}}, {{child_name}}\'in {{vaccine_name}} aşısına {{days_remaining}} gün kaldı. Planlanan tarih: {{scheduled_date}}',
                 'placeholders' => '["parent_name", "child_name", "vaccine_name", "days_remaining", "scheduled_date", "app_url"]',
@@ -269,7 +269,7 @@ class VaccinationSchema {
                     </div>
                     <p style="color: #666; line-height: 1.6;">Randevunuzu kontrol etmeyi unutmayın. Aşı kartını yanınıza almayı ihmal etmeyin.</p>
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="{{app_url}}/saglik/asilar" style="display: inline-block; background: #4CAF50; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Aşı Takvimini Görüntüle</a>
+                        <a href="{{app_url}}/dashboard/saglik/asilar" style="display: inline-block; background: #4CAF50; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Aşı Takvimini Görüntüle</a>
                     </div>',
                 'body_text' => 'Merhaba {{parent_name}}, {{child_name}}\'in {{vaccine_name}} aşısı yarın! Tarih: {{scheduled_date}}',
                 'placeholders' => '["parent_name", "child_name", "vaccine_name", "scheduled_date", "app_url"]',
@@ -289,7 +289,7 @@ class VaccinationSchema {
                     <p style="color: #666; line-height: 1.6;">Eğer aşı yapıldıysa lütfen takvimde işaretlemeyi unutmayın.</p>
                     <p style="color: #666; line-height: 1.6;">Henüz yapılmadıysa, en kısa sürede Aile Sağlığı Merkezinizle iletişime geçmenizi öneririz.</p>
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="{{app_url}}/saglik/asilar" style="display: inline-block; background: #f44336; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Aşı Takvimini Güncelle</a>
+                        <a href="{{app_url}}/dashboard/saglik/asilar" style="display: inline-block; background: #f44336; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Aşı Takvimini Güncelle</a>
                     </div>',
                 'body_text' => 'Merhaba {{parent_name}}, {{child_name}}\'in {{vaccine_name}} aşısı gecikmiş görünüyor. Tarih: {{scheduled_date}}',
                 'placeholders' => '["parent_name", "child_name", "vaccine_name", "scheduled_date", "app_url"]',
@@ -314,7 +314,7 @@ class VaccinationSchema {
                     </div>
                     <p style="color: #666; line-height: 1.6;">Bu bilgileri kaydetmeniz, hem sizin hem de diğer ebeveynlerin faydasına olacaktır.</p>
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="{{app_url}}/saglik/asilar" style="display: inline-block; background: #4CAF50; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Yan Etki Bildir</a>
+                        <a href="{{app_url}}/dashboard/saglik/asilar" style="display: inline-block; background: #4CAF50; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Yan Etki Bildir</a>
                     </div>',
                 'body_text' => 'Merhaba {{parent_name}}, {{child_name}}\'e dün {{vaccine_name}} aşısı yapıldı. Yan etki gözlemlediniz mi?',
                 'placeholders' => '["parent_name", "child_name", "vaccine_name", "app_url"]',
@@ -339,7 +339,7 @@ class VaccinationSchema {
                     </div>
                     <p style="color: #666; line-height: 1.6;">Düzenli ölçümler, bebeğinizin sağlıklı gelişimini takip etmenize yardımcı olur.</p>
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="{{app_url}}/saglik/buyume" style="display: inline-block; background: #2196F3; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Ölçüm Kaydet</a>
+                        <a href="{{app_url}}/akilli-asistan/persentil" style="display: inline-block; background: #2196F3; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Ölçüm Kaydet</a>
                     </div>',
                 'body_text' => 'Merhaba {{parent_name}}, {{child_name}}\'in aylık büyüme ölçümünü kaydetme zamanı!',
                 'placeholders' => '["parent_name", "child_name", "app_url"]',
@@ -357,7 +357,7 @@ class VaccinationSchema {
                     </div>
                     <p style="color: #666; line-height: 1.6;">Detaylı büyüme grafiğini ve önerilerimizi incelemek için:</p>
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="{{app_url}}/saglik/buyume" style="display: inline-block; background: #2196F3; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Büyüme Grafiğini Görüntüle</a>
+                        <a href="{{app_url}}/akilli-asistan/persentil" style="display: inline-block; background: #2196F3; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Büyüme Grafiğini Görüntüle</a>
                     </div>',
                 'body_text' => 'Merhaba {{parent_name}}, {{child_name}}\'in büyüme grafiğinde önemli bir değişiklik tespit ettik.',
                 'placeholders' => '["parent_name", "child_name", "app_url"]',
@@ -382,7 +382,7 @@ class VaccinationSchema {
                     </div>
                     <p style="color: #666; line-height: 1.6;">Yeni besinleri tek tek ve 3 gün ara ile denemeyi unutmayın.</p>
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="{{app_url}}/beslenme/besinler" style="display: inline-block; background: #FF9800; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Besin Rehberini İncele</a>
+                        <a href="{{app_url}}/tarifler" style="display: inline-block; background: #FF9800; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Besin Rehberini İncele</a>
                     </div>',
                 'body_text' => 'Merhaba {{parent_name}}, {{child_name}}\'in yaşına uygun yeni besinler deneme zamanı!',
                 'placeholders' => '["parent_name", "child_name", "food_1", "food_2", "food_3", "app_url"]',
@@ -406,7 +406,7 @@ class VaccinationSchema {
                     </div>
                     <p style="color: #666; line-height: 1.6;">Herhangi bir sorun yoksa, bu besini güvenle verebilir ve yeni bir besin deneyebilirsiniz!</p>
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="{{app_url}}/beslenme/besinler" style="display: inline-block; background: #FF9800; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Yeni Besin Dene</a>
+                        <a href="{{app_url}}/tarifler" style="display: inline-block; background: #FF9800; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Yeni Besin Dene</a>
                     </div>',
                 'body_text' => 'Merhaba {{parent_name}}, {{food_name}} için 3 günlük deneme süresi tamamlandı.',
                 'placeholders' => '["parent_name", "child_name", "food_name", "app_url"]',
@@ -550,6 +550,223 @@ class VaccinationSchema {
                     </div>',
                 'body_text' => 'Merhaba {{parent_name}}, yeni özellik: {{feature_name}}',
                 'placeholders' => '["parent_name", "feature_name", "feature_description", "app_url", "feature_url"]',
+                'is_active' => true
+            ],
+            
+            // ===== ADDITIONAL GROWTH TEMPLATES =====
+            [
+                'template_key' => 'growth_milestone_reached',
+                'name' => 'Gelişim Basamağı Tamamlandı',
+                'category' => 'growth',
+                'subject' => '🎉 {{child_name}} yeni bir gelişim basamağına ulaştı!',
+                'body_html' => '<h2 style="color: #2196F3; margin: 0 0 20px 0;">Merhaba {{parent_name}},</h2>
+                    <p style="font-size: 16px; line-height: 1.6; color: #333;">Harika haber! {{child_name}} <strong>{{milestone_name}}</strong> gelişim basamağını tamamladı! 🎊</p>
+                    <div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); padding: 25px; border-radius: 12px; margin: 25px 0; text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🌟</div>
+                        <h3 style="margin: 0 0 10px 0; color: #2196F3; font-size: 20px;">{{milestone_name}}</h3>
+                        <p style="margin: 0; color: #666; font-size: 14px;">{{milestone_age}} aylık</p>
+                    </div>
+                    <p style="color: #666; line-height: 1.6;">Bu yaş grubundaki bebeklerin gelişim özelliklerini ve önerilerimizi inceleyebilirsiniz.</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{{app_url}}/akilli-asistan/persentil" style="display: inline-block; background: #2196F3; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Gelişim Takibini Görüntüle</a>
+                    </div>',
+                'body_text' => 'Merhaba {{parent_name}}, {{child_name}} {{milestone_name}} gelişim basamağını tamamladı!',
+                'placeholders' => '["parent_name", "child_name", "milestone_name", "milestone_age", "app_url"]',
+                'is_active' => true
+            ],
+            [
+                'template_key' => 'growth_weekly_summary',
+                'name' => 'Haftalık Büyüme Özeti',
+                'category' => 'growth',
+                'subject' => '📊 {{child_name}}\'in haftalık büyüme özeti',
+                'body_html' => '<h2 style="color: #2196F3; margin: 0 0 20px 0;">Merhaba {{parent_name}},</h2>
+                    <p style="font-size: 16px; line-height: 1.6; color: #333;">{{child_name}}\'in bu haftaki büyüme özeti hazır!</p>
+                    <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 15px 0; color: #2196F3;">📈 Bu Hafta:</h3>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="8" style="color: #666;">
+                            <tr>
+                                <td style="border-bottom: 1px solid #ddd;"><strong>Boy:</strong></td>
+                                <td style="border-bottom: 1px solid #ddd; text-align: right;">{{current_height}} cm ({{height_percentile}}. persentil)</td>
+                            </tr>
+                            <tr>
+                                <td style="border-bottom: 1px solid #ddd;"><strong>Kilo:</strong></td>
+                                <td style="border-bottom: 1px solid #ddd; text-align: right;">{{current_weight}} kg ({{weight_percentile}}. persentil)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Baş Çevresi:</strong></td>
+                                <td style="text-align: right;">{{head_circumference}} cm ({{head_percentile}}. persentil)</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{{app_url}}/akilli-asistan/persentil" style="display: inline-block; background: #2196F3; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Detaylı Grafikleri Görüntüle</a>
+                    </div>',
+                'body_text' => 'Merhaba {{parent_name}}, {{child_name}}\'in haftalık büyüme özeti hazır. Detaylar için uygulamayı ziyaret edin.',
+                'placeholders' => '["parent_name", "child_name", "current_height", "height_percentile", "current_weight", "weight_percentile", "head_circumference", "head_percentile", "app_url"]',
+                'is_active' => true
+            ],
+            
+            // ===== ADDITIONAL NUTRITION TEMPLATES =====
+            [
+                'template_key' => 'nutrition_milestone_unlocked',
+                'name' => 'Yeni Besin Grubu Açıldı',
+                'category' => 'nutrition',
+                'subject' => '🎁 {{child_name}} için yeni besin grubu açıldı!',
+                'body_html' => '<h2 style="color: #FF9800; margin: 0 0 20px 0;">Merhaba {{parent_name}},</h2>
+                    <p style="font-size: 16px; line-height: 1.6; color: #333;">{{child_name}} artık <strong>{{food_group}}</strong> besin grubundan beslenebilir! 🎉</p>
+                    <div style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); padding: 25px; border-radius: 12px; margin: 25px 0; text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">{{emoji}}</div>
+                        <h3 style="margin: 0 0 10px 0; color: #FF9800; font-size: 20px;">{{food_group}}</h3>
+                        <p style="margin: 0; color: #666; font-size: 14px;">{{recommended_age}} aydan itibaren</p>
+                    </div>
+                    <p style="color: #666; line-height: 1.6;">Bu besin grubundan önerilen ilk besinlerimize göz atabilirsiniz.</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{{app_url}}/tarifler" style="display: inline-block; background: #FF9800; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Tarifleri Keşfet</a>
+                    </div>',
+                'body_text' => 'Merhaba {{parent_name}}, {{child_name}} için {{food_group}} besin grubu açıldı!',
+                'placeholders' => '["parent_name", "child_name", "food_group", "emoji", "recommended_age", "app_url"]',
+                'is_active' => true
+            ],
+            [
+                'template_key' => 'nutrition_daily_tip',
+                'name' => 'Günlük Beslenme İpucu',
+                'category' => 'nutrition',
+                'subject' => '💡 Bugünün beslenme ipucu',
+                'body_html' => '<h2 style="color: #FF9800; margin: 0 0 20px 0;">Merhaba {{parent_name}},</h2>
+                    <p style="font-size: 16px; line-height: 1.6; color: #333;">Bugünün ipucu:</p>
+                    <div style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #FF9800;">
+                        <p style="margin: 0; font-size: 18px; line-height: 1.8; color: #333; font-weight: 500;">{{tip_text}}</p>
+                    </div>
+                    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 15px 0; color: #FF9800; font-size: 16px;">📚 Bilgi:</h3>
+                        <p style="margin: 0; color: #666; line-height: 1.6; font-size: 14px;">{{additional_info}}</p>
+                    </div>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{{app_url}}/tarifler" style="display: inline-block; background: #FF9800; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Tariflerimize Göz At</a>
+                    </div>',
+                'body_text' => 'Merhaba {{parent_name}}, bugünün ipucu: {{tip_text}}',
+                'placeholders' => '["parent_name", "tip_text", "additional_info", "app_url"]',
+                'is_active' => true
+            ],
+            
+            // ===== ADDITIONAL SYSTEM TEMPLATES =====
+            [
+                'template_key' => 'system_subscription_expiring',
+                'name' => 'Abonelik Sona Eriyor',
+                'category' => 'system',
+                'subject' => '⚠️ Premium aboneliğiniz sona eriyor',
+                'body_html' => '<h2 style="color: #607D8B; margin: 0 0 20px 0;">Merhaba {{parent_name}},</h2>
+                    <p style="font-size: 16px; line-height: 1.6; color: #333;">KidsGourmet Premium aboneliğiniz <strong>{{days_remaining}} gün</strong> içinde sona erecek.</p>
+                    <div style="background: #fff3e0; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #FF9800;">
+                        <p style="margin: 0 0 10px 0; font-weight: bold; color: #FF9800;">Abonelik Bitiş Tarihi:</p>
+                        <p style="font-size: 18px; margin: 0; font-weight: bold; color: #333;">{{expiry_date}}</p>
+                    </div>
+                    <p style="color: #666; line-height: 1.6;">Premium özelliklerden yararlanmaya devam etmek için aboneliğinizi yenileyebilirsiniz:</p>
+                    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 15px 0; color: #607D8B;">✨ Premium Özellikler:</h3>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.8; color: #666;">
+                            <li>Sınırsız tarif erişimi</li>
+                            <li>Kişiselleştirilmiş menü önerileri</li>
+                            <li>Öncelikli müşteri desteği</li>
+                            <li>PDF raporları</li>
+                        </ul>
+                    </div>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{{app_url}}/profil" style="display: inline-block; background: #607D8B; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Aboneliği Yenile</a>
+                    </div>',
+                'body_text' => 'Merhaba {{parent_name}}, Premium aboneliğiniz {{days_remaining}} gün içinde sona erecek.',
+                'placeholders' => '["parent_name", "days_remaining", "expiry_date", "app_url"]',
+                'is_active' => true
+            ],
+            [
+                'template_key' => 'system_data_export_ready',
+                'name' => 'Veri Dışa Aktarımı Hazır',
+                'category' => 'system',
+                'subject' => '📦 Verileriniz indirmeye hazır',
+                'body_html' => '<h2 style="color: #607D8B; margin: 0 0 20px 0;">Merhaba {{parent_name}},</h2>
+                    <p style="font-size: 16px; line-height: 1.6; color: #333;">Talep ettiğiniz veri dışa aktarımı hazır!</p>
+                    <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4CAF50;">
+                        <p style="margin: 0 0 10px 0; font-weight: bold; color: #4CAF50;">📊 Dışa Aktarılan Veriler:</p>
+                        <ul style="margin: 10px 0; padding-left: 20px; line-height: 1.8; color: #666;">
+                            <li>Çocuk profil bilgileri</li>
+                            <li>Aşı kayıtları</li>
+                            <li>Büyüme ölçümleri</li>
+                            <li>Beslenme geçmişi</li>
+                        </ul>
+                    </div>
+                    <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 0; color: #666; font-size: 13px; line-height: 1.6;">
+                            <strong>Not:</strong> İndirme bağlantısı güvenlik nedeniyle <strong>48 saat</strong> geçerlidir.
+                        </p>
+                    </div>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{{download_url}}" style="display: inline-block; background: #4CAF50; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Verileri İndir</a>
+                    </div>',
+                'body_text' => 'Merhaba {{parent_name}}, veri dışa aktarımınız hazır. İndirme linki: {{download_url}}',
+                'placeholders' => '["parent_name", "download_url"]',
+                'is_active' => true
+            ],
+            
+            // ===== ADDITIONAL MARKETING TEMPLATES =====
+            [
+                'template_key' => 'marketing_birthday_greeting',
+                'name' => 'Doğum Günü Kutlaması',
+                'category' => 'marketing',
+                'subject' => '🎂 {{child_name}}\'e doğum günü kutlu olsun!',
+                'body_html' => '<h2 style="color: #E91E63; margin: 0 0 20px 0;">Merhaba {{parent_name}},</h2>
+                    <p style="font-size: 16px; line-height: 1.6; color: #333;">Bugün çok özel bir gün! {{child_name}} <strong>{{age}} yaşında!</strong> 🎉</p>
+                    <div style="background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%); padding: 30px; border-radius: 12px; margin: 25px 0; text-align: center;">
+                        <div style="font-size: 64px; margin-bottom: 15px;">🎂</div>
+                        <h3 style="margin: 0 0 10px 0; color: #E91E63; font-size: 24px;">Mutlu Yıllar {{child_name}}!</h3>
+                        <p style="margin: 0; color: #666; font-size: 16px;">{{age}} yaşınız kutlu olsun</p>
+                    </div>
+                    <p style="color: #666; line-height: 1.6;">KidsGourmet olarak bu özel günü sizinle kutlamaktan mutluluk duyuyoruz!</p>
+                    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 15px 0; color: #E91E63;">🎁 Sürpriz Hediyemiz:</h3>
+                        <p style="margin: 0; color: #666; line-height: 1.6;">{{age}} yaşına özel doğum günü tarifleri ve parti menüsü sizleri bekliyor!</p>
+                    </div>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{{app_url}}/tarifler" style="display: inline-block; background: #E91E63; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Doğum Günü Tariflerine Göz At</a>
+                    </div>',
+                'body_text' => 'Merhaba {{parent_name}}, {{child_name}}\'in {{age}}. yaş günü kutlu olsun!',
+                'placeholders' => '["parent_name", "child_name", "age", "app_url"]',
+                'is_active' => true
+            ],
+            [
+                'template_key' => 'marketing_anniversary',
+                'name' => 'KidsGourmet Yıldönümü',
+                'category' => 'marketing',
+                'subject' => '🎊 KidsGourmet\'te {{years}} yıl geçti!',
+                'body_html' => '<h2 style="color: #E91E63; margin: 0 0 20px 0;">Merhaba {{parent_name}},</h2>
+                    <p style="font-size: 16px; line-height: 1.6; color: #333;">KidsGourmet ailesinde <strong>{{years}} yıl</strong> geçti! 🎊</p>
+                    <div style="background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%); padding: 30px; border-radius: 12px; margin: 25px 0; text-align: center;">
+                        <div style="font-size: 64px; margin-bottom: 15px;">🎉</div>
+                        <h3 style="margin: 0 0 10px 0; color: #E91E63; font-size: 24px;">{{years}} Yıl Birlikte!</h3>
+                        <p style="margin: 0; color: #666; font-size: 14px;">{{join_date}} tarihinde aramıza katıldınız</p>
+                    </div>
+                    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin: 0 0 15px 0; color: #E91E63;">📊 Birlikte Kat Ettiğimiz Yol:</h3>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="8" style="color: #666;">
+                            <tr>
+                                <td>🍎 Denediğiniz tarifler:</td>
+                                <td style="text-align: right; font-weight: bold;">{{recipes_tried}}</td>
+                            </tr>
+                            <tr>
+                                <td>💉 Takip edilen aşılar:</td>
+                                <td style="text-align: right; font-weight: bold;">{{vaccines_tracked}}</td>
+                            </tr>
+                            <tr>
+                                <td>📏 Kaydedilen ölçümler:</td>
+                                <td style="text-align: right; font-weight: bold;">{{measurements}}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <p style="color: #666; line-height: 1.6; text-align: center; font-style: italic;">Bebeğinizin sağlıklı büyümesine tanıklık etmek bizim için onur!</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{{app_url}}" style="display: inline-block; background: #E91E63; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">KidsGourmet\'i Keşfet</a>
+                    </div>',
+                'body_text' => 'Merhaba {{parent_name}}, KidsGourmet\'te {{years}} yıl geçti! Teşekkür ederiz.',
+                'placeholders' => '["parent_name", "years", "join_date", "recipes_tried", "vaccines_tracked", "measurements", "app_url"]',
                 'is_active' => true
             ]
         ];
