@@ -229,6 +229,9 @@ class VaccinationSchema {
             return; // Already seeded
         }
         
+        // Note: Email templates use inline styles (not CSS classes) because most email clients
+        // strip out <style> tags and external CSS. While this creates some duplication,
+        // it's necessary for cross-client email compatibility.
         $templates = [
             // ===== VACCINATION TEMPLATES =====
             [

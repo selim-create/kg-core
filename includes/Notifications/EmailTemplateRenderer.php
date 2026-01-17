@@ -45,6 +45,10 @@ class EmailTemplateRenderer {
     <![endif]-->
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, \'Helvetica Neue\', Arial, sans-serif; background-color: #f5f5f5; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
+    <!-- Email Client Preview Text (Hidden but readable by email clients) -->
+    <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">
+        KidsGourmet - Bebeğiniz için en iyi beslenme ve sağlık rehberi
+    </div>
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f5f5f5;">
         <tr>
             <td align="center" style="padding: 20px 10px;">
@@ -131,11 +135,6 @@ class EmailTemplateRenderer {
                         </td>
                     </tr>
                 </table>
-                
-                <!-- Email Client Preview Text (Hidden) -->
-                <div style="display: none; max-height: 0; overflow: hidden;">
-                    KidsGourmet - Bebeğiniz için en iyi beslenme ve sağlık rehberi
-                </div>
             </td>
         </tr>
     </table>
@@ -160,9 +159,9 @@ class EmailTemplateRenderer {
         $b = hexdec(substr($hex, 4, 2));
         
         // Adjust brightness
-        $r = min(255, max(0, round($r * $percent)));
-        $g = min(255, max(0, round($g * $percent)));
-        $b = min(255, max(0, round($b * $percent)));
+        $r = (int)min(255, max(0, round($r * $percent)));
+        $g = (int)min(255, max(0, round($g * $percent)));
+        $b = (int)min(255, max(0, round($b * $percent)));
         
         // Convert back to hex
         return '#' . str_pad(dechex($r), 2, '0', STR_PAD_LEFT) 
