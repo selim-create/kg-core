@@ -80,7 +80,8 @@ if (file_exists($recipeControllerFile)) {
     $content = file_get_contents($recipeControllerFile);
     
     // Check for base rating retrieval in rate_recipe
-    if (preg_match("/function rate_recipe.*?get_post_meta.*?_kg_base_rating/s", $content)) {
+    if (preg_match("/function rate_recipe.*?get_base_rating.*?\\\$recipe_id/s", $content) ||
+        preg_match("/function rate_recipe.*?get_post_meta.*?_kg_base_rating/s", $content)) {
         echo "   ✓ Base rating retrieved in rate_recipe method\n";
         $passed++;
     } else {

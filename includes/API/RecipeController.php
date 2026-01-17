@@ -173,18 +173,8 @@ class RecipeController {
         // Get rating data with base rating fallback
         $real_rating = get_post_meta( $post_id, '_kg_rating', true );
         $real_count = get_post_meta( $post_id, '_kg_rating_count', true );
-        $base_rating = get_post_meta( $post_id, '_kg_base_rating', true );
-        $base_count = get_post_meta( $post_id, '_kg_base_rating_count', true );
-        
-        // Generate deterministic base rating if not set
-        if ( empty( $base_rating ) ) {
-            $base_rating = 4.0 + ( ( $post_id % 10 ) / 10 ); // 4.0 - 4.9
-            update_post_meta( $post_id, '_kg_base_rating', $base_rating );
-        }
-        if ( empty( $base_count ) ) {
-            $base_count = 10 + ( $post_id % 141 ); // 10 - 150
-            update_post_meta( $post_id, '_kg_base_rating_count', $base_count );
-        }
+        $base_rating = $this->get_base_rating( $post_id );
+        $base_count = $this->get_base_rating_count( $post_id );
         
         // Use real rating if exists, otherwise use base
         $display_rating = ! empty( $real_rating ) ? $real_rating : $base_rating;
@@ -606,16 +596,8 @@ class RecipeController {
         // Get rating data with base rating fallback
         $real_rating = get_post_meta( $post_id, '_kg_rating', true );
         $real_count = get_post_meta( $post_id, '_kg_rating_count', true );
-        $base_rating = get_post_meta( $post_id, '_kg_base_rating', true );
-        $base_count = get_post_meta( $post_id, '_kg_base_rating_count', true );
-        
-        // Generate deterministic base rating if not set
-        if ( empty( $base_rating ) ) {
-            $base_rating = 4.0 + ( ( $post_id % 10 ) / 10 );
-        }
-        if ( empty( $base_count ) ) {
-            $base_count = 10 + ( $post_id % 141 );
-        }
+        $base_rating = $this->get_base_rating( $post_id );
+        $base_count = $this->get_base_rating_count( $post_id );
         
         // Use real rating if exists, otherwise use base
         $display_rating = ! empty( $real_rating ) ? $real_rating : $base_rating;
@@ -677,6 +659,38 @@ class RecipeController {
         wp_reset_postdata();
 
         return $related;
+    }
+    
+    /**
+     * Get or generate deterministic base rating for a recipe
+     * @param int $post_id Recipe post ID
+     * @return float Base rating (4.0-4.9)
+     */
+    private function get_base_rating( $post_id ) {
+        $base_rating = get_post_meta( $post_id, '_kg_base_rating', true );
+        
+        if ( empty( $base_rating ) ) {
+            $base_rating = 4.0 + ( ( $post_id % 10 ) / 10 ); // 4.0 - 4.9
+            update_post_meta( $post_id, '_kg_base_rating', $base_rating );
+        }
+        
+        return floatval( $base_rating );
+    }
+    
+    /**
+     * Get or generate deterministic base rating count for a recipe
+     * @param int $post_id Recipe post ID
+     * @return int Base rating count (10-150)
+     */
+    private function get_base_rating_count( $post_id ) {
+        $base_count = get_post_meta( $post_id, '_kg_base_rating_count', true );
+        
+        if ( empty( $base_count ) ) {
+            $base_count = 10 + ( $post_id % 141 ); // 10 - 150
+            update_post_meta( $post_id, '_kg_base_rating_count', $base_count );
+        }
+        
+        return intval( $base_count );
     }
 
     /**
@@ -755,9 +769,9 @@ class RecipeController {
         // Store user's rating
         $all_ratings[ $user_id ] = floatval( $rating );
         
-        // Get base rating for calculation
-        $base_rating = get_post_meta( $recipe_id, '_kg_base_rating', true ) ?: 4.5;
-        $base_count = get_post_meta( $recipe_id, '_kg_base_rating_count', true ) ?: 50;
+        // Get base rating for calculation using helper methods
+        $base_rating = $this->get_base_rating( $recipe_id );
+        $base_count = $this->get_base_rating_count( $recipe_id );
         
         // Calculate new average including base rating weight
         $real_count = count( $all_ratings );
