@@ -157,6 +157,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/LookupController.php' ) ) require
 if ( file_exists( KG_CORE_PATH . 'includes/API/RecommendationController.php' ) ) require_once KG_CORE_PATH . 'includes/API/RecommendationController.php';
 // Comment Controller (Generic Comments for Recipes and Posts)
 if ( file_exists( KG_CORE_PATH . 'includes/API/CommentController.php' ) ) require_once KG_CORE_PATH . 'includes/API/CommentController.php';
+// REST API Filters (WordPress REST API Avatar URL Override)
+if ( file_exists( KG_CORE_PATH . 'includes/API/RestApiFilters.php' ) ) require_once KG_CORE_PATH . 'includes/API/RestApiFilters.php';
 
 // 6.5. VACCINATION TRACKER API CONTROLLERS (NEW)
 if ( file_exists( KG_CORE_PATH . 'includes/API/VaccineController.php' ) ) require_once KG_CORE_PATH . 'includes/API/VaccineController.php';
@@ -340,6 +342,9 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\LookupController' ) ) new \KG_Core\API\LookupController();
     if ( class_exists( '\KG_Core\API\RecommendationController' ) ) new \KG_Core\API\RecommendationController();
     if ( class_exists( '\KG_Core\API\CommentController' ) ) new \KG_Core\API\CommentController();
+    
+    // REST API Filters (WordPress REST API Avatar URL Override)
+    if ( class_exists( '\KG_Core\API\RestApiFilters' ) ) new \KG_Core\API\RestApiFilters();
     
     // Vaccination Tracker API Controllers
     if ( class_exists( '\KG_Core\API\VaccineController' ) ) new \KG_Core\API\VaccineController();
