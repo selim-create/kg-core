@@ -69,8 +69,8 @@ class VaccineManager {
                 return new \WP_Error('invalid_vaccine_data', $error_msg);
             }
             
-            // Check if vaccine already exists - suppress warnings
-            $existing = @$wpdb->get_var($wpdb->prepare(
+            // Check if vaccine already exists
+            $existing = $wpdb->get_var($wpdb->prepare(
                 "SELECT id FROM {$this->table_name} WHERE code = %s AND schedule_version = %s",
                 $vaccine['code'],
                 $schedule_version

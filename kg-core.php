@@ -602,7 +602,7 @@ add_filter( 'rest_prepare_category', 'kg_decode_taxonomy_response', 10, 2 );
 
 // 10. ACTIVATION HOOK - Seed tools on plugin activation
 register_activation_hook( __FILE__, function() {
-    // Output buffering başlat - hiçbir çıktı üretilmemesini garanti et
+    // Start output buffering - guarantee no output is produced
     ob_start();
     
     try {
@@ -640,6 +640,6 @@ register_activation_hook( __FILE__, function() {
         error_log( 'KG Core Activation Fatal Error: ' . $e->getMessage() );
     }
     
-    // Tüm çıktıyı temizle
+    // Clean all output
     ob_end_clean();
 } );
