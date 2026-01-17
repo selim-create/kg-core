@@ -160,9 +160,9 @@ class EmailTemplateRenderer {
         $b = hexdec(substr($hex, 4, 2));
         
         // Adjust brightness
-        $r = min(255, max(0, $r * $percent));
-        $g = min(255, max(0, $g * $percent));
-        $b = min(255, max(0, $b * $percent));
+        $r = min(255, max(0, round($r * $percent)));
+        $g = min(255, max(0, round($g * $percent)));
+        $b = min(255, max(0, round($b * $percent)));
         
         // Convert back to hex
         return '#' . str_pad(dechex($r), 2, '0', STR_PAD_LEFT) 
