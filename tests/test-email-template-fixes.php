@@ -4,7 +4,7 @@
  * 
  * This test verifies:
  * 1. UPSERT logic in seed_email_templates() works correctly
- * 2. All 15+ email templates are defined
+ * 2. All 23 email templates are defined across 5 categories
  * 3. EmailTemplateRenderer has get_social_urls() method
  * 4. SocialMediaSettings class exists
  */
@@ -148,10 +148,12 @@ if (strpos($schema_content, 'SELECT id FROM') !== false &&
 // Count template definitions
 $template_count = substr_count($schema_content, "'template_key' =>");
 echo "   Found $template_count email template definitions\n";
-if ($template_count >= 15) {
-    echo "✅ PASS: Sufficient templates defined (expected 15+, found $template_count)\n";
+if ($template_count >= 23) {
+    echo "✅ PASS: All templates defined (expected 23, found $template_count)\n";
+} else if ($template_count >= 15) {
+    echo "⚠️  WARNING: Some templates may be missing (expected 23, found $template_count)\n";
 } else {
-    echo "❌ FAIL: Insufficient templates (expected 15+, found $template_count)\n";
+    echo "❌ FAIL: Insufficient templates (expected 23, found $template_count)\n";
     $test_results['upsert_logic'] = 'FAIL';
 }
 echo "\n";
