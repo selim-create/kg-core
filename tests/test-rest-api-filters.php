@@ -40,7 +40,9 @@ if (file_exists($filterFile)) {
     ];
     
     foreach ($requiredFilters as $filter) {
-        if (strpos($content, "add_filter('$filter'") !== false || strpos($content, "add_filter(\"$filter\"") !== false) {
+        // Use regex to match add_filter calls more precisely
+        $pattern = "/add_filter\s*\(\s*['\"]" . preg_quote($filter, '/') . "['\"]/";
+        if (preg_match($pattern, $content)) {
             echo "   ✓ Filter registered: $filter\n";
             $passed++;
         } else {
@@ -73,7 +75,8 @@ if (file_exists($filterFile)) {
         echo "   ✓ Uses Helper::get_user_avatar_url()\n";
         $passed++;
     } else {
-        echo "   ⚠ Warning: Not using Helper::get_user_avatar_url()\n";
+        echo "   ✗ Not using Helper::get_user_avatar_url()\n";
+        $failed++;
     }
     
     // Check for _kg_avatar_id meta key

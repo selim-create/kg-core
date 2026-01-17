@@ -126,7 +126,7 @@ class RestApiFilters {
      * Get custom avatar URL for a user
      * 
      * @param int $user_id User ID.
-     * @param int $size Avatar size in pixels (default: 96).
+     * @param int $size Avatar size in pixels (default: 96). Used when Helper class is available.
      * @return string|null Avatar URL or null if not found.
      */
     private function get_custom_avatar_url($user_id, $size = 96) {
@@ -134,12 +134,13 @@ class RestApiFilters {
             return null;
         }
         
-        // Use Helper class if available
+        // Use Helper class if available (passes $size parameter)
         if (class_exists('\KG_Core\Utils\Helper') && method_exists('\KG_Core\Utils\Helper', 'get_user_avatar_url')) {
             return \KG_Core\Utils\Helper::get_user_avatar_url($user_id, $size);
         }
         
-        // Fallback implementation
+        // Fallback implementation (returns original image URL, no resizing)
+        // Note: WordPress image resizing could be added here in the future
         // 1. Custom avatar
         $avatar_id = get_user_meta($user_id, '_kg_avatar_id', true);
         if ($avatar_id) {
@@ -170,7 +171,7 @@ class RestApiFilters {
             return (int) $id_or_email;
         }
         
-        if (is_string($id_or_email) && is_email($id_or_email)) {
+        if (is_string($id_or_email) && function_exists('is_email') && is_email($id_or_email)) {
             $user = get_user_by('email', $id_or_email);
             return $user ? $user->ID : null;
         }
@@ -187,8 +188,10 @@ class RestApiFilters {
             if (!empty($id_or_email->user_id)) {
                 return (int) $id_or_email->user_id;
             }
-            $user = get_user_by('email', $id_or_email->comment_author_email);
-            return $user ? $user->ID : null;
+            if (function_exists('is_email') && is_email($id_or_email->comment_author_email)) {
+                $user = get_user_by('email', $id_or_email->comment_author_email);
+                return $user ? $user->ID : null;
+            }
         }
         
         return null;
