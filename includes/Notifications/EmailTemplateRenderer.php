@@ -63,7 +63,7 @@ class EmailTemplateRenderer {
                                 <a href="https://kidsgourmet.com.tr" style="color: #999; text-decoration: none;">kidsgourmet.com.tr</a>
                             </p>
                             <p style="margin: 15px 0 0; color: #ccc; font-size: 11px;">
-                                © 2026 KidsGourmet. Tüm hakları saklıdır.
+                                © ' . date('Y') . ' KidsGourmet. Tüm hakları saklıdır.
                             </p>
                         </td>
                     </tr>

@@ -130,20 +130,19 @@ class EmailService {
 	public function log_email( $user_id, $template_key, $recipient, $subject, $status, $metadata = array() ) {
 		global $wpdb;
 
-		$table_name = $wpdb->prefix . 'notification_logs';
+		$table_name = $wpdb->prefix . 'kg_email_logs';
 
 		$data = array(
-			'user_id'      => $user_id,
-			'channel'      => 'email',
-			'template_key' => $template_key,
-			'recipient'    => $recipient,
-			'subject'      => $subject,
-			'status'       => $status,
-			'metadata'     => wp_json_encode( $metadata ),
-			'sent_at'      => current_time( 'mysql' ),
+			'user_id'        => $user_id,
+			'template_key'   => $template_key,
+			'recipient_email' => $recipient,
+			'subject'        => $subject,
+			'status'         => $status,
+			'metadata'       => wp_json_encode( $metadata ),
+			'sent_at'        => $status === 'sent' ? current_time( 'mysql' ) : null,
 		);
 
-		$format = array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s' );
+		$format = array( '%d', '%s', '%s', '%s', '%s', '%s', '%s' );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Required for email logging functionality
 		$result = $wpdb->insert( $table_name, $data, $format );
