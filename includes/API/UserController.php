@@ -68,6 +68,42 @@ class UserController {
             ],
         ]);
 
+        // Forgot password endpoint
+        register_rest_route( 'kg/v1', '/auth/forgot-password', [
+            'methods'  => 'POST',
+            'callback' => [ $this, 'forgot_password' ],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'email' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'description' => 'User email address',
+                    'sanitize_callback' => 'sanitize_email',
+                ],
+            ],
+        ]);
+
+        // Reset password endpoint
+        register_rest_route( 'kg/v1', '/auth/reset-password', [
+            'methods'  => 'POST',
+            'callback' => [ $this, 'reset_password' ],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'key' => [
+                    'required' => true,
+                    'type' => 'string',
+                ],
+                'login' => [
+                    'required' => true,
+                    'type' => 'string',
+                ],
+                'password' => [
+                    'required' => true,
+                    'type' => 'string',
+                ],
+            ],
+        ]);
+
         // Profile endpoints
         register_rest_route( 'kg/v1', '/user/profile', [
             'methods'  => 'GET',
@@ -242,7 +278,9 @@ class UserController {
         $email = sanitize_email( $request->get_param( 'email' ) );
         $password = $request->get_param( 'password' );
         $name = sanitize_text_field( $request->get_param( 'name' ) );
+        $username = sanitize_user( $request->get_param( 'username' ) );
         $baby_birth_date = sanitize_text_field( $request->get_param( 'baby_birth_date' ) );
+        $child_data = $request->get_param( 'child' ); // Yeni: çocuk profili
 
         if ( empty( $email ) || empty( $password ) ) {
             return new \WP_Error( 'missing_fields', 'Email and password are required', [ 'status' => 400 ] );
@@ -252,29 +290,32 @@ class UserController {
             return new \WP_Error( 'invalid_email', 'Invalid email address', [ 'status' => 400 ] );
         }
 
-        // Password strength validation
-        if ( strlen( $password ) < 8 ) {
-            return new \WP_Error( 'weak_password', 'Password must be at least 8 characters long', [ 'status' => 400 ] );
-        }
-
-        // Check password complexity
-        $has_uppercase = preg_match( '/[A-Z]/', $password );
-        $has_lowercase = preg_match( '/[a-z]/', $password );
-        $has_number = preg_match( '/[0-9]/', $password );
-        
-        if ( ! ( $has_uppercase && $has_lowercase && $has_number ) ) {
-            return new \WP_Error( 
-                'weak_password', 
-                'Password must contain at least one uppercase letter, one lowercase letter, and one number', 
-                [ 'status' => 400 ] 
-            );
+        // Password strength validation (relaxed to 6 characters as per frontend requirement)
+        if ( strlen( $password ) < 6 ) {
+            return new \WP_Error( 'weak_password', 'Password must be at least 6 characters long', [ 'status' => 400 ] );
         }
 
         if ( email_exists( $email ) ) {
             return new \WP_Error( 'email_exists', 'Email already registered', [ 'status' => 409 ] );
         }
 
-        $user_id = wp_create_user( $email, $password, $email );
+        // Username kontrolü
+        $user_login = $email; // Varsayılan olarak email kullan
+        if ( ! empty( $username ) ) {
+            // Username benzersizlik kontrolü
+            if ( username_exists( $username ) ) {
+                return new \WP_Error( 'username_exists', 'Bu kullanıcı adı zaten kullanılıyor', [ 'status' => 409 ] );
+            }
+            
+            // Username format kontrolü
+            if ( ! validate_username( $username ) ) {
+                return new \WP_Error( 'invalid_username', 'Geçersiz kullanıcı adı formatı', [ 'status' => 400 ] );
+            }
+            
+            $user_login = $username;
+        }
+
+        $user_id = wp_create_user( $user_login, $password, $email );
 
         if ( is_wp_error( $user_id ) ) {
             return $user_id;
@@ -291,9 +332,42 @@ class UserController {
             ] );
         }
 
-        // Register sonrası otomatik çember atama
+        // Register sonrası otomatik çember atama (legacy - baby_birth_date)
         if ( ! empty( $baby_birth_date ) ) {
             $this->assign_default_circle( $user_id, $baby_birth_date );
+        }
+
+        // YENİ: Çocuk profili oluşturma
+        $children = [];
+        if ( ! empty( $child_data ) && is_array( $child_data ) ) {
+            $child_name = sanitize_text_field( $child_data['name'] ?? '' );
+            $child_birth_date = sanitize_text_field( $child_data['birth_date'] ?? '' );
+            
+            if ( ! empty( $child_name ) && ! empty( $child_birth_date ) ) {
+                // Validate birth date
+                $birth_date_obj = \DateTime::createFromFormat( 'Y-m-d', $child_birth_date );
+                $now = new \DateTime();
+                
+                if ( $birth_date_obj && $birth_date_obj <= $now ) {
+                    $child = [
+                        'id' => wp_generate_uuid4(),
+                        'name' => $child_name,
+                        'birth_date' => $child_birth_date,
+                        'gender' => 'unspecified',
+                        'allergies' => [],
+                        'feeding_style' => 'mixed',
+                        'photo_id' => null,
+                        'kvkk_consent' => true, // Kayıt sırasında otomatik onay
+                        'created_at' => current_time( 'c' ),
+                    ];
+                    
+                    $children = [ $child ];
+                    update_user_meta( $user_id, '_kg_children', $children );
+                    
+                    // Otomatik çember atama (çocuk yaşına göre)
+                    $this->assign_default_circle( $user_id, $child_birth_date );
+                }
+            }
         }
 
         $token = JWTHandler::generate_token( $user_id );
@@ -303,7 +377,134 @@ class UserController {
             'user_id' => $user_id,
             'email' => $email,
             'name' => $name,
+            'username' => $user_login,
+            'children' => $children,
         ], 201 );
+    }
+
+    /**
+     * Send password reset email
+     * POST /kg/v1/auth/forgot-password
+     */
+    public function forgot_password( $request ) {
+        $email = sanitize_email( $request->get_param( 'email' ) );
+        
+        if ( empty( $email ) || ! is_email( $email ) ) {
+            return new \WP_Error( 'invalid_email', 'Geçerli bir e-posta adresi girin.', [ 'status' => 400 ] );
+        }
+        
+        $user = get_user_by( 'email', $email );
+        
+        // Security: Always return success to prevent email enumeration
+        if ( ! $user ) {
+            return new \WP_REST_Response( [
+                'success' => true,
+                'message' => 'Eğer bu e-posta adresi kayıtlıysa, şifre sıfırlama bağlantısı gönderildi.',
+            ], 200 );
+        }
+        
+        // Generate password reset key
+        $reset_key = get_password_reset_key( $user );
+        
+        if ( is_wp_error( $reset_key ) ) {
+            return new \WP_Error( 'reset_key_failed', 'Şifre sıfırlama anahtarı oluşturulamadı.', [ 'status' => 500 ] );
+        }
+        
+        // Build reset URL (frontend URL)
+        $frontend_url = defined( 'KG_FRONTEND_URL' ) ? KG_FRONTEND_URL : 'https://kidsgourmet.com.tr';
+        $reset_url = $frontend_url . '/reset-password?key=' . $reset_key . '&login=' . rawurlencode( $user->user_login );
+        
+        // Send email
+        $subject = 'KidsGourmet - Şifre Sıfırlama';
+        $message = $this->get_password_reset_email_template( $user, $reset_url );
+        $headers = [ 'Content-Type: text/html; charset=UTF-8' ];
+        
+        $sent = wp_mail( $email, $subject, $message, $headers );
+        
+        if ( ! $sent ) {
+            error_log( 'Password reset email failed for: ' . $email );
+        }
+        
+        return new \WP_REST_Response( [
+            'success' => true,
+            'message' => 'Eğer bu e-posta adresi kayıtlıysa, şifre sıfırlama bağlantısı gönderildi.',
+        ], 200 );
+    }
+
+    /**
+     * Reset password with key
+     * POST /kg/v1/auth/reset-password
+     */
+    public function reset_password( $request ) {
+        $key = sanitize_text_field( $request->get_param( 'key' ) );
+        $login = sanitize_user( $request->get_param( 'login' ) );
+        $password = $request->get_param( 'password' );
+        
+        if ( empty( $key ) || empty( $login ) || empty( $password ) ) {
+            return new \WP_Error( 'missing_fields', 'Tüm alanlar gereklidir.', [ 'status' => 400 ] );
+        }
+        
+        // Password strength validation
+        if ( strlen( $password ) < 6 ) {
+            return new \WP_Error( 'weak_password', 'Şifre en az 6 karakter olmalıdır.', [ 'status' => 400 ] );
+        }
+        
+        $user = check_password_reset_key( $key, $login );
+        
+        if ( is_wp_error( $user ) ) {
+            return new \WP_Error( 'invalid_key', 'Şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş.', [ 'status' => 400 ] );
+        }
+        
+        // Reset the password
+        reset_password( $user, $password );
+        
+        return new \WP_REST_Response( [
+            'success' => true,
+            'message' => 'Şifreniz başarıyla değiştirildi. Giriş yapabilirsiniz.',
+        ], 200 );
+    }
+
+    /**
+     * Get password reset email HTML template
+     */
+    private function get_password_reset_email_template( $user, $reset_url ) {
+        $template = '
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #FF8A65 0%, #AED581 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">🥕 KidsGourmet</h1>
+            <p style="color: white; margin: 10px 0 0 0; opacity: 0.9;">Sağlıklı Nesiller</p>
+        </div>
+        
+        <div style="background: #fff; padding: 30px; border: 1px solid #eee; border-top: none; border-radius: 0 0 10px 10px;">
+            <h2 style="color: #333; margin-top: 0;">Merhaba ' . esc_html( $user->display_name ) . ',</h2>
+            
+            <p>KidsGourmet hesabınız için şifre sıfırlama talebinde bulundunuz.</p>
+            
+            <p>Şifrenizi sıfırlamak için aşağıdaki butona tıklayın:</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="' . esc_url( $reset_url ) . '" style="background-color: #FF8A65; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Şifremi Sıfırla</a>
+            </div>
+            
+            <p style="color: #666; font-size: 14px;">Bu bağlantı 24 saat geçerlidir. Eğer bu talebi siz yapmadıysanız, bu e-postayı görmezden gelebilirsiniz.</p>
+            
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+            
+            <p style="color: #999; font-size: 12px; text-align: center;">
+                Bu e-posta KidsGourmet tarafından gönderilmiştir.<br>
+                <a href="https://kidsgourmet.com.tr" style="color: #FF8A65;">kidsgourmet.com.tr</a>
+            </p>
+        </div>
+    </body>
+    </html>';
+        
+        return $template;
     }
 
     /**
