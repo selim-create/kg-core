@@ -269,7 +269,7 @@ class VaccineRecordManager {
         
         // Check if already added
         $existing = $wpdb->get_var($wpdb->prepare(
-            "SELECT id FROM {$this->table_name} WHERE child_id = %d AND vaccine_code = %s",
+            "SELECT id FROM {$this->table_name} WHERE child_id = %s AND vaccine_code = %s",
             $child_id,
             $vaccine_code
         ));
@@ -341,7 +341,7 @@ class VaccineRecordManager {
             "SELECT vr.*, v.name, v.name_short, v.description
              FROM {$this->table_name} vr
              LEFT JOIN {$wpdb->prefix}kg_vaccine_master v ON vr.vaccine_code = v.code
-             WHERE vr.child_id = %d
+             WHERE vr.child_id = %s
              AND vr.status = 'scheduled'
              AND vr.scheduled_date BETWEEN %s AND %s
              ORDER BY vr.scheduled_date ASC",
@@ -381,7 +381,7 @@ class VaccineRecordManager {
             "SELECT vr.*, v.name, v.name_short, v.description, v.max_age_days
              FROM {$this->table_name} vr
              LEFT JOIN {$wpdb->prefix}kg_vaccine_master v ON vr.vaccine_code = v.code
-             WHERE vr.child_id = %d
+             WHERE vr.child_id = %s
              AND vr.status = 'scheduled'
              AND vr.scheduled_date < %s
              ORDER BY vr.scheduled_date ASC",
