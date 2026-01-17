@@ -491,7 +491,7 @@ class RecipeController {
      */
     public function get_related_recipes( $request_or_id, $limit = 3 ) {
         // Handle both REST request and direct ID calls
-        if ( is_object( $request_or_id ) && method_exists( $request_or_id, 'get_param' ) ) {
+        if ( $request_or_id instanceof \WP_REST_Request ) {
             // Called as REST endpoint
             $recipe_id = $request_or_id->get_param( 'id' );
             $limit = $request_or_id->get_param( 'limit' ) ?: 4;
@@ -522,6 +522,7 @@ class RecipeController {
         ];
         
         // Only add tax_query if we have taxonomies to match
+        // Using OR relation: recipes matching either age_group OR meal_type are considered related
         if ( ! empty( $age_groups ) || ! empty( $meal_types ) ) {
             $args['tax_query'] = [
                 'relation' => 'OR',
@@ -674,7 +675,9 @@ class RecipeController {
         $base_rating = get_post_meta( $post_id, '_kg_base_rating', true );
         
         if ( empty( $base_rating ) ) {
-            $base_rating = 4.0 + ( ( $post_id % 10 ) / 10 ); // 4.0 - 4.9
+            // Generate deterministic rating: 4.0-4.9 based on post ID
+            // Using modulo 10 ensures consistent rating for same recipe
+            $base_rating = 4.0 + ( ( $post_id % 10 ) / 10 ); // 4.0, 4.1, 4.2, ... 4.9
             update_post_meta( $post_id, '_kg_base_rating', $base_rating );
         }
         
@@ -690,7 +693,9 @@ class RecipeController {
         $base_count = get_post_meta( $post_id, '_kg_base_rating_count', true );
         
         if ( empty( $base_count ) ) {
-            $base_count = 10 + ( $post_id % 141 ); // 10 - 150
+            // Generate deterministic count: 10-150 based on post ID
+            // Using modulo 141 gives range 0-140, adding 10 gives 10-150
+            $base_count = 10 + ( $post_id % 141 ); // 10-150
             update_post_meta( $post_id, '_kg_base_rating_count', $base_count );
         }
         
@@ -783,6 +788,12 @@ class RecipeController {
         
         // Weighted average: (base_rating * base_count + real_sum) / (base_count + real_count)
         $total_count = intval( $base_count ) + $real_count;
+        
+        // Safety check for division by zero (should never happen with base rating system)
+        if ( $total_count === 0 ) {
+            return new \WP_Error( 'calculation_error', 'Unable to calculate rating', [ 'status' => 500 ] );
+        }
+        
         $weighted_sum = ( floatval( $base_rating ) * intval( $base_count ) ) + $real_sum;
         $average = $weighted_sum / $total_count;
         

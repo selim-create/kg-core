@@ -164,7 +164,8 @@ if (file_exists($recipeControllerFile)) {
     }
     
     // Check for dual-mode handling (REST and internal)
-    if (strpos($content, 'is_rest_call') !== false && strpos($content, 'method_exists') !== false) {
+    if ((strpos($content, 'is_rest_call') !== false && strpos($content, 'instanceof') !== false) ||
+        (strpos($content, 'is_rest_call') !== false && strpos($content, 'method_exists') !== false)) {
         echo "   ✓ Dual-mode handling (REST and internal) implemented\n";
         $passed++;
     } else {
