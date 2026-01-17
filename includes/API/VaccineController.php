@@ -545,6 +545,13 @@ class VaccineController {
                 $child_overdue = $record_manager->get_overdue_vaccines( $child['id'] );
                 if ( ! is_wp_error( $child_overdue ) ) {
                     $overdue = array_merge( $overdue, $child_overdue );
+                } else {
+                    // Log the error but continue processing other children
+                    error_log( sprintf( 
+                        'Failed to get overdue vaccines for child %s: %s', 
+                        $child['id'], 
+                        $child_overdue->get_error_message() 
+                    ) );
                 }
             }
         }
