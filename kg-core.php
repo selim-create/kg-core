@@ -204,7 +204,14 @@ if ( file_exists( KG_CORE_PATH . 'includes/Cron/VaccineReminderCron.php' ) ) req
 // 6.11. VACCINATION TRACKER DATABASE SCHEMA (NEW)
 if ( file_exists( KG_CORE_PATH . 'includes/Database/VaccinationSchema.php' ) ) require_once KG_CORE_PATH . 'includes/Database/VaccinationSchema.php';
 
-// 6.12. REDIRECT SINIFLARI DAHİL ET (Frontend Redirect)
+// 6.12. NEWSLETTER MODULE (NEW)
+if ( file_exists( KG_CORE_PATH . 'includes/Newsletter/NewsletterSubscriber.php' ) ) require_once KG_CORE_PATH . 'includes/Newsletter/NewsletterSubscriber.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Newsletter/NewsletterRepository.php' ) ) require_once KG_CORE_PATH . 'includes/Newsletter/NewsletterRepository.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Newsletter/NewsletterService.php' ) ) require_once KG_CORE_PATH . 'includes/Newsletter/NewsletterService.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Newsletter/NewsletterRESTController.php' ) ) require_once KG_CORE_PATH . 'includes/Newsletter/NewsletterRESTController.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/NewsletterAdminPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/NewsletterAdminPage.php';
+
+// 6.13. REDIRECT SINIFLARI DAHİL ET (Frontend Redirect)
 if ( file_exists( KG_CORE_PATH . 'includes/Redirect/FrontendRedirect.php' ) ) require_once KG_CORE_PATH . 'includes/Redirect/FrontendRedirect.php';
 
 // 7. SINIFLARI BAŞLAT (INIT HOOK)
@@ -296,6 +303,11 @@ function kg_core_init() {
         new \KG_Core\Admin\VaccineStatsAdminPage();
     }
     
+    // Newsletter Admin Page
+    if ( is_admin() && class_exists( '\KG_Core\Admin\NewsletterAdminPage' ) ) {
+        new \KG_Core\Admin\NewsletterAdminPage();
+    }
+    
     // Email Configuration
     if ( class_exists( '\KG_Core\Notifications\EmailConfig' ) ) {
         new \KG_Core\Notifications\EmailConfig();
@@ -333,6 +345,11 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\VaccinePrivateController' ) ) new \KG_Core\API\VaccinePrivateController();
     if ( class_exists( '\KG_Core\API\VaccineExportController' ) ) new \KG_Core\API\VaccineExportController();
     if ( class_exists( '\KG_Core\API\PushNotificationController' ) ) new \KG_Core\API\PushNotificationController();
+    
+    // Newsletter REST Controller
+    if ( class_exists( '\KG_Core\Newsletter\NewsletterRESTController' ) ) {
+        new \KG_Core\Newsletter\NewsletterRESTController();
+    }
     
     // Frontend View Links (Admin only)
     if ( is_admin() && class_exists( '\KG_Core\Admin\FrontendViewLinks' ) ) {
