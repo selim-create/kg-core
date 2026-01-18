@@ -587,6 +587,26 @@ class UserController {
             $children = [];
         }
 
+        // Generate signed URLs for children with avatars
+        $avatar_service = null;
+        
+        foreach ( $children as &$child ) {
+            $child['has_avatar'] = ! empty( $child['avatar_path'] );
+            
+            if ( $child['has_avatar'] ) {
+                // Lazy instantiation - only create service when needed
+                if ( $avatar_service === null ) {
+                    $avatar_service = new ChildAvatarService();
+                }
+                
+                $signed_url = $avatar_service->get_signed_url( $child['avatar_path'] );
+                // Only set avatar_url if it's not a WP_Error
+                $child['avatar_url'] = is_wp_error( $signed_url ) ? null : $signed_url;
+            } else {
+                $child['avatar_url'] = null;
+            }
+        }
+
         // Avatar URL
         $avatar_id = get_user_meta( $user_id, '_kg_avatar_id', true );
         $avatar_url = '';
@@ -1660,6 +1680,26 @@ class UserController {
         $children = get_user_meta( $user_id, '_kg_children', true );
         if ( ! is_array( $children ) ) {
             $children = [];
+        }
+
+        // Generate signed URLs for children with avatars
+        $avatar_service = null;
+        
+        foreach ( $children as &$child ) {
+            $child['has_avatar'] = ! empty( $child['avatar_path'] );
+            
+            if ( $child['has_avatar'] ) {
+                // Lazy instantiation - only create service when needed
+                if ( $avatar_service === null ) {
+                    $avatar_service = new ChildAvatarService();
+                }
+                
+                $signed_url = $avatar_service->get_signed_url( $child['avatar_path'] );
+                // Only set avatar_url if it's not a WP_Error
+                $child['avatar_url'] = is_wp_error( $signed_url ) ? null : $signed_url;
+            } else {
+                $child['avatar_url'] = null;
+            }
         }
 
         // Get followed circles
