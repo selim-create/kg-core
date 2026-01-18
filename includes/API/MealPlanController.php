@@ -55,6 +55,11 @@ class MealPlanController {
                     'type' => 'string',
                     'description' => 'Child UUID',
                 ],
+                'week_start' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'description' => 'Week start date (Y-m-d) - optional filter',
+                ],
             ],
         ]);
 
@@ -214,6 +219,7 @@ class MealPlanController {
     public function get_active_plan( $request ) {
         $user_id = $this->get_authenticated_user_id( $request );
         $child_id = sanitize_text_field( $request->get_param( 'child_id' ) );
+        $week_start = sanitize_text_field( $request->get_param( 'week_start' ) );
 
         if ( empty( $child_id ) ) {
             return new \WP_Error( 'missing_child_id', 'child_id parameter is required', [ 'status' => 400 ] );
@@ -221,10 +227,33 @@ class MealPlanController {
 
         $plans = get_user_meta( $user_id, '_kg_meal_plans', true );
         if ( ! is_array( $plans ) ) {
-            return new \WP_Error( 'no_plans', 'No meal plans found', [ 'status' => 404 ] );
+            $plans = [];
         }
 
-        // Find active plan for this child
+        // If week_start parameter is provided, filter by specific week
+        if ( ! empty( $week_start ) ) {
+            $plan = $this->get_plan_by_week( $plans, $child_id, $week_start );
+            
+            if ( $plan ) {
+                $enriched_plan = $this->enrich_plan_with_recipes( $plan );
+                $nutrition_summary = $this->generator->calculate_nutrition_summary( $plan );
+                $enriched_plan['nutrition_summary'] = $nutrition_summary;
+
+                return new \WP_REST_Response( [
+                    'success' => true,
+                    'plan' => $enriched_plan,
+                ], 200 );
+            }
+
+            // No plan found for this week - return null instead of 404
+            return new \WP_REST_Response( [
+                'success' => true,
+                'plan' => null,
+                'message' => 'No plan found for this week',
+            ], 200 );
+        }
+
+        // No week_start parameter - find active plan (existing behavior)
         foreach ( $plans as $plan ) {
             if ( $plan['child_id'] === $child_id && $plan['status'] === 'active' ) {
                 $enriched_plan = $this->enrich_plan_with_recipes( $plan );
@@ -621,6 +650,23 @@ class MealPlanController {
         }
 
         update_user_meta( $user_id, '_kg_meal_plans', $plans );
+    }
+
+    /**
+     * Get plan by week_start date
+     *
+     * @param array $plans Array of meal plans
+     * @param string $child_id Child UUID
+     * @param string $week_start Week start date (Y-m-d)
+     * @return array|null Plan data or null if not found
+     */
+    private function get_plan_by_week( $plans, $child_id, $week_start ) {
+        foreach ( $plans as $plan ) {
+            if ( $plan['child_id'] === $child_id && $plan['week_start'] === $week_start ) {
+                return $plan;
+            }
+        }
+        return null;
     }
 
     /**
