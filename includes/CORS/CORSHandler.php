@@ -74,7 +74,7 @@ class CORSHandler {
             }
             
             header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH');
-            header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Requested-With, X-WP-Nonce, Cache-Control, Pragma');
+            header('Access-Control-Allow-Headers: Authorization, Content-Type, Content-Disposition, X-Requested-With, X-WP-Nonce, Cache-Control, Pragma');
             header('Access-Control-Allow-Credentials: true');
             header('Access-Control-Max-Age: 86400');
             header('Vary: Origin');
@@ -99,7 +99,7 @@ class CORSHandler {
         }
         
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH');
-        header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Requested-With, X-WP-Nonce, Cache-Control, Pragma');
+        header('Access-Control-Allow-Headers: Authorization, Content-Type, Content-Disposition, X-Requested-With, X-WP-Nonce, Cache-Control, Pragma');
         header('Access-Control-Allow-Credentials: true');
         header('Access-Control-Max-Age: 86400');
         header('Vary: Origin');
@@ -156,7 +156,7 @@ class CORSHandler {
         if ($origin && $this->is_allowed_origin($origin)) {
             header('Access-Control-Allow-Origin: ' . $origin);
             header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH');
-            header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Requested-With, X-WP-Nonce, Cache-Control, Pragma');
+            header('Access-Control-Allow-Headers: Authorization, Content-Type, Content-Disposition, X-Requested-With, X-WP-Nonce, Cache-Control, Pragma');
             header('Access-Control-Allow-Credentials: true');
             header('Access-Control-Max-Age: 86400');
             header('Vary: Origin');
