@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "kg-core/embed",
+  "version": "1.0.0",
+  "title": "KG İçerik Embed",
+  "category": "widgets",
+  "icon": "embed-generic",
+  "description": "Tarif, malzeme, araç veya yazı embed edin",
+  "keywords": ["embed", "tarif", "malzeme", "araç", "recipe", "ingredient", "tool"],
+  "supports": {
+    "html": false,
+    "align": ["wide", "full"]
+  },
+  "attributes": {
+    "contentType": {
+      "type": "string",
+      "default": "recipe"
+    },
+    "selectedItems": {
+      "type": "array",
+      "default": []
+    }
+  },
+  "textdomain": "kg-core",
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./editor.css"
+}

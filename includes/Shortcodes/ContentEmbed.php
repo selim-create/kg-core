@@ -109,10 +109,6 @@ class ContentEmbed {
         $embeds = [];
         static $embed_counter = 0;
         
-        // Split content into paragraphs
-        $paragraphs = preg_split('/(<p>|<\/p>|\n\n)/i', $content, -1, PREG_SPLIT_NO_EMPTY);
-        $paragraph_count = 0;
-        
         // Find all shortcodes in content
         if (preg_match_all('/\[kg-embed\s+([^\]]+)\]/i', $content, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
             foreach ($matches as $match) {
@@ -134,6 +130,41 @@ class ContentEmbed {
                 } else {
                     continue;
                 }
+                
+                if (!in_array($type, $this->allowed_types) || empty($ids)) {
+                    continue;
+                }
+                
+                // Calculate paragraph position
+                $position = 0;
+                $content_before = substr($content, 0, $offset);
+                $position = substr_count($content_before, '<p>') + substr_count($content_before, "\n\n");
+                
+                // Get embed data
+                $items = $this->get_embed_data($type, $ids);
+                
+                if (!empty($items)) {
+                    $embeds[] = [
+                        'type' => $type,
+                        'position' => $position,
+                        'placeholder_id' => 'kg-embed-' . $embed_counter++,
+                        'items' => $items,
+                    ];
+                }
+            }
+        }
+        
+        // Also find block placeholders (from Gutenberg blocks)
+        if (preg_match_all('/<div[^>]*class="[^"]*kg-embed-placeholder[^"]*"[^>]*data-type="([^"]*)"[^>]*data-ids="([^"]*)"[^>]*>/i', 
+            $content, $block_matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+            foreach ($block_matches as $match) {
+                $full_match = $match[0][0];
+                $offset = $match[0][1];
+                $type = $match[1][0];
+                $ids_str = $match[2][0];
+                
+                // Get IDs
+                $ids = array_map('absint', array_filter(explode(',', $ids_str)));
                 
                 if (!in_array($type, $this->allowed_types) || empty($ids)) {
                     continue;

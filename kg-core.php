@@ -131,6 +131,9 @@ if ( file_exists( KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php' ) ) r
 // 5.7. SHORTCODE SINIFLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php' ) ) require_once KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php';
 
+// 5.8. BLOCK SINIFLARINI DAHİL ET
+if ( file_exists( KG_CORE_PATH . 'includes/Blocks/EmbedBlock.php' ) ) require_once KG_CORE_PATH . 'includes/Blocks/EmbedBlock.php';
+
 // 6. API KONTROL CİHAZLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/API/RecipeController.php' ) ) require_once KG_CORE_PATH . 'includes/API/RecipeController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/IngredientController.php' ) ) require_once KG_CORE_PATH . 'includes/API/IngredientController.php';
@@ -335,6 +338,11 @@ function kg_core_init() {
     // Shortcodes
     if ( class_exists( '\KG_Core\Shortcodes\ContentEmbed' ) ) {
         new \KG_Core\Shortcodes\ContentEmbed();
+    }
+    
+    // Blocks
+    if ( class_exists( '\KG_Core\Blocks\EmbedBlock' ) ) {
+        new \KG_Core\Blocks\EmbedBlock();
     }
 
     // API Controllers
