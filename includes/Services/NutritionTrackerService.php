@@ -386,20 +386,20 @@ class NutritionTrackerService {
         foreach ( $ingredient_ids as $ingredient_id ) {
             $nutrition['ingredients'][] = $ingredient_id;
             
-            // Ingredient kategorisini al - DOĞRU taxonomy: "ingredient-category"
+            // Get ingredient category - CORRECT taxonomy: "ingredient-category"
             $categories = wp_get_post_terms( $ingredient_id, 'ingredient-category', [ 'fields' => 'slugs' ] );
             
             if ( empty( $categories ) || is_wp_error( $categories ) ) {
                 continue;
             }
             
-            // Kategoriye göre besin değerlerini artır
+            // Increase nutritional values based on category
             foreach ( $categories as $cat_slug ) {
                 switch ( $cat_slug ) {
                     case 'proteinler':
                     case 'baklagiller':
                         $nutrition['protein_servings']++;
-                        $nutrition['iron_rich']++; // Protein kaynakları genellikle demir açısından zengin
+                        $nutrition['iron_rich']++; // Protein sources are generally rich in iron
                         break;
                     case 'sebzeler':
                         $nutrition['vegetable_servings']++;
@@ -436,7 +436,7 @@ class NutritionTrackerService {
         }
         
         foreach ( $ingredients as $ing ) {
-            // ingredient_id field'ını kullan
+            // Use the ingredient_id field
             if ( isset( $ing['ingredient_id'] ) && ! empty( $ing['ingredient_id'] ) ) {
                 $ingredient_ids[] = intval( $ing['ingredient_id'] );
             }

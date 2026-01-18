@@ -452,25 +452,25 @@ class MealPlanGenerator {
         }
         
         foreach ( $ingredients as $ingredient ) {
-            // ingredient_id with ingredient post'una eriş
+            // Access ingredient post via ingredient_id
             $ingredient_id = isset( $ingredient['ingredient_id'] ) ? intval( $ingredient['ingredient_id'] ) : 0;
             
             if ( ! $ingredient_id ) {
                 continue;
             }
             
-            // Ingredient'in kategorisini al - DOĞRU taxonomy: "ingredient-category"
+            // Get ingredient category - CORRECT taxonomy: "ingredient-category"
             $categories = wp_get_post_terms( $ingredient_id, 'ingredient-category', [ 'fields' => 'slugs' ] );
             
             if ( empty( $categories ) || is_wp_error( $categories ) ) {
                 continue;
             }
             
-            // Kategoriye göre besin değerlerini artır
+            // Increase nutritional values based on category
             foreach ( $categories as $cat_slug ) {
                 switch ( $cat_slug ) {
                     case 'proteinler':
-                    case 'baklagiller': // Baklagiller de protein kaynağı
+                    case 'baklagiller': // Legumes are also a protein source
                         $nutrition['protein_servings']++;
                         break;
                     case 'sebzeler':
