@@ -1458,11 +1458,12 @@ class UserController {
         
         // Get the checked parameter from request body
         $params = $request->get_json_params();
-        $checked = isset( $params['checked'] ) ? (bool) $params['checked'] : null;
-
-        if ( $checked === null ) {
+        
+        if ( ! isset( $params['checked'] ) ) {
             return new \WP_Error( 'missing_checked', 'checked parameter is required', [ 'status' => 400 ] );
         }
+        
+        $checked = (bool) $params['checked'];
 
         $shopping_list = get_user_meta( $user_id, '_kg_shopping_list', true );
         if ( ! is_array( $shopping_list ) ) {
@@ -1471,9 +1472,11 @@ class UserController {
 
         // Find and update the item
         $found = false;
+        $updated_item = null;
         foreach ( $shopping_list as $index => $item ) {
             if ( isset( $item['id'] ) && $item['id'] === $item_id ) {
                 $shopping_list[$index]['checked'] = $checked;
+                $updated_item = $shopping_list[$index];
                 $found = true;
                 break;
             }
@@ -1489,7 +1492,7 @@ class UserController {
         return new \WP_REST_Response( [
             'success' => true,
             'message' => 'Item updated successfully',
-            'item' => $shopping_list[$index],
+            'item' => $updated_item,
         ], 200 );
     }
 
