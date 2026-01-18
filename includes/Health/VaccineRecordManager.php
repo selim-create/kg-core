@@ -490,8 +490,8 @@ class VaccineRecordManager {
             $child_id
         );
         
-        // Add limit if specified
-        if ($limit !== null && is_numeric($limit) && $limit > 0) {
+        // Add limit if specified - ensure it's a valid positive integer
+        if ($limit !== null && filter_var($limit, FILTER_VALIDATE_INT) !== false && $limit > 0) {
             $sql .= $wpdb->prepare(" LIMIT %d", $limit);
         }
         
@@ -527,7 +527,8 @@ class VaccineRecordManager {
             }
             
             // Handle private vaccines that don't have master data
-            $is_private_vaccine = empty($record['name']) && isset($record['is_mandatory']) && !$record['is_mandatory'];
+            // Private vaccines won't have a match in vaccine_master table, so name will be empty
+            $is_private_vaccine = empty($record['name']);
             
             if ($is_private_vaccine) {
                 // Try to get metadata from PrivateVaccineWizard
