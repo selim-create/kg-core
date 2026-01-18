@@ -219,7 +219,7 @@ class MealPlanController {
     public function get_active_plan( $request ) {
         $user_id = $this->get_authenticated_user_id( $request );
         $child_id = sanitize_text_field( $request->get_param( 'child_id' ) );
-        $week_start = sanitize_text_field( $request->get_param( 'week_start' ) );
+        $week_start = $request->get_param( 'week_start' );
 
         if ( empty( $child_id ) ) {
             return new \WP_Error( 'missing_child_id', 'child_id parameter is required', [ 'status' => 400 ] );
@@ -231,7 +231,14 @@ class MealPlanController {
         }
 
         // If week_start parameter is provided, filter by specific week
-        if ( ! empty( $week_start ) ) {
+        if ( $week_start !== null && $week_start !== '' ) {
+            // Validate date format (Y-m-d)
+            $week_start = sanitize_text_field( $week_start );
+            $date_obj = \DateTime::createFromFormat( 'Y-m-d', $week_start );
+            if ( ! $date_obj || $date_obj->format( 'Y-m-d' ) !== $week_start ) {
+                return new \WP_Error( 'invalid_date', 'Invalid week_start date format. Use Y-m-d', [ 'status' => 400 ] );
+            }
+
             $plan = $this->get_plan_by_week( $plans, $child_id, $week_start );
             
             if ( $plan ) {

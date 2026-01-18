@@ -241,6 +241,48 @@ if (test_result("Wrong week_start date → No plan found",
     $passed_tests++;
 }
 
+// Test 6: Date Format Validation
+echo "\n" . colorize("Test 6: Date Format Validation", 'info') . "\n";
+
+// Validate date format function
+function validate_date_format($week_start) {
+    if ($week_start === null || $week_start === '') {
+        return true; // Empty is valid (optional parameter)
+    }
+    $date_obj = DateTime::createFromFormat('Y-m-d', $week_start);
+    return $date_obj && $date_obj->format('Y-m-d') === $week_start;
+}
+
+$total_tests++;
+if (test_result("Valid date format 2026-01-12", 
+    validate_date_format('2026-01-12') === true)) {
+    $passed_tests++;
+}
+
+$total_tests++;
+if (test_result("Invalid date format 2026/01/12", 
+    validate_date_format('2026/01/12') === false)) {
+    $passed_tests++;
+}
+
+$total_tests++;
+if (test_result("Invalid date format 01-12-2026", 
+    validate_date_format('01-12-2026') === false)) {
+    $passed_tests++;
+}
+
+$total_tests++;
+if (test_result("Empty string is valid (optional)", 
+    validate_date_format('') === true)) {
+    $passed_tests++;
+}
+
+$total_tests++;
+if (test_result("Null is valid (optional)", 
+    validate_date_format(null) === true)) {
+    $passed_tests++;
+}
+
 // Summary
 echo "\n" . colorize("=== Test Summary ===", 'info') . "\n";
 $percentage = $total_tests > 0 ? round(($passed_tests / $total_tests) * 100, 2) : 0;
