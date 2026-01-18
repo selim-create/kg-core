@@ -491,7 +491,7 @@ class VaccineRecordManager {
         );
         
         // Add limit if specified - ensure it's a valid positive integer
-        if ($limit !== null && filter_var($limit, FILTER_VALIDATE_INT) !== false && $limit > 0) {
+        if ($limit !== null && filter_var($limit, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1))) !== false) {
             $sql .= $wpdb->prepare(" LIMIT %d", $limit);
         }
         
