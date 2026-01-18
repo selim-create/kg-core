@@ -2,7 +2,6 @@
 namespace KG_Core\API;
 
 use KG_Core\Auth\JWTHandler;
-use KG_Core\Models\ChildProfile;
 use KG_Core\Services\ChildAvatarService;
 use KG_Core\Services\RateLimiter;
 
@@ -89,12 +88,6 @@ class ChildProfileAvatarController {
      * Upload child avatar
      */
     public function upload_avatar( $request ) {
-        // Debug logging for CORS troubleshooting
-        $origin = isset($_SERVER['HTTP_ORIGIN']) ? esc_url_raw($_SERVER['HTTP_ORIGIN']) : 'none';
-        $method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field($_SERVER['REQUEST_METHOD']) : 'unknown';
-        error_log( 'Child Avatar Upload Request - Origin: ' . $origin );
-        error_log( 'Child Avatar Upload Request - Method: ' . $method );
-        
         $user_id = $this->get_authenticated_user_id( $request );
         $child_uuid = $request->get_param( 'child_uuid' );
         
@@ -104,24 +97,19 @@ class ChildProfileAvatarController {
             return $rate_check;
         }
         
-        // Check ownership
-        if ( ! ChildProfile::belongs_to_user( $child_uuid, $user_id ) ) {
-            return new \WP_Error(
-                'forbidden',
-                'You do not have permission to update this child profile',
-                [ 'status' => 403 ]
-            );
-        }
-        
-        // Get child profile
-        $child = ChildProfile::get_by_uuid( $child_uuid );
-        if ( ! $child ) {
+        // Get child from user meta
+        $result = $this->find_child_in_user_meta( $user_id, $child_uuid );
+        if ( ! $result ) {
             return new \WP_Error(
                 'child_not_found',
                 'Child profile not found',
                 [ 'status' => 404 ]
             );
         }
+        
+        $child = $result['child'];
+        $child_index = $result['index'];
+        $children = $result['all_children'];
         
         // Check if file was uploaded
         if ( empty( $_FILES['avatar'] ) ) {
@@ -133,8 +121,8 @@ class ChildProfileAvatarController {
         }
         
         // Delete old avatar if exists
-        if ( ! empty( $child->avatar_path ) ) {
-            $this->avatar_service->delete_avatar( $child->avatar_path );
+        if ( ! empty( $child['avatar_path'] ) ) {
+            $this->avatar_service->delete_avatar( $child['avatar_path'] );
         }
         
         // Upload new avatar
@@ -148,8 +136,9 @@ class ChildProfileAvatarController {
             return $upload_result;
         }
         
-        // Update child profile
-        ChildProfile::update_avatar( $child_uuid, $upload_result['path'] );
+        // Update child in user meta
+        $children[$child_index]['avatar_path'] = $upload_result['path'];
+        update_user_meta( $user_id, '_kg_children', $children );
         
         // Generate signed URL for response
         $signed_url = $this->avatar_service->get_signed_url( $upload_result['path'] );
@@ -171,18 +160,9 @@ class ChildProfileAvatarController {
         $user_id = $this->get_authenticated_user_id( $request );
         $child_uuid = $request->get_param( 'child_uuid' );
         
-        // Check ownership
-        if ( ! ChildProfile::belongs_to_user( $child_uuid, $user_id ) ) {
-            return new \WP_Error(
-                'forbidden',
-                'You do not have permission to view this child profile',
-                [ 'status' => 403 ]
-            );
-        }
-        
-        // Get child profile
-        $child = ChildProfile::get_by_uuid( $child_uuid );
-        if ( ! $child ) {
+        // Get child from user meta
+        $result = $this->find_child_in_user_meta( $user_id, $child_uuid );
+        if ( ! $result ) {
             return new \WP_Error(
                 'child_not_found',
                 'Child profile not found',
@@ -190,8 +170,18 @@ class ChildProfileAvatarController {
             );
         }
         
+        $child = $result['child'];
+        
+        if ( ! isset( $child['avatar_path'] ) || empty( $child['avatar_path'] ) ) {
+            return new \WP_Error(
+                'no_avatar',
+                'No avatar found for this child',
+                [ 'status' => 404 ]
+            );
+        }
+        
         // Generate signed URL
-        $signed_url = $this->avatar_service->get_signed_url( $child->avatar_path );
+        $signed_url = $this->avatar_service->get_signed_url( $child['avatar_path'] );
         
         if ( is_wp_error( $signed_url ) ) {
             return $signed_url;
@@ -210,18 +200,9 @@ class ChildProfileAvatarController {
         $user_id = $this->get_authenticated_user_id( $request );
         $child_uuid = $request->get_param( 'child_uuid' );
         
-        // Check ownership
-        if ( ! ChildProfile::belongs_to_user( $child_uuid, $user_id ) ) {
-            return new \WP_Error(
-                'forbidden',
-                'You do not have permission to update this child profile',
-                [ 'status' => 403 ]
-            );
-        }
-        
-        // Get child profile
-        $child = ChildProfile::get_by_uuid( $child_uuid );
-        if ( ! $child ) {
+        // Get child from user meta
+        $result = $this->find_child_in_user_meta( $user_id, $child_uuid );
+        if ( ! $result ) {
             return new \WP_Error(
                 'child_not_found',
                 'Child profile not found',
@@ -229,13 +210,18 @@ class ChildProfileAvatarController {
             );
         }
         
+        $child = $result['child'];
+        $child_index = $result['index'];
+        $children = $result['all_children'];
+        
         // Delete avatar file
-        if ( ! empty( $child->avatar_path ) ) {
-            $this->avatar_service->delete_avatar( $child->avatar_path );
+        if ( ! empty( $child['avatar_path'] ) ) {
+            $this->avatar_service->delete_avatar( $child['avatar_path'] );
         }
         
-        // Update child profile
-        ChildProfile::update_avatar( $child_uuid, null );
+        // Update child in user meta - remove avatar_path
+        $children[$child_index]['avatar_path'] = null;
+        update_user_meta( $user_id, '_kg_children', $children );
         
         return new \WP_REST_Response([
             'message' => 'Avatar deleted successfully',
@@ -292,5 +278,28 @@ class ChildProfileAvatarController {
         $decoded = $jwt_handler->decode_token( $token );
         
         return $decoded->data->user_id;
+    }
+    
+    /**
+     * Find child in user meta by UUID
+     * 
+     * @param int $user_id User ID
+     * @param string $child_uuid Child UUID
+     * @return array|null [child_data, index, all_children] or null if not found
+     */
+    private function find_child_in_user_meta( $user_id, $child_uuid ) {
+        $children = get_user_meta( $user_id, '_kg_children', true );
+        
+        if ( ! is_array( $children ) ) {
+            return null;
+        }
+        
+        foreach ( $children as $index => $child ) {
+            if ( isset( $child['id'] ) && $child['id'] === $child_uuid ) {
+                return [ 'child' => $child, 'index' => $index, 'all_children' => $children ];
+            }
+        }
+        
+        return null;
     }
 }
