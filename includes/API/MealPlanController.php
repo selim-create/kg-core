@@ -219,13 +219,14 @@ class MealPlanController {
     public function get_active_plan( $request ) {
         $user_id = $this->get_authenticated_user_id( $request );
         $child_id = sanitize_text_field( $request->get_param( 'child_id' ) );
-        $week_start = $request->get_param( 'week_start' );
 
+        // Validate required parameter first
         if ( empty( $child_id ) ) {
             return new \WP_Error( 'missing_child_id', 'child_id parameter is required', [ 'status' => 400 ] );
         }
 
-        // Sanitize week_start early if provided
+        // Get and sanitize optional week_start parameter
+        $week_start = $request->get_param( 'week_start' );
         if ( $week_start !== null && $week_start !== '' ) {
             $week_start = sanitize_text_field( $week_start );
         }
@@ -265,6 +266,11 @@ class MealPlanController {
         }
 
         // No week_start parameter - find active plan (existing behavior)
+        // Preserve original 404 behavior when no plans exist at all
+        if ( empty( $plans ) ) {
+            return new \WP_Error( 'no_plans', 'No meal plans found', [ 'status' => 404 ] );
+        }
+
         foreach ( $plans as $plan ) {
             if ( $plan['child_id'] === $child_id && $plan['status'] === 'active' ) {
                 $enriched_plan = $this->enrich_plan_with_recipes( $plan );
