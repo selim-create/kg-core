@@ -71,7 +71,7 @@ $has_json_params = strpos($controller_file, '$params = $request->get_json_params
 test_result("Parses JSON params from request body", $has_json_params);
 
 // Check for checked parameter validation
-$has_checked_param = strpos($controller_file, "\$checked = isset( \$params['checked'] )") !== false;
+$has_checked_param = strpos($controller_file, "! isset( \$params['checked'] )") !== false;
 test_result("Extracts checked parameter from request", $has_checked_param);
 
 // Test 3: Error handling
@@ -82,8 +82,8 @@ $has_missing_checked_error = strpos($controller_file, "return new \\WP_Error( 'm
 test_result("Returns error for missing checked parameter", $has_missing_checked_error);
 
 // Check for empty list error
-$has_empty_list_error = strpos($controller_file, "return new \\WP_Error( 'empty_list'") !== false;
-test_result("Returns error for empty shopping list", $has_empty_list_error);
+$has_empty_list_error = strpos($controller_file, "return new \\WP_Error( 'no_list'") !== false;
+test_result("Returns error for shopping list not found", $has_empty_list_error);
 
 // Check for item not found error
 $has_not_found_error = strpos($controller_file, "return new \\WP_Error( 'item_not_found'") !== false;
@@ -132,7 +132,7 @@ $has_message = strpos($controller_file, "'message' => 'Item updated successfully
 test_result("Response includes success message", $has_message);
 
 // Check for updated item in response
-$has_item_response = strpos($controller_file, "'item' => \$shopping_list[\$index]") !== false;
+$has_item_response = strpos($controller_file, "'item' => \$updated_item") !== false;
 test_result("Response includes updated item", $has_item_response);
 
 // Check for 200 status code
