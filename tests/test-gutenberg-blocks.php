@@ -207,12 +207,6 @@ if (!function_exists('add_shortcode')) {
     }
 }
 
-if (!function_exists('defined')) {
-    function defined($constant) {
-        return true;
-    }
-}
-
 // We can't fully test ContentEmbed without WordPress, but we can check it loads
 $content_embed_path = KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php';
 if (file_exists($content_embed_path)) {

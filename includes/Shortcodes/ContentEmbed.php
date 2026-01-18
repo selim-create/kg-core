@@ -136,9 +136,7 @@ class ContentEmbed {
                 }
                 
                 // Calculate paragraph position
-                $position = 0;
-                $content_before = substr($content, 0, $offset);
-                $position = substr_count($content_before, '<p>') + substr_count($content_before, "\n\n");
+                $position = $this->calculate_paragraph_position($content, $offset);
                 
                 // Get embed data
                 $items = $this->get_embed_data($type, $ids);
@@ -171,9 +169,7 @@ class ContentEmbed {
                 }
                 
                 // Calculate paragraph position
-                $position = 0;
-                $content_before = substr($content, 0, $offset);
-                $position = substr_count($content_before, '<p>') + substr_count($content_before, "\n\n");
+                $position = $this->calculate_paragraph_position($content, $offset);
                 
                 // Get embed data
                 $items = $this->get_embed_data($type, $ids);
@@ -190,6 +186,14 @@ class ContentEmbed {
         }
         
         return $embeds;
+    }
+    
+    /**
+     * Calculate paragraph position from content offset
+     */
+    private function calculate_paragraph_position($content, $offset) {
+        $content_before = substr($content, 0, $offset);
+        return substr_count($content_before, '<p>') + substr_count($content_before, "\n\n");
     }
     
     /**
