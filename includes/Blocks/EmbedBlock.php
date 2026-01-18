@@ -45,6 +45,12 @@ class EmbedBlock {
             return;
         }
         
+        // Check user capability
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => __('Insufficient permissions', 'kg-core')]);
+            return;
+        }
+        
         $type = isset($_POST['type']) ? sanitize_text_field($_POST['type']) : 'recipe';
         $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
         
