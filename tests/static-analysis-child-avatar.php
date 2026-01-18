@@ -48,7 +48,13 @@ $classes = [
 ];
 
 foreach ($classes as $file => $expected_class) {
-    $content = file_get_contents($base_path . '/' . $file);
+    $full_path = $base_path . '/' . $file;
+    if (!file_exists($full_path)) {
+        echo "   ✗ $expected_class - file not found\n";
+        continue;
+    }
+    
+    $content = file_get_contents($full_path);
     $class_name = substr($expected_class, strrpos($expected_class, '\\') + 1);
     
     if (strpos($content, "class $class_name") !== false) {

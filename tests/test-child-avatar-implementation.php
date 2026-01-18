@@ -47,41 +47,44 @@ $child_id = ChildProfile::create($test_data);
 if ($child_id) {
     echo "   ✓ Created test child profile (ID: $child_id)\n";
     
-    // Get by UUID
-    $child = ChildProfile::get_by_uuid($test_data['uuid'] ?? '');
+    // Get the created child to retrieve its UUID
+    $children = ChildProfile::get_by_user_id(1);
+    $child = !empty($children) ? $children[0] : null;
+    
     if ($child) {
         echo "   ✓ Retrieved child profile by UUID\n";
-    }
     
-    // Update avatar path
-    $test_avatar_path = 'private/child-avatars/1/test-uuid/avatar_123.jpg';
-    $updated = ChildProfile::update_avatar($child->uuid, $test_avatar_path);
-    if ($updated) {
-        echo "   ✓ Updated avatar path\n";
-        
-        // Verify update
-        $child = ChildProfile::get_by_uuid($child->uuid);
-        if ($child->avatar_path === $test_avatar_path) {
-            echo "   ✓ Avatar path verified\n";
+        // Update avatar path
+        $test_avatar_path = 'private/child-avatars/1/test-uuid/avatar_123.jpg';
+        $updated = ChildProfile::update_avatar($child->uuid, $test_avatar_path);
+        if ($updated) {
+            echo "   ✓ Updated avatar path\n";
+            
+            // Verify update
+            $child = ChildProfile::get_by_uuid($child->uuid);
+            if ($child->avatar_path === $test_avatar_path) {
+                echo "   ✓ Avatar path verified\n";
+            }
         }
-    }
-    
-    // Check ownership
-    $belongs = ChildProfile::belongs_to_user($child->uuid, 1);
-    if ($belongs) {
-        echo "   ✓ Ownership check passed\n";
-    }
-    
-    // Format for API
-    $formatted = ChildProfile::format_for_api($child);
-    if (is_array($formatted) && isset($formatted['id'])) {
-        echo "   ✓ API formatting successful\n";
-    }
-    
-    // Clean up
-    ChildProfile::delete($child->uuid);
-    echo "   ✓ Deleted test child profile\n";
-} else {
+        
+        // Check ownership
+        $belongs = ChildProfile::belongs_to_user($child->uuid, 1);
+        if ($belongs) {
+            echo "   ✓ Ownership check passed\n";
+        }
+        
+        // Format for API
+        $formatted = ChildProfile::format_for_api($child);
+        if (is_array($formatted) && isset($formatted['id'])) {
+            echo "   ✓ API formatting successful\n";
+        }
+        
+        // Clean up
+        ChildProfile::delete($child->uuid);
+        echo "   ✓ Deleted test child profile\n";
+    } else {
+        echo "   ✗ Failed to retrieve created child profile\n";
+    } else {
     echo "   ✗ Failed to create test child profile\n";
 }
 

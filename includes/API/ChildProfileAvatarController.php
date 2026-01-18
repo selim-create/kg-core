@@ -246,12 +246,17 @@ class ChildProfileAvatarController {
         
         $result = $this->avatar_service->verify_and_serve( $encoded_path, $expires, $token );
         
+        // If we reach here, there was an error (verify_and_serve exits on success)
         if ( is_wp_error( $result ) ) {
             return $result;
         }
         
-        // If we reach here, the file was served and script exited
-        exit;
+        // This should never be reached
+        return new \WP_Error(
+            'unknown_error',
+            'An unknown error occurred',
+            [ 'status' => 500 ]
+        );
     }
     
     /**

@@ -9,7 +9,6 @@ class ChildAvatarService {
     const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
     const ALLOWED_MIME_TYPES = [
         'image/jpeg',
-        'image/jpg', 
         'image/png',
         'image/webp'
     ];
@@ -238,7 +237,7 @@ class ChildAvatarService {
             );
         }
         
-        // Serve file
+        // Serve file - set headers BEFORE reading file
         $finfo = finfo_open( FILEINFO_MIME_TYPE );
         $mime_type = finfo_file( $finfo, $full_path );
         finfo_close( $finfo );
