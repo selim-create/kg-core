@@ -1,0 +1,249 @@
+/* KG Embed Selector Styles */
+
+.kg-embed-button {
+    margin-left: 5px;
+}
+
+.kg-embed-button .dashicons {
+    vertical-align: middle;
+}
+
+.kg-embed-modal {
+    display: none;
+    position: fixed;
+    z-index: 100000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.kg-embed-modal-content {
+    background-color: #fff;
+    margin: 50px auto;
+    width: 90%;
+    max-width: 900px;
+    border-radius: 4px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    max-height: calc(100vh - 100px);
+    display: flex;
+    flex-direction: column;
+}
+
+.kg-embed-modal-header {
+    padding: 20px 30px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.kg-embed-modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.kg-embed-modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    font-weight: bold;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    line-height: 1;
+}
+
+.kg-embed-modal-close:hover {
+    color: #000;
+}
+
+.kg-embed-modal-body {
+    padding: 20px 30px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.kg-embed-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #ddd;
+}
+
+.kg-embed-tab {
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+}
+
+.kg-embed-tab:hover {
+    color: #2271b1;
+}
+
+.kg-embed-tab.active {
+    color: #2271b1;
+    border-bottom-color: #2271b1;
+}
+
+.kg-embed-search {
+    margin-bottom: 20px;
+}
+
+.kg-embed-search input {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.kg-embed-search input:focus {
+    outline: none;
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+}
+
+.kg-embed-results {
+    min-height: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.kg-embed-results.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+}
+
+.kg-embed-results.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    font-style: italic;
+}
+
+.kg-embed-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.kg-embed-item:hover {
+    border-color: #2271b1;
+    background-color: #f6f7f7;
+}
+
+.kg-embed-item.selected {
+    border-color: #2271b1;
+    background-color: #e5f5fa;
+}
+
+.kg-embed-item-checkbox {
+    margin-right: 15px;
+    width: 18px;
+    height: 18px;
+}
+
+.kg-embed-item-image {
+    width: 60px;
+    height: 60px;
+    margin-right: 15px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.kg-embed-item-image.placeholder {
+    background-color: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.kg-embed-item-image.placeholder .dashicons {
+    font-size: 30px;
+    color: #ccc;
+}
+
+.kg-embed-item-content {
+    flex: 1;
+}
+
+.kg-embed-item-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+    color: #1d2327;
+}
+
+.kg-embed-item-meta {
+    font-size: 12px;
+    color: #757575;
+}
+
+.kg-embed-modal-footer {
+    padding: 15px 30px;
+    border-top: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.kg-embed-selected-count {
+    flex: 1;
+    font-size: 14px;
+    color: #666;
+}
+
+.kg-embed-selected-count span {
+    font-weight: 600;
+    color: #2271b1;
+}
+
+#kg-embed-insert:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .kg-embed-modal-content {
+        width: 95%;
+        margin: 20px auto;
+        max-height: calc(100vh - 40px);
+    }
+    
+    .kg-embed-modal-header,
+    .kg-embed-modal-body,
+    .kg-embed-modal-footer {
+        padding: 15px 20px;
+    }
+    
+    .kg-embed-tabs {
+        flex-wrap: wrap;
+    }
+    
+    .kg-embed-tab {
+        padding: 8px 15px;
+        font-size: 13px;
+    }
+}

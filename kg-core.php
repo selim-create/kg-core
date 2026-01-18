@@ -106,6 +106,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/ToolSeeder.php' ) ) require_onc
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/DiscussionAdmin.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/DiscussionAdmin.php';
 // User Profile Fields (Kullanıcı Profil Alanları)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/UserProfileFields.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/UserProfileFields.php';
+// Embed Selector (İçerik Embed Seçici)
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/EmbedSelector.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/EmbedSelector.php';
 
 // 5.5.1. HEALTH ADMIN PAGES (Vaccination Tracker)
 if ( file_exists( KG_CORE_PATH . 'includes/Health/VaccineManager.php' ) ) require_once KG_CORE_PATH . 'includes/Health/VaccineManager.php';
@@ -125,6 +127,9 @@ if ( file_exists( KG_CORE_PATH . 'includes/Migration/SEOHandler.php' ) ) require
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/MigrationLogger.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/MigrationLogger.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php';
+
+// 5.7. SHORTCODE SINIFLARINI DAHİL ET
+if ( file_exists( KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php' ) ) require_once KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php';
 
 // 6. API KONTROL CİHAZLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/API/RecipeController.php' ) ) require_once KG_CORE_PATH . 'includes/API/RecipeController.php';
@@ -284,6 +289,11 @@ function kg_core_init() {
         new \KG_Core\Admin\UserProfileFields();
     }
     
+    // Embed Selector (Admin only)
+    if ( is_admin() && class_exists( '\KG_Core\Admin\EmbedSelector' ) ) {
+        new \KG_Core\Admin\EmbedSelector();
+    }
+    
     // Health Admin Pages (Vaccination Tracker)
     if ( is_admin() && class_exists( '\KG_Core\Admin\KGCoreAdminMenu' ) ) {
         new \KG_Core\Admin\KGCoreAdminMenu();
@@ -320,6 +330,11 @@ function kg_core_init() {
     // Role Manager (RBAC)
     if ( class_exists( '\KG_Core\Roles\RoleManager' ) ) {
         new \KG_Core\Roles\RoleManager();
+    }
+    
+    // Shortcodes
+    if ( class_exists( '\KG_Core\Shortcodes\ContentEmbed' ) ) {
+        new \KG_Core\Shortcodes\ContentEmbed();
     }
 
     // API Controllers
