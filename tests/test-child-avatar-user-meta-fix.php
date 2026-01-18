@@ -35,13 +35,13 @@ if (file_exists($avatarControllerFile)) {
         $failed++;
     }
     
-    // Check for get_user_meta usage
+    // Check for get_user_meta usage (now in helper method)
     $userMetaCount = substr_count($content, "get_user_meta( \$user_id, '_kg_children', true )");
-    if ($userMetaCount >= 3) {
-        echo "   ✓ get_user_meta() used in all methods ({$userMetaCount} occurrences)\n";
+    if ($userMetaCount >= 1) {
+        echo "   ✓ get_user_meta() used in helper method ({$userMetaCount} occurrence)\n";
         $passed++;
     } else {
-        echo "   ✗ get_user_meta() found in only {$userMetaCount}/3 methods\n";
+        echo "   ✗ get_user_meta() not found in helper method\n";
         $failed++;
     }
     
@@ -99,13 +99,12 @@ if (file_exists($avatarControllerFile)) {
     if (!empty($uploadMethod[0])) {
         $method = $uploadMethod[0];
         
-        // Check for child lookup in user_meta
-        if (strpos($method, "foreach ( \$children as \$index => \$c )") !== false &&
-            strpos($method, "\$c['id'] === \$child_uuid") !== false) {
-            echo "   ✓ Child lookup uses foreach loop over user_meta array\n";
+        // Check for helper method usage
+        if (strpos($method, "\$result = \$this->find_child_in_user_meta( \$user_id, \$child_uuid )") !== false) {
+            echo "   ✓ Uses find_child_in_user_meta() helper method\n";
             $passed++;
         } else {
-            echo "   ✗ Child lookup not using user_meta array iteration\n";
+            echo "   ✗ Not using find_child_in_user_meta() helper method\n";
             $failed++;
         }
         
@@ -118,12 +117,12 @@ if (file_exists($avatarControllerFile)) {
             $failed++;
         }
         
-        // Check for no_children error
-        if (strpos($method, "'no_children'") !== false) {
-            echo "   ✓ Proper error handling for users with no children\n";
+        // Check for child_not_found error
+        if (strpos($method, "'child_not_found'") !== false) {
+            echo "   ✓ Proper error handling when child not found\n";
             $passed++;
         } else {
-            echo "   ✗ Missing error handling for users with no children\n";
+            echo "   ✗ Missing error handling when child not found\n";
             $failed++;
         }
         
@@ -145,12 +144,12 @@ if (file_exists($avatarControllerFile)) {
     if (!empty($getMethod[0])) {
         $method = $getMethod[0];
         
-        // Check for child lookup in user_meta
-        if (strpos($method, "foreach ( \$children as \$c )") !== false) {
-            echo "   ✓ Child lookup uses foreach loop over user_meta array\n";
+        // Check for helper method usage
+        if (strpos($method, "\$result = \$this->find_child_in_user_meta( \$user_id, \$child_uuid )") !== false) {
+            echo "   ✓ Uses find_child_in_user_meta() helper method\n";
             $passed++;
         } else {
-            echo "   ✗ Child lookup not using user_meta array iteration\n";
+            echo "   ✗ Not using find_child_in_user_meta() helper method\n";
             $failed++;
         }
         
@@ -190,12 +189,12 @@ if (file_exists($avatarControllerFile)) {
     if (!empty($deleteMethod[0])) {
         $method = $deleteMethod[0];
         
-        // Check for child lookup with index
-        if (strpos($method, "foreach ( \$children as \$index => \$c )") !== false) {
-            echo "   ✓ Child lookup uses foreach loop with index\n";
+        // Check for helper method usage
+        if (strpos($method, "\$result = \$this->find_child_in_user_meta( \$user_id, \$child_uuid )") !== false) {
+            echo "   ✓ Uses find_child_in_user_meta() helper method\n";
             $passed++;
         } else {
-            echo "   ✗ Child lookup not using foreach with index\n";
+            echo "   ✗ Not using find_child_in_user_meta() helper method\n";
             $failed++;
         }
         
@@ -287,9 +286,9 @@ if ($failed === 0) {
     echo "✓ All tests passed! Child avatar controller now uses user_meta.\n";
     echo "\nKey Changes Verified:\n";
     echo "- ✓ No longer uses ChildProfile model or database table\n";
-    echo "- ✓ All methods read from _kg_children user_meta\n";
+    echo "- ✓ Helper method find_child_in_user_meta() used for all child lookups\n";
     echo "- ✓ Avatar path stored/updated in user_meta\n";
-    echo "- ✓ Helper method for finding children added\n";
+    echo "- ✓ Code is DRY (Don't Repeat Yourself) - no duplication\n";
     echo "- ✓ Proper error handling for all scenarios\n";
     exit(0);
 } else {

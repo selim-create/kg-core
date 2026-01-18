@@ -97,34 +97,19 @@ class ChildProfileAvatarController {
             return $rate_check;
         }
         
-        // USER META'DAN ÇOCUKLARI AL (tablo yerine)
-        $children = get_user_meta( $user_id, '_kg_children', true );
-        if ( ! is_array( $children ) ) {
-            return new \WP_Error(
-                'no_children',
-                'No children found for this user',
-                [ 'status' => 404 ]
-            );
-        }
-        
-        // Çocuğu bul
-        $child = null;
-        $child_index = null;
-        foreach ( $children as $index => $c ) {
-            if ( $c['id'] === $child_uuid ) {
-                $child = $c;
-                $child_index = $index;
-                break;
-            }
-        }
-        
-        if ( ! $child ) {
+        // Get child from user meta
+        $result = $this->find_child_in_user_meta( $user_id, $child_uuid );
+        if ( ! $result ) {
             return new \WP_Error(
                 'child_not_found',
                 'Child profile not found',
                 [ 'status' => 404 ]
             );
         }
+        
+        $child = $result['child'];
+        $child_index = $result['index'];
+        $children = $result['all_children'];
         
         // Check if file was uploaded
         if ( empty( $_FILES['avatar'] ) ) {
@@ -175,32 +160,17 @@ class ChildProfileAvatarController {
         $user_id = $this->get_authenticated_user_id( $request );
         $child_uuid = $request->get_param( 'child_uuid' );
         
-        // USER META'DAN ÇOCUKLARI AL
-        $children = get_user_meta( $user_id, '_kg_children', true );
-        if ( ! is_array( $children ) ) {
-            return new \WP_Error(
-                'no_children',
-                'No children found',
-                [ 'status' => 404 ]
-            );
-        }
-        
-        // Çocuğu bul
-        $child = null;
-        foreach ( $children as $c ) {
-            if ( $c['id'] === $child_uuid ) {
-                $child = $c;
-                break;
-            }
-        }
-        
-        if ( ! $child ) {
+        // Get child from user meta
+        $result = $this->find_child_in_user_meta( $user_id, $child_uuid );
+        if ( ! $result ) {
             return new \WP_Error(
                 'child_not_found',
                 'Child profile not found',
                 [ 'status' => 404 ]
             );
         }
+        
+        $child = $result['child'];
         
         if ( empty( $child['avatar_path'] ) ) {
             return new \WP_Error(
@@ -230,34 +200,19 @@ class ChildProfileAvatarController {
         $user_id = $this->get_authenticated_user_id( $request );
         $child_uuid = $request->get_param( 'child_uuid' );
         
-        // USER META'DAN ÇOCUKLARI AL
-        $children = get_user_meta( $user_id, '_kg_children', true );
-        if ( ! is_array( $children ) ) {
-            return new \WP_Error(
-                'no_children',
-                'No children found',
-                [ 'status' => 404 ]
-            );
-        }
-        
-        // Çocuğu bul
-        $child = null;
-        $child_index = null;
-        foreach ( $children as $index => $c ) {
-            if ( $c['id'] === $child_uuid ) {
-                $child = $c;
-                $child_index = $index;
-                break;
-            }
-        }
-        
-        if ( ! $child ) {
+        // Get child from user meta
+        $result = $this->find_child_in_user_meta( $user_id, $child_uuid );
+        if ( ! $result ) {
             return new \WP_Error(
                 'child_not_found',
                 'Child profile not found',
                 [ 'status' => 404 ]
             );
         }
+        
+        $child = $result['child'];
+        $child_index = $result['index'];
+        $children = $result['all_children'];
         
         // Delete avatar file
         if ( ! empty( $child['avatar_path'] ) ) {
