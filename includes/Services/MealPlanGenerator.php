@@ -390,6 +390,11 @@ class MealPlanGenerator {
     public function calculate_nutrition_summary( $plan ) {
         $total_meals = 0;
         $allergens_introduced = [];
+        $vegetables_servings = 0;
+        $protein_servings = 0;
+        $grains_servings = 0;
+        $fruit_servings = 0;
+        $dairy_servings = 0;
         
         foreach ( $plan['days'] as $day ) {
             foreach ( $day['slots'] as $slot ) {
@@ -401,16 +406,98 @@ class MealPlanGenerator {
                     if ( ! is_wp_error( $recipe_allergens ) ) {
                         $allergens_introduced = array_merge( $allergens_introduced, $recipe_allergens );
                     }
+                    
+                    // Calculate nutrition from recipe ingredients
+                    $recipe_nutrition = $this->analyze_recipe_nutrition( $slot['recipe_id'] );
+                    $vegetables_servings += $recipe_nutrition['vegetable_servings'];
+                    $protein_servings += $recipe_nutrition['protein_servings'];
+                    $grains_servings += $recipe_nutrition['grains_servings'];
+                    $fruit_servings += $recipe_nutrition['fruit_servings'];
+                    $dairy_servings += $recipe_nutrition['dairy_servings'];
                 }
             }
         }
         
         return [
             'total_meals' => $total_meals,
-            'vegetables_servings' => 0, // Can be calculated from ingredients
-            'protein_servings' => 0,
-            'grains_servings' => 0,
+            'vegetables_servings' => $vegetables_servings,
+            'protein_servings' => $protein_servings,
+            'grains_servings' => $grains_servings,
+            'fruit_servings' => $fruit_servings,
+            'dairy_servings' => $dairy_servings,
             'new_allergens_introduced' => array_unique( $allergens_introduced ),
         ];
+    }
+    
+    /**
+     * Analyze nutrition from recipe ingredients
+     *
+     * @param int $recipe_id Recipe post ID
+     * @return array Nutrition data
+     */
+    private function analyze_recipe_nutrition( $recipe_id ) {
+        $nutrition = [
+            'protein_servings' => 0,
+            'vegetable_servings' => 0,
+            'fruit_servings' => 0,
+            'grains_servings' => 0,
+            'dairy_servings' => 0,
+        ];
+        
+        // Get recipe ingredients using ACF
+        if ( ! function_exists( 'get_field' ) ) {
+            return $nutrition;
+        }
+        
+        $ingredients = get_field( 'ingredients', $recipe_id );
+        
+        if ( ! is_array( $ingredients ) ) {
+            return $nutrition;
+        }
+        
+        foreach ( $ingredients as $ing ) {
+            $ingredient_id = null;
+            
+            if ( isset( $ing['ingredient'] ) && is_object( $ing['ingredient'] ) ) {
+                $ingredient_id = $ing['ingredient']->ID;
+            } elseif ( isset( $ing['ingredient'] ) && is_numeric( $ing['ingredient'] ) ) {
+                $ingredient_id = (int) $ing['ingredient'];
+            }
+            
+            if ( ! $ingredient_id ) {
+                continue;
+            }
+            
+            // Get ingredient categories using correct taxonomy
+            $categories = wp_get_post_terms( $ingredient_id, 'ingredient-category', [ 'fields' => 'slugs' ] );
+            
+            if ( empty( $categories ) || is_wp_error( $categories ) ) {
+                continue;
+            }
+            
+            // Match using correct slug names
+            foreach ( $categories as $cat_slug ) {
+                switch ( $cat_slug ) {
+                    case 'proteinler':
+                    case 'baklagiller': // Legumes are also protein sources
+                        $nutrition['protein_servings']++;
+                        break;
+                    case 'sebzeler':
+                        $nutrition['vegetable_servings']++;
+                        break;
+                    case 'meyveler':
+                        $nutrition['fruit_servings']++;
+                        break;
+                    case 'tahillar':
+                        $nutrition['grains_servings']++;
+                        break;
+                    case 'sut-urunleri':
+                        $nutrition['dairy_servings']++;
+                        break;
+                }
+            }
+        }
+        
+        return $nutrition;
     }
 }
