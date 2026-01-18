@@ -3,11 +3,11 @@
   "apiVersion": 3,
   "name": "kg-core/embed",
   "version": "1.0.0",
-  "title": "KG İçerik Embed",
+  "title": "KG Icerik Embed",
   "category": "widgets",
   "icon": "embed-generic",
-  "description": "Tarif, malzeme, araç veya yazı embed edin",
-  "keywords": ["embed", "tarif", "malzeme", "araç", "recipe", "ingredient", "tool"],
+  "description": "Tarif, malzeme, arac veya yazi embed edin",
+  "keywords": ["embed", "tarif", "malzeme", "arac", "recipe", "ingredient", "tool"],
   "supports": {
     "html": false,
     "align": ["wide", "full"]
