@@ -111,7 +111,8 @@ echo "\n" . colorize("Test 2: Request Behavior Simulation", 'info') . "\n";
 
 // Simulate get_active_plan method behavior
 function simulate_get_active_plan($plans, $child_id, $week_start = null) {
-    if (!empty($week_start)) {
+    // Match the actual implementation: explicit null and empty string check
+    if ($week_start !== null && $week_start !== '') {
         // Week-specific request
         $plan = get_plan_by_week_test($plans, $child_id, $week_start);
         
