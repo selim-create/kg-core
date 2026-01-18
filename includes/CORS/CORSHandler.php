@@ -28,6 +28,7 @@ class CORSHandler {
             'https://kidsgourmet.com.tr',
             'https://www.kidsgourmet.com.tr',
             'https://api.kidsgourmet.com.tr',
+            'https://kidsgourmet-web.vercel.app',
         ];
         
         // Allow filtering for environment-specific configuration
