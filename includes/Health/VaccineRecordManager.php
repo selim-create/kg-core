@@ -464,43 +464,131 @@ class VaccineRecordManager {
     /**
      * Get upcoming vaccines for a child
      * 
+     * Returns vaccines that are not yet completed (actual_date IS NULL) and not skipped,
+     * including both upcoming and overdue vaccines, in the expected nested format.
+     * 
      * @param int $child_id Child ID
-     * @param int $days_ahead Number of days to look ahead (default: 30)
+     * @param int|null $limit Optional limit on number of results (null = all)
      * @return array|WP_Error Array of upcoming vaccines or WP_Error on failure
      */
-    public function get_upcoming_vaccines($child_id, $days_ahead = 30) {
+    public function get_upcoming_vaccines($child_id, $limit = null) {
         global $wpdb;
         
         if (empty($child_id)) {
             return new \WP_Error('invalid_child_id', 'Child ID is required');
         }
         
-        $today = current_time('Y-m-d');
-        $future_date = date('Y-m-d', strtotime("+{$days_ahead} days"));
-        
-        $results = $wpdb->get_results($wpdb->prepare(
-            "SELECT vr.*, v.name, v.name_short, v.description
+        // Build query - get all vaccines that are not done and not skipped
+        $sql = $wpdb->prepare(
+            "SELECT vr.*, v.name, v.name_short, v.description, v.timing_rule, v.brand_options
              FROM {$this->table_name} vr
              LEFT JOIN {$wpdb->prefix}kg_vaccine_master v ON vr.vaccine_code = v.code
              WHERE vr.child_id = %s
-             AND vr.status = 'scheduled'
-             AND vr.scheduled_date BETWEEN %s AND %s
+             AND vr.actual_date IS NULL
+             AND vr.status != 'skipped'
              ORDER BY vr.scheduled_date ASC",
-            $child_id,
-            $today,
-            $future_date
-        ), ARRAY_A);
+            $child_id
+        );
+        
+        // Add limit if specified - ensure it's a valid positive integer
+        if ($limit !== null && filter_var($limit, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1))) !== false) {
+            $sql .= $wpdb->prepare(" LIMIT %d", $limit);
+        }
+        
+        $results = $wpdb->get_results($sql, ARRAY_A);
         
         if ($wpdb->last_error) {
             return new \WP_Error('database_error', $wpdb->last_error);
         }
         
-        // Convert booleans
-        foreach ($results as &$record) {
-            $record['is_mandatory'] = (bool)$record['is_mandatory'];
+        // Transform results to the expected nested format
+        $today = current_time('Y-m-d');
+        $today_timestamp = strtotime($today);
+        $formatted_results = [];
+        
+        foreach ($results as $record) {
+            // Calculate days_until and is_overdue
+            $scheduled_timestamp = strtotime($record['scheduled_date']);
+            $days_until = (int)round(($scheduled_timestamp - $today_timestamp) / self::SECONDS_PER_DAY);
+            $is_overdue = $days_until < 0;
+            
+            // Determine dynamic status
+            $status = 'scheduled';
+            if ($is_overdue) {
+                $status = 'overdue';
+            } elseif ($days_until <= self::UPCOMING_THRESHOLD_DAYS && $days_until >= 0) {
+                $status = 'upcoming';
+            }
+            
+            // Parse timing_rule JSON
+            $timing_rule = null;
+            if (isset($record['timing_rule']) && !empty($record['timing_rule'])) {
+                $timing_rule = json_decode($record['timing_rule'], true);
+            }
+            
+            // Handle private vaccines that don't have master data
+            // Private vaccines won't have a match in vaccine_master table, so name will be empty
+            $is_private_vaccine = empty($record['name']);
+            
+            if ($is_private_vaccine) {
+                // Try to get metadata from PrivateVaccineWizard
+                $private_metadata = $this->get_private_vaccine_metadata($record['vaccine_code']);
+                
+                if ($private_metadata) {
+                    $record['name'] = $private_metadata['name'];
+                    $record['name_short'] = $private_metadata['name_short'];
+                    $record['description'] = $private_metadata['description'];
+                    
+                    // Get timing rule if not already set
+                    if (empty($timing_rule)) {
+                        $timing_rule = $private_metadata['timing_rule'];
+                    }
+                }
+            }
+            
+            // Fallback: if timing_rule is still null, provide a default to prevent frontend crashes
+            if (empty($timing_rule)) {
+                $timing_rule = [
+                    'type' => 'custom',
+                    'value' => null,
+                    'tolerance_days_before' => 7,
+                    'tolerance_days_after' => 7
+                ];
+            }
+            
+            // Build nested vaccine object
+            $vaccine = [
+                'code' => $record['vaccine_code'],
+                'name' => $record['name'],
+                'name_short' => $record['name_short'],
+                'description' => $record['description'],
+                'timing_rule' => $timing_rule
+            ];
+            
+            // Parse brand_options if present
+            if (isset($record['brand_options']) && !empty($record['brand_options'])) {
+                $vaccine['brand_options'] = json_decode($record['brand_options'], true);
+            }
+            
+            // Build nested record object
+            $record_obj = [
+                'id' => (int)$record['id'],
+                'scheduled_date' => $record['scheduled_date'],
+                'status' => $status,
+                'actual_date' => $record['actual_date'],
+                'notes' => $record['notes']
+            ];
+            
+            // Build final result with nested structure
+            $formatted_results[] = [
+                'vaccine' => $vaccine,
+                'record' => $record_obj,
+                'days_until' => $days_until,
+                'is_overdue' => $is_overdue
+            ];
         }
         
-        return $results;
+        return $formatted_results;
     }
     
     /**
