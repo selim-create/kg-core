@@ -5,6 +5,7 @@ use KG_Core\Auth\JWTHandler;
 use KG_Core\Auth\GoogleAuth;
 use KG_Core\Utils\PrivacyHelper;
 use KG_Core\Health\VaccineRecordManager;
+use KG_Core\Services\ChildAvatarService;
 
 class UserController {
 
@@ -1004,6 +1005,19 @@ class UserController {
 
         if ( ! is_array( $children ) ) {
             $children = [];
+        }
+
+        // Generate signed URLs for children with avatars
+        $avatar_service = new ChildAvatarService();
+        
+        foreach ( $children as &$child ) {
+            $child['has_avatar'] = ! empty( $child['avatar_path'] );
+            
+            if ( $child['has_avatar'] ) {
+                $child['avatar_url'] = $avatar_service->get_signed_url( $child['avatar_path'] );
+            } else {
+                $child['avatar_url'] = null;
+            }
         }
 
         return new \WP_REST_Response( $children, 200 );
