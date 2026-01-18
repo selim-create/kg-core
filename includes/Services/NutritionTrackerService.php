@@ -383,27 +383,30 @@ class NutritionTrackerService {
         foreach ( $ingredients as $ingredient_id ) {
             $nutrition['ingredients'][] = $ingredient_id;
             
-            // Check nutrition categories
-            $categories = wp_get_post_terms( $ingredient_id, 'nutrition-category', [ 'fields' => 'slugs' ] );
+            // Check ingredient categories using correct taxonomy
+            $categories = wp_get_post_terms( $ingredient_id, 'ingredient-category', [ 'fields' => 'slugs' ] );
             
             if ( ! empty( $categories ) && ! is_wp_error( $categories ) ) {
-                if ( in_array( 'protein', $categories ) ) {
-                    $nutrition['protein_servings']++;
-                }
-                if ( in_array( 'vegetable', $categories ) || in_array( 'sebze', $categories ) ) {
-                    $nutrition['vegetable_servings']++;
-                }
-                if ( in_array( 'fruit', $categories ) || in_array( 'meyve', $categories ) ) {
-                    $nutrition['fruit_servings']++;
-                }
-                if ( in_array( 'grain', $categories ) || in_array( 'tahil', $categories ) ) {
-                    $nutrition['grains_servings']++;
-                }
-                if ( in_array( 'dairy', $categories ) || in_array( 'sut-urunleri', $categories ) ) {
-                    $nutrition['dairy_servings']++;
-                }
-                if ( in_array( 'iron-rich', $categories ) || in_array( 'demir', $categories ) ) {
-                    $nutrition['iron_rich']++;
+                foreach ( $categories as $cat_slug ) {
+                    switch ( $cat_slug ) {
+                        case 'proteinler':
+                        case 'baklagiller': // Legumes are also protein sources and iron-rich
+                            $nutrition['protein_servings']++;
+                            $nutrition['iron_rich']++;
+                            break;
+                        case 'sebzeler':
+                            $nutrition['vegetable_servings']++;
+                            break;
+                        case 'meyveler':
+                            $nutrition['fruit_servings']++;
+                            break;
+                        case 'tahillar':
+                            $nutrition['grains_servings']++;
+                            break;
+                        case 'sut-urunleri':
+                            $nutrition['dairy_servings']++;
+                            break;
+                    }
                 }
             }
         }
