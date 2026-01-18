@@ -279,6 +279,43 @@ class UserController {
     }
 
     /**
+     * Process children avatars - add signed URLs and has_avatar flag
+     *
+     * @param array $children Array of children data
+     * @return array Children array with avatar_url and has_avatar fields
+     */
+    private function process_children_avatars( $children ) {
+        if ( ! is_array( $children ) ) {
+            return [];
+        }
+
+        // Generate signed URLs for children with avatars
+        $avatar_service = null;
+        $processed_children = [];
+        
+        foreach ( $children as $child ) {
+            $child['has_avatar'] = ! empty( $child['avatar_path'] );
+            
+            if ( $child['has_avatar'] ) {
+                // Lazy instantiation - only create service when needed
+                if ( $avatar_service === null ) {
+                    $avatar_service = new ChildAvatarService();
+                }
+                
+                $signed_url = $avatar_service->get_signed_url( $child['avatar_path'] );
+                // Only set avatar_url if it's not a WP_Error
+                $child['avatar_url'] = is_wp_error( $signed_url ) ? null : $signed_url;
+            } else {
+                $child['avatar_url'] = null;
+            }
+            
+            $processed_children[] = $child;
+        }
+
+        return $processed_children;
+    }
+
+    /**
      * Register new user
      */
     public function register_user( $request ) {
@@ -581,11 +618,9 @@ class UserController {
             return new \WP_Error( 'user_not_found', 'User not found', [ 'status' => 404 ] );
         }
 
-        // Get children information
+        // Get children information and process avatar URLs
         $children = get_user_meta( $user_id, '_kg_children', true );
-        if ( ! is_array( $children ) ) {
-            $children = [];
-        }
+        $children = $this->process_children_avatars( $children );
 
         // Avatar URL
         $avatar_id = get_user_meta( $user_id, '_kg_avatar_id', true );
@@ -1002,30 +1037,7 @@ class UserController {
     public function get_children( $request ) {
         $user_id = $this->get_authenticated_user_id( $request );
         $children = get_user_meta( $user_id, '_kg_children', true );
-
-        if ( ! is_array( $children ) ) {
-            $children = [];
-        }
-
-        // Generate signed URLs for children with avatars
-        $avatar_service = null;
-        
-        foreach ( $children as &$child ) {
-            $child['has_avatar'] = ! empty( $child['avatar_path'] );
-            
-            if ( $child['has_avatar'] ) {
-                // Lazy instantiation - only create service when needed
-                if ( $avatar_service === null ) {
-                    $avatar_service = new ChildAvatarService();
-                }
-                
-                $signed_url = $avatar_service->get_signed_url( $child['avatar_path'] );
-                // Only set avatar_url if it's not a WP_Error
-                $child['avatar_url'] = is_wp_error( $signed_url ) ? null : $signed_url;
-            } else {
-                $child['avatar_url'] = null;
-            }
-        }
+        $children = $this->process_children_avatars( $children );
 
         return new \WP_REST_Response( $children, 200 );
     }
@@ -1656,11 +1668,9 @@ class UserController {
             $avatar_url = ! empty( $google_avatar ) ? $google_avatar : get_avatar_url( $user_id );
         }
 
-        // Get children data
+        // Get children data and process avatar URLs
         $children = get_user_meta( $user_id, '_kg_children', true );
-        if ( ! is_array( $children ) ) {
-            $children = [];
-        }
+        $children = $this->process_children_avatars( $children );
 
         // Get followed circles
         $followed_circles = get_user_meta( $user_id, '_kg_followed_circles', true );
