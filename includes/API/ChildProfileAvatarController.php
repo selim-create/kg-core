@@ -90,8 +90,10 @@ class ChildProfileAvatarController {
      */
     public function upload_avatar( $request ) {
         // Debug logging for CORS troubleshooting
-        error_log( 'Child Avatar Upload Request - Origin: ' . ( $_SERVER['HTTP_ORIGIN'] ?? 'none' ) );
-        error_log( 'Child Avatar Upload Request - Method: ' . $_SERVER['REQUEST_METHOD'] );
+        $origin = isset($_SERVER['HTTP_ORIGIN']) ? esc_url_raw($_SERVER['HTTP_ORIGIN']) : 'none';
+        $method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field($_SERVER['REQUEST_METHOD']) : 'unknown';
+        error_log( 'Child Avatar Upload Request - Origin: ' . $origin );
+        error_log( 'Child Avatar Upload Request - Method: ' . $method );
         
         $user_id = $this->get_authenticated_user_id( $request );
         $child_uuid = $request->get_param( 'child_uuid' );
