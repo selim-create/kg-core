@@ -172,7 +172,7 @@ class ChildProfileAvatarController {
         
         $child = $result['child'];
         
-        if ( empty( $child['avatar_path'] ) ) {
+        if ( ! isset( $child['avatar_path'] ) || empty( $child['avatar_path'] ) ) {
             return new \WP_Error(
                 'no_avatar',
                 'No avatar found for this child',
