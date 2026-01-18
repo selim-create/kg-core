@@ -8,7 +8,7 @@ Successfully implemented backend infrastructure for 5 new sponsored tools with c
 ### ✅ 1. Tool Post Type Updates
 **File:** `includes/PostTypes/Tool.php`
 
-Added 5 new tool types to the ACF choices:
+Added 5 new tool types:
 - `bath_planner` - Banyo Rutini Planlayıcı
 - `hygiene_calculator` - Günlük Hijyen İhtiyacı Hesaplayıcı
 - `diaper_calculator` - Akıllı Bez Hesaplayıcı

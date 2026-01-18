@@ -600,16 +600,6 @@ add_filter( 'rest_prepare_post', function( $response, $post, $request ) {
     return $response;
 }, 10, 3 );
 
-// Opsiyonel: ACF JSON Kayıt Yeri (Eğer ACF kurarsanız diye)
-add_filter('acf/settings/save_json', function( $path ) {
-    return KG_CORE_PATH . 'includes/Fields/acf-json';
-});
-add_filter('acf/settings/load_json', function( $paths ) {
-    unset($paths[0]);
-    $paths[] = KG_CORE_PATH . 'includes/Fields/acf-json';
-    return $paths;
-});
-
 // 9. CRON HOOKS - AI ile malzeme ve SEO oluşturma
 
 // 9.1. Malzeme oluşturma CRON
