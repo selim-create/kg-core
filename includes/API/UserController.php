@@ -280,7 +280,7 @@ class UserController {
 
     /**
      * Process children avatars - add signed URLs and has_avatar flag
-     * 
+     *
      * @param array $children Array of children data
      * @return array Children array with avatar_url and has_avatar fields
      */
@@ -291,8 +291,9 @@ class UserController {
 
         // Generate signed URLs for children with avatars
         $avatar_service = null;
+        $processed_children = [];
         
-        foreach ( $children as &$child ) {
+        foreach ( $children as $child ) {
             $child['has_avatar'] = ! empty( $child['avatar_path'] );
             
             if ( $child['has_avatar'] ) {
@@ -307,9 +308,11 @@ class UserController {
             } else {
                 $child['avatar_url'] = null;
             }
+            
+            $processed_children[] = $child;
         }
 
-        return $children;
+        return $processed_children;
     }
 
     /**
