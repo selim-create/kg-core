@@ -26,6 +26,3 @@ error_log
 # Temporary files
 /tmp/
 *.tmp
-
-# Build artifacts
-/blocks/build/
