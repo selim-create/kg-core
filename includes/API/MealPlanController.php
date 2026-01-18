@@ -616,7 +616,7 @@ class MealPlanController {
     }
 
     /**
-     * Generate shopping list
+     * Generate shopping list from meal plan and add to user's shopping list
      */
     public function generate_shopping_list( $request ) {
         $user_id = $this->get_authenticated_user_id( $request );
@@ -639,14 +639,70 @@ class MealPlanController {
             return new \WP_Error( 'plan_not_found', 'Meal plan not found', [ 'status' => 404 ] );
         }
 
-        // Generate shopping list
+        // Generate shopping list from recipes
         $shopping_list = $this->shopping_list_aggregator->generate( $plan );
 
-        // Ensure response format matches frontend expectation
+        // Get user's existing shopping list
+        $user_shopping_list = get_user_meta( $user_id, '_kg_shopping_list', true );
+        if ( ! is_array( $user_shopping_list ) ) {
+            $user_shopping_list = [];
+        }
+
+        // Add new items to user's shopping list (avoid duplicates)
+        $added_count = 0;
+        $items = $shopping_list['items'] ?? [];
+        
+        foreach ( $items as $item ) {
+            $ingredient_name = $item['ingredient_name'] ?? '';
+            
+            if ( empty( $ingredient_name ) ) {
+                continue;
+            }
+
+            // Check if item already exists in user's list (case-insensitive)
+            $exists = false;
+            foreach ( $user_shopping_list as $existing ) {
+                if ( isset( $existing['item'] ) && strtolower( trim( $existing['item'] ) ) === strtolower( trim( $ingredient_name ) ) ) {
+                    $exists = true;
+                    break;
+                }
+            }
+
+            // Only add if not already in list
+            if ( ! $exists ) {
+                $quantity = '';
+                if ( isset( $item['total_amount'] ) && isset( $item['unit'] ) ) {
+                    $quantity = $item['total_amount'] . ' ' . $item['unit'];
+                } elseif ( isset( $item['total_amount'] ) ) {
+                    $quantity = (string) $item['total_amount'];
+                } else {
+                    $quantity = '1 adet';
+                }
+
+                $new_item = [
+                    'id' => uniqid(),
+                    'item' => $ingredient_name,
+                    'quantity' => $quantity,
+                    'checked' => false,
+                    'category' => $item['category'] ?? 'other',
+                ];
+                
+                $user_shopping_list[] = $new_item;
+                $added_count++;
+            }
+        }
+
+        // Save updated shopping list
+        update_user_meta( $user_id, '_kg_shopping_list', $user_shopping_list );
+
+        // Return response
         return new \WP_REST_Response( [
             'success' => true,
-            'items' => $shopping_list['items'] ?? [],
-            'total_count' => $shopping_list['total_count'] ?? 0,
+            'items' => $items,
+            'total_count' => $added_count,
+            'message' => $added_count > 0 
+                ? $added_count . ' yeni ürün alışveriş listesine eklendi' 
+                : 'Tüm ürünler zaten listede mevcut',
         ], 200 );
     }
 
