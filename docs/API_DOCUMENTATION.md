@@ -866,6 +866,35 @@ Authorization: Bearer {token}
 
 ---
 
+### Update Shopping List Item
+```
+PATCH /kg/v1/user/shopping-list/{item_id}
+Authorization: Bearer {token}
+```
+
+**Body:**
+```json
+{
+  "checked": true
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Item updated successfully",
+  "item": {
+    "id": "item-123",
+    "item": "Havuç",
+    "quantity": "500g",
+    "checked": true
+  }
+}
+```
+
+---
+
 ## Search
 
 ### Global Search

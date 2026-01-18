@@ -175,6 +175,12 @@ class UserController {
         ]);
 
         register_rest_route( 'kg/v1', '/user/shopping-list/(?P<id>[a-zA-Z0-9]+)', [
+            'methods'  => 'PATCH',
+            'callback' => [ $this, 'update_shopping_list_item' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+        ]);
+
+        register_rest_route( 'kg/v1', '/user/shopping-list/(?P<id>[a-zA-Z0-9]+)', [
             'methods'  => 'DELETE',
             'callback' => [ $this, 'remove_from_shopping_list' ],
             'permission_callback' => [ $this, 'check_authentication' ],
@@ -1441,6 +1447,51 @@ class UserController {
         update_user_meta( $user_id, '_kg_shopping_list', $shopping_list );
 
         return new \WP_REST_Response( $item, 201 );
+    }
+
+    /**
+     * Update shopping list item (toggle checked status)
+     */
+    public function update_shopping_list_item( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+        $item_id = $request->get_param( 'id' );
+        
+        // Get the checked parameter from request body
+        $params = $request->get_json_params();
+        
+        if ( ! isset( $params['checked'] ) ) {
+            return new \WP_Error( 'missing_checked', 'checked parameter is required', [ 'status' => 400 ] );
+        }
+        
+        $checked = (bool) $params['checked'];
+
+        $shopping_list = get_user_meta( $user_id, '_kg_shopping_list', true );
+        if ( ! is_array( $shopping_list ) ) {
+            return new \WP_Error( 'no_list', 'Shopping list not found', [ 'status' => 404 ] );
+        }
+
+        // Find and update the item
+        $updated_item = null;
+        foreach ( $shopping_list as $index => $item ) {
+            if ( isset( $item['id'] ) && $item['id'] === $item_id ) {
+                $shopping_list[$index]['checked'] = $checked;
+                $updated_item = $shopping_list[$index];
+                break;
+            }
+        }
+
+        if ( $updated_item === null ) {
+            return new \WP_Error( 'item_not_found', 'Item not found in shopping list', [ 'status' => 404 ] );
+        }
+
+        // Save updated list
+        update_user_meta( $user_id, '_kg_shopping_list', $shopping_list );
+
+        return new \WP_REST_Response( [
+            'success' => true,
+            'message' => 'Item updated successfully',
+            'item' => $updated_item,
+        ], 200 );
     }
 
     /**
