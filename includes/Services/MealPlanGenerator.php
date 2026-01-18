@@ -444,42 +444,33 @@ class MealPlanGenerator {
             'dairy_servings' => 0,
         ];
         
-        // Get recipe ingredients using ACF
-        if ( ! function_exists( 'get_field' ) ) {
+        // Get recipe ingredients using WordPress native meta (not ACF)
+        $ingredients = get_post_meta( $recipe_id, '_kg_ingredients', true );
+        
+        if ( empty( $ingredients ) || ! is_array( $ingredients ) ) {
             return $nutrition;
         }
         
-        $ingredients = get_field( 'ingredients', $recipe_id );
-        
-        if ( ! is_array( $ingredients ) ) {
-            return $nutrition;
-        }
-        
-        foreach ( $ingredients as $ing ) {
-            $ingredient_id = null;
-            
-            if ( isset( $ing['ingredient'] ) && is_object( $ing['ingredient'] ) ) {
-                $ingredient_id = $ing['ingredient']->ID;
-            } elseif ( isset( $ing['ingredient'] ) && is_numeric( $ing['ingredient'] ) ) {
-                $ingredient_id = (int) $ing['ingredient'];
-            }
+        foreach ( $ingredients as $ingredient ) {
+            // Access ingredient post via ingredient_id
+            $ingredient_id = isset( $ingredient['ingredient_id'] ) ? intval( $ingredient['ingredient_id'] ) : 0;
             
             if ( ! $ingredient_id ) {
                 continue;
             }
             
-            // Get ingredient categories using correct taxonomy
+            // Get ingredient category - CORRECT taxonomy: "ingredient-category"
             $categories = wp_get_post_terms( $ingredient_id, 'ingredient-category', [ 'fields' => 'slugs' ] );
             
             if ( empty( $categories ) || is_wp_error( $categories ) ) {
                 continue;
             }
             
-            // Match using correct slug names
+            // Increase nutritional values based on category
             foreach ( $categories as $cat_slug ) {
                 switch ( $cat_slug ) {
                     case 'proteinler':
-                    case 'baklagiller': // Legumes are also protein sources
+                    case 'baklagiller': // Legumes are also a protein source
                         $nutrition['protein_servings']++;
                         break;
                     case 'sebzeler':
