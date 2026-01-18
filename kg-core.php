@@ -69,6 +69,15 @@ if ( file_exists( KG_CORE_PATH . 'includes/Services/FoodIntroductionService.php'
 // 2.10. TOOLS DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Tools/WHOGrowthData.php' ) ) require_once KG_CORE_PATH . 'includes/Tools/WHOGrowthData.php';
 
+// 2.11. RATE LIMITER SERVICE
+if ( file_exists( KG_CORE_PATH . 'includes/Services/RateLimiter.php' ) ) require_once KG_CORE_PATH . 'includes/Services/RateLimiter.php';
+
+// 2.12. CHILD AVATAR SERVICE
+if ( file_exists( KG_CORE_PATH . 'includes/Services/ChildAvatarService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/ChildAvatarService.php';
+
+// 2.13. MODELS
+if ( file_exists( KG_CORE_PATH . 'includes/Models/ChildProfile.php' ) ) require_once KG_CORE_PATH . 'includes/Models/ChildProfile.php';
+
 // 3. POST TYPE SINIFLARINI DAHİL ET (CPT)
 // Dosyalar mevcutsa dahil et
 if ( file_exists( KG_CORE_PATH . 'includes/PostTypes/Recipe.php' ) ) require_once KG_CORE_PATH . 'includes/PostTypes/Recipe.php';
@@ -127,6 +136,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Migration/SEOHandler.php' ) ) require
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/MigrationLogger.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/MigrationLogger.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Migration/ChildProfileMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/ChildProfileMigrator.php';
 
 // 5.7. SHORTCODE SINIFLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php' ) ) require_once KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php';
@@ -175,6 +185,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/AdminVaccineController.php' ) ) r
 if ( file_exists( KG_CORE_PATH . 'includes/API/VaccinePrivateController.php' ) ) require_once KG_CORE_PATH . 'includes/API/VaccinePrivateController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/VaccineExportController.php' ) ) require_once KG_CORE_PATH . 'includes/API/VaccineExportController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/PushNotificationController.php' ) ) require_once KG_CORE_PATH . 'includes/API/PushNotificationController.php';
+// Child Profile Avatar API Controller
+if ( file_exists( KG_CORE_PATH . 'includes/API/ChildProfileAvatarController.php' ) ) require_once KG_CORE_PATH . 'includes/API/ChildProfileAvatarController.php';
 
 // 6.6. ADMIN SINIFLARI DAHİL ET (Frontend View Links)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/FrontendViewLinks.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/FrontendViewLinks.php';
@@ -215,6 +227,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Cron/VaccineReminderCron.php' ) ) req
 
 // 6.11. VACCINATION TRACKER DATABASE SCHEMA (NEW)
 if ( file_exists( KG_CORE_PATH . 'includes/Database/VaccinationSchema.php' ) ) require_once KG_CORE_PATH . 'includes/Database/VaccinationSchema.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Database/ChildProfileSchema.php' ) ) require_once KG_CORE_PATH . 'includes/Database/ChildProfileSchema.php';
 
 // 6.12. NEWSLETTER MODULE (NEW)
 if ( file_exists( KG_CORE_PATH . 'includes/Newsletter/NewsletterSubscriber.php' ) ) require_once KG_CORE_PATH . 'includes/Newsletter/NewsletterSubscriber.php';
@@ -376,6 +389,9 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\VaccinePrivateController' ) ) new \KG_Core\API\VaccinePrivateController();
     if ( class_exists( '\KG_Core\API\VaccineExportController' ) ) new \KG_Core\API\VaccineExportController();
     if ( class_exists( '\KG_Core\API\PushNotificationController' ) ) new \KG_Core\API\PushNotificationController();
+    
+    // Child Profile Avatar API Controller
+    if ( class_exists( '\KG_Core\API\ChildProfileAvatarController' ) ) new \KG_Core\API\ChildProfileAvatarController();
     
     // Newsletter REST Controller
     if ( class_exists( '\KG_Core\Newsletter\NewsletterRESTController' ) ) {
@@ -687,6 +703,11 @@ register_activation_hook( __FILE__, function() {
         // Create vaccination tracker database tables
         if ( class_exists( '\KG_Core\Database\VaccinationSchema' ) ) {
             \KG_Core\Database\VaccinationSchema::create_tables();
+        }
+        
+        // Create child profiles database table
+        if ( class_exists( '\KG_Core\Database\ChildProfileSchema' ) ) {
+            \KG_Core\Database\ChildProfileSchema::create_table();
         }
         
         // Load vaccine master data from JSON
