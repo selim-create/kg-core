@@ -4,6 +4,30 @@ namespace KG_Core\Shortcodes;
 class ContentEmbed {
     private $allowed_types = ['recipe', 'ingredient', 'tool', 'post'];
     
+    /**
+     * Age group color mapping
+     */
+    private $age_group_colors = [
+        '6-8-ay' => '#FFAB91',
+        '8-10-ay' => '#FFB74D',
+        '10-12-ay' => '#FFA726',
+        '12-18-ay' => '#FF9800',
+        '18-24-ay' => '#FF6F00',
+        '2-yas' => '#81C784',
+        '3-yas' => '#66BB6A',
+        '4-yas' => '#4CAF50',
+    ];
+    
+    /**
+     * URL mapping for post types
+     */
+    private $url_prefixes = [
+        'recipe' => 'tarifler',
+        'ingredient' => 'malzemeler',
+        'tool' => 'araclar',
+        'post' => 'posts',
+    ];
+    
     public function __construct() {
         add_shortcode('kg-embed', [$this, 'render_shortcode']);
         add_filter('the_content', [$this, 'process_embeds_for_rest'], 5);
@@ -157,7 +181,7 @@ class ContentEmbed {
                 'slug' => $post->post_name,
                 'excerpt' => $post->post_excerpt ? $post->post_excerpt : wp_trim_words($post->post_content, 20),
                 'image' => $this->get_featured_image($post->ID),
-                'url' => '/' . $post->post_type . ($post->post_type === 'post' ? 's' : 'ler') . '/' . $post->post_name,
+                'url' => $this->get_post_url($post),
                 'embed_type' => $type,
             ];
             
@@ -292,19 +316,15 @@ class ContentEmbed {
         
         $age_group_slug = $age_groups[0]->slug;
         
-        // Color mapping based on age groups
-        $color_map = [
-            '6-8-ay' => '#FFAB91',
-            '8-10-ay' => '#FFB74D',
-            '10-12-ay' => '#FFA726',
-            '12-18-ay' => '#FF9800',
-            '18-24-ay' => '#FF6F00',
-            '2-yas' => '#81C784',
-            '3-yas' => '#66BB6A',
-            '4-yas' => '#4CAF50',
-        ];
-        
-        return isset($color_map[$age_group_slug]) ? $color_map[$age_group_slug] : '#CCCCCC';
+        return isset($this->age_group_colors[$age_group_slug]) ? $this->age_group_colors[$age_group_slug] : '#CCCCCC';
+    }
+    
+    /**
+     * Get post URL based on post type
+     */
+    private function get_post_url($post) {
+        $prefix = isset($this->url_prefixes[$post->post_type]) ? $this->url_prefixes[$post->post_type] : $post->post_type;
+        return '/' . $prefix . '/' . $post->post_name;
     }
     
     /**

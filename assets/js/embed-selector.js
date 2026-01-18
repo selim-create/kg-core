@@ -144,7 +144,7 @@
                     }
                 },
                 error: function() {
-                    $results.html('<div class="kg-embed-results empty">Bir hata oluştu. Lütfen tekrar deneyin.</div>');
+                    $results.html('<div class="kg-embed-results empty">' + kgEmbedSelector.labels.error + '</div>');
                 }
             });
         },

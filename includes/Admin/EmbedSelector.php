@@ -37,14 +37,16 @@ class EmbedSelector {
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('kg_embed_selector_nonce'),
                 'labels' => [
-                    'title' => 'İçerik Embed Et',
-                    'search' => 'Ara...',
-                    'select' => 'Seç',
-                    'selected' => 'Seçildi',
-                    'insert' => 'Embed Ekle',
-                    'cancel' => 'İptal',
-                    'noResults' => 'Sonuç bulunamadı',
-                    'loading' => 'Yükleniyor...',
+                    'title' => __('İçerik Embed Et', 'kg-core'),
+                    'search' => __('Ara...', 'kg-core'),
+                    'select' => __('Seç', 'kg-core'),
+                    'selected' => __('Seçildi', 'kg-core'),
+                    'insert' => __('Embed Ekle', 'kg-core'),
+                    'cancel' => __('İptal', 'kg-core'),
+                    'noResults' => __('Sonuç bulunamadı', 'kg-core'),
+                    'loading' => __('Yükleniyor...', 'kg-core'),
+                    'error' => __('Bir hata oluştu. Lütfen tekrar deneyin.', 'kg-core'),
+                    'selectedCount' => __('%s öğe seçildi', 'kg-core'),
                 ],
             ]);
         }
@@ -63,7 +65,7 @@ class EmbedSelector {
         
         echo '<button type="button" class="button kg-embed-button" id="kg-embed-button">';
         echo '<span class="dashicons dashicons-embed-generic" style="margin-top: 3px;"></span> ';
-        echo 'İçerik Embed Et';
+        echo esc_html__('İçerik Embed Et', 'kg-core');
         echo '</button>';
     }
     
@@ -81,20 +83,20 @@ class EmbedSelector {
         <div id="kg-embed-modal" class="kg-embed-modal" style="display: none;">
             <div class="kg-embed-modal-content">
                 <div class="kg-embed-modal-header">
-                    <h2>İçerik Embed Et</h2>
+                    <h2><?php echo esc_html__('İçerik Embed Et', 'kg-core'); ?></h2>
                     <button type="button" class="kg-embed-modal-close">&times;</button>
                 </div>
                 
                 <div class="kg-embed-modal-body">
                     <div class="kg-embed-tabs">
-                        <button class="kg-embed-tab active" data-type="recipe">Tarifler</button>
-                        <button class="kg-embed-tab" data-type="ingredient">Malzemeler</button>
-                        <button class="kg-embed-tab" data-type="tool">Araçlar</button>
-                        <button class="kg-embed-tab" data-type="post">Keşfet</button>
+                        <button class="kg-embed-tab active" data-type="recipe"><?php echo esc_html__('Tarifler', 'kg-core'); ?></button>
+                        <button class="kg-embed-tab" data-type="ingredient"><?php echo esc_html__('Malzemeler', 'kg-core'); ?></button>
+                        <button class="kg-embed-tab" data-type="tool"><?php echo esc_html__('Araçlar', 'kg-core'); ?></button>
+                        <button class="kg-embed-tab" data-type="post"><?php echo esc_html__('Keşfet', 'kg-core'); ?></button>
                     </div>
                     
                     <div class="kg-embed-search">
-                        <input type="text" id="kg-embed-search-input" placeholder="Ara..." />
+                        <input type="text" id="kg-embed-search-input" placeholder="<?php echo esc_attr__('Ara...', 'kg-core'); ?>" />
                     </div>
                     
                     <div class="kg-embed-results" id="kg-embed-results">
@@ -104,10 +106,10 @@ class EmbedSelector {
                 
                 <div class="kg-embed-modal-footer">
                     <div class="kg-embed-selected-count">
-                        <span id="kg-embed-selected-count">0</span> öğe seçildi
+                        <span id="kg-embed-selected-count">0</span> <?php echo esc_html__('öğe seçildi', 'kg-core'); ?>
                     </div>
-                    <button type="button" class="button button-primary" id="kg-embed-insert">Embed Ekle</button>
-                    <button type="button" class="button" id="kg-embed-cancel">İptal</button>
+                    <button type="button" class="button button-primary" id="kg-embed-insert"><?php echo esc_html__('Embed Ekle', 'kg-core'); ?></button>
+                    <button type="button" class="button" id="kg-embed-cancel"><?php echo esc_html__('İptal', 'kg-core'); ?></button>
                 </div>
             </div>
         </div>
