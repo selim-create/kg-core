@@ -1014,7 +1014,9 @@ class UserController {
             $child['has_avatar'] = ! empty( $child['avatar_path'] );
             
             if ( $child['has_avatar'] ) {
-                $child['avatar_url'] = $avatar_service->get_signed_url( $child['avatar_path'] );
+                $signed_url = $avatar_service->get_signed_url( $child['avatar_path'] );
+                // Only set avatar_url if it's not a WP_Error
+                $child['avatar_url'] = is_wp_error( $signed_url ) ? null : $signed_url;
             } else {
                 $child['avatar_url'] = null;
             }

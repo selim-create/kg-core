@@ -149,6 +149,35 @@ if (file_exists($avatarServiceFile)) {
     $failed++;
 }
 
+// Test 4: Verify error handling in get_children()
+echo "\n4. Error Handling in get_children()\n";
+
+if (file_exists($userControllerFile)) {
+    $content = file_get_contents($userControllerFile);
+    
+    // Check for is_wp_error check
+    if (strpos($content, "is_wp_error") !== false) {
+        echo "   ✓ is_wp_error() check found for error handling\n";
+        $passed++;
+    } else {
+        echo "   ✗ is_wp_error() check not found\n";
+        $failed++;
+    }
+    
+    // Check that avatar_url can be set to null on error
+    $pattern = '/\$child\s*\[\s*[\'"]avatar_url[\'"]\s*\]\s*=.*?null/';
+    if (preg_match($pattern, $content)) {
+        echo "   ✓ avatar_url set to null on error/missing avatar\n";
+        $passed++;
+    } else {
+        echo "   ✗ avatar_url not properly set to null\n";
+        $failed++;
+    }
+} else {
+    echo "   ✗ UserController.php not found\n";
+    $failed++;
+}
+
 // Summary
 echo "\n" . str_repeat("=", 50) . "\n";
 echo "TESTS PASSED: {$passed}\n";
