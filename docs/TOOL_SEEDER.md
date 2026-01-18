@@ -67,13 +67,6 @@ Each tool is created with the following metadata:
 - `_kg_requires_auth` - Whether login is required (default: "0")
 - `_kg_tool_is_sponsored` - Whether tool is sponsored (default: "0")
 
-### ACF Fields (if ACF is installed)
-The same data is also saved to ACF fields:
-- `tool_type`
-- `tool_icon`
-- `is_active`
-- `requires_auth`
-
 ## API Integration
 
 ### REST API Field

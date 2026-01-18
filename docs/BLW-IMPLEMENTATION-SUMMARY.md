@@ -7,7 +7,7 @@ Successfully implemented a complete backend infrastructure for the BLW (Baby-Led
 
 ### ✅ 1. Tool CPT Extension (`includes/PostTypes/Tool.php`)
 - [x] Registered `tool_type` taxonomy for categorizing tools
-- [x] Created ACF field groups for tool configuration
+- [x] Created native WordPress metaboxes for tool configuration
 - [x] Added tool basic fields: type, icon, active status, auth requirement
 - [x] Added BLW-specific fields: questions (repeater), result buckets (repeater), disclaimers
 - [x] Question fields: id, category, text, description, icon, weight, options
@@ -129,7 +129,7 @@ kg-core/
 │   │   ├── ToolController.php (NEW - 800+ lines)
 │   │   └── UserController.php (MODIFIED - added BLW endpoints)
 │   └── PostTypes/
-│       └── Tool.php (MODIFIED - extended with ACF fields)
+│       └── Tool.php (MODIFIED - extended with native metaboxes)
 ├── docs/
 │   └── BLW-TEST-BACKEND.md (NEW - comprehensive API docs)
 ├── tests/
@@ -173,7 +173,7 @@ array(
 
 - ✅ WordPress 4.7+ (with UUID fallback)
 - ✅ PHP 7.0+
-- ✅ ACF (Advanced Custom Fields) plugin required for admin management
+- ✅ Native WordPress metaboxes (ACF gerekli değil)
 - ✅ JWT authentication (existing KG Core auth system)
 
 ## Admin Experience
@@ -182,11 +182,11 @@ Admins can manage BLW test through WordPress admin:
 1. Navigate to Tools CPT
 2. Create/Edit a Tool
 3. Set Tool Type to "BLW Hazırlık Testi"
-4. Configure questions, options, result buckets
+4. Configure questions, options, result buckets via native metaboxes
 5. Set disclaimers and emergency text
 6. Publish
 
-If ACF is not installed, the system uses hardcoded WHO-standard defaults.
+The system uses hardcoded WHO-standard defaults.
 
 ## Next Steps (Frontend Integration)
 
@@ -229,7 +229,7 @@ Frontend developers should:
 
 The BLW Preparation Test backend is fully implemented, tested, and ready for frontend integration. All requirements from the problem statement have been met:
 
-✅ Tool CPT extended with taxonomy and ACF fields  
+✅ Tool CPT extended with taxonomy and native metaboxes  
 ✅ ToolController with all required endpoints  
 ✅ UserController BLW endpoints  
 ✅ Main plugin file updated  
@@ -240,7 +240,7 @@ The BLW Preparation Test backend is fully implemented, tested, and ready for fro
 ✅ Unauthenticated user support  
 ✅ Registration + test flow  
 ✅ Child profile integration  
-✅ Admin management via ACF  
+✅ Admin management via native WordPress metaboxes  
 ✅ Comprehensive testing  
 ✅ Security hardening  
 ✅ Documentation  
