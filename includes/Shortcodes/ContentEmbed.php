@@ -107,9 +107,10 @@ class ContentEmbed {
      */
     public function extract_embeds_from_content($content) {
         $embeds = [];
-        static $embed_counter = 0;
+        $processed_embeds = []; // Track processed embeds to prevent duplicates
+        $embed_counter = 0;
         
-        // Find all shortcodes in content
+        // Method 1: Parse shortcodes
         if (preg_match_all('/\[kg-embed\s+([^\]]+)\]/i', $content, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
             foreach ($matches as $match) {
                 $shortcode = $match[0][0];
@@ -135,6 +136,16 @@ class ContentEmbed {
                     continue;
                 }
                 
+                // Create unique key for this embed
+                sort($ids);
+                $embed_key = $type . '-' . implode('-', $ids);
+                
+                // Skip if already processed
+                if (isset($processed_embeds[$embed_key])) {
+                    continue;
+                }
+                $processed_embeds[$embed_key] = true;
+                
                 // Calculate paragraph position
                 $position = $this->calculate_paragraph_position($content, $offset);
                 
@@ -152,11 +163,11 @@ class ContentEmbed {
             }
         }
         
-        // Also find block placeholders (from Gutenberg blocks)
-        if (preg_match_all('/<div[^>]*class="[^"]*kg-embed-placeholder[^"]*"[^>]*data-type="([^"]*)"[^>]*data-ids="([^"]*)"[^>]*>/i', 
+        // Method 2: Parse block placeholders
+        // ONLY if no shortcodes were found (for backwards compatibility)
+        if (empty($embeds) && preg_match_all('/<div[^>]*class="[^"]*kg-embed-placeholder[^"]*"[^>]*data-type="([^"]*)"[^>]*data-ids="([^"]*)"[^>]*>/i', 
             $content, $block_matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
             foreach ($block_matches as $match) {
-                $full_match = $match[0][0];
                 $offset = $match[0][1];
                 $type = $match[1][0];
                 $ids_str = $match[2][0];
@@ -167,6 +178,16 @@ class ContentEmbed {
                 if (!in_array($type, $this->allowed_types) || empty($ids)) {
                     continue;
                 }
+                
+                // Create unique key
+                sort($ids);
+                $embed_key = $type . '-' . implode('-', $ids);
+                
+                // Skip duplicates
+                if (isset($processed_embeds[$embed_key])) {
+                    continue;
+                }
+                $processed_embeds[$embed_key] = true;
                 
                 // Calculate paragraph position
                 $position = $this->calculate_paragraph_position($content, $offset);
