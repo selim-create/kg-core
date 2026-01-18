@@ -27,6 +27,16 @@ KG Core is a complete backend solution for a baby food recipes platform, offerin
 - Multi-channel notification support (Email + Push)
 - See [docs/VACCINATION_TRACKER.md](./docs/VACCINATION_TRACKER.md) for details
 
+### 📝 Gutenberg Blocks (NEW)
+- **KG İçerik Embed Block:** WordPress Gutenberg block for embedding content within posts
+- Search and embed recipes, ingredients, tools, or posts
+- Multi-selection support with live preview
+- Tabbed interface for different content types
+- Debounced AJAX search for better performance
+- Responsive design for editor
+- Server-side rendering via shortcodes
+- See [blocks/README.md](./blocks/README.md) for details
+
 ### 🤖 AI-Powered Ingredient Management
 - Multi-provider AI support (OpenAI GPT-4, Anthropic Claude, Google Gemini)
 - Automated ingredient content generation in Turkish
@@ -236,6 +246,23 @@ Meal types for recipe categorization:
 - MySQL 5.6+
 
 ## Development
+
+### Building Gutenberg Blocks
+
+The plugin includes Gutenberg blocks that need to be compiled before use:
+
+```bash
+# Install dependencies
+npm install
+
+# Build blocks for production
+npm run build:blocks
+
+# Watch mode for development
+npm run start:blocks
+```
+
+Built assets are generated in `blocks/build/` and are automatically registered by WordPress.
 
 ### Adding New Endpoints
 

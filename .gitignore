@@ -1,6 +1,8 @@
 # Dependencies
 /vendor/
 composer.lock
+node_modules/
+package-lock.json
 
 # WordPress
 wp-config.php
@@ -24,3 +26,6 @@ error_log
 # Temporary files
 /tmp/
 *.tmp
+
+# Build artifacts
+/blocks/build/
