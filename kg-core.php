@@ -136,6 +136,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Migration/SEOHandler.php' ) ) require
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/MigrationLogger.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/MigrationLogger.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Migration/ChildProfileMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/ChildProfileMigrator.php';
 
 // 5.7. SHORTCODE SINIFLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php' ) ) require_once KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php';
