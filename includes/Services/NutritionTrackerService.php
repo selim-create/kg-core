@@ -366,6 +366,9 @@ class NutritionTrackerService {
     
     /**
      * Analyze single recipe nutrition
+     * 
+     * @param int $recipe_id Recipe post ID
+     * @return array Nutrition data
      */
     private function analyze_recipe_nutrition( $recipe_id ) {
         $nutrition = [
@@ -378,35 +381,38 @@ class NutritionTrackerService {
             'ingredients' => [],
         ];
         
-        $ingredients = $this->get_recipe_ingredients( $recipe_id );
+        $ingredient_ids = $this->get_recipe_ingredients( $recipe_id );
         
-        foreach ( $ingredients as $ingredient_id ) {
+        foreach ( $ingredient_ids as $ingredient_id ) {
             $nutrition['ingredients'][] = $ingredient_id;
             
-            // Check ingredient categories using correct taxonomy
+            // Ingredient kategorisini al - DOĞRU taxonomy: "ingredient-category"
             $categories = wp_get_post_terms( $ingredient_id, 'ingredient-category', [ 'fields' => 'slugs' ] );
             
-            if ( ! empty( $categories ) && ! is_wp_error( $categories ) ) {
-                foreach ( $categories as $cat_slug ) {
-                    switch ( $cat_slug ) {
-                        case 'proteinler':
-                        case 'baklagiller': // Legumes are also protein sources and iron-rich
-                            $nutrition['protein_servings']++;
-                            $nutrition['iron_rich']++;
-                            break;
-                        case 'sebzeler':
-                            $nutrition['vegetable_servings']++;
-                            break;
-                        case 'meyveler':
-                            $nutrition['fruit_servings']++;
-                            break;
-                        case 'tahillar':
-                            $nutrition['grains_servings']++;
-                            break;
-                        case 'sut-urunleri':
-                            $nutrition['dairy_servings']++;
-                            break;
-                    }
+            if ( empty( $categories ) || is_wp_error( $categories ) ) {
+                continue;
+            }
+            
+            // Kategoriye göre besin değerlerini artır
+            foreach ( $categories as $cat_slug ) {
+                switch ( $cat_slug ) {
+                    case 'proteinler':
+                    case 'baklagiller':
+                        $nutrition['protein_servings']++;
+                        $nutrition['iron_rich']++; // Protein kaynakları genellikle demir açısından zengin
+                        break;
+                    case 'sebzeler':
+                        $nutrition['vegetable_servings']++;
+                        break;
+                    case 'meyveler':
+                        $nutrition['fruit_servings']++;
+                        break;
+                    case 'tahillar':
+                        $nutrition['grains_servings']++;
+                        break;
+                    case 'sut-urunleri':
+                        $nutrition['dairy_servings']++;
+                        break;
                 }
             }
         }
@@ -416,22 +422,23 @@ class NutritionTrackerService {
     
     /**
      * Get recipe ingredients
+     * 
+     * @param int $recipe_id Recipe post ID
+     * @return array Array of ingredient IDs
      */
     private function get_recipe_ingredients( $recipe_id ) {
-        if ( ! function_exists( 'get_field' ) ) {
+        // Get recipe ingredients using WordPress native meta (not ACF)
+        $ingredients = get_post_meta( $recipe_id, '_kg_ingredients', true );
+        $ingredient_ids = [];
+        
+        if ( empty( $ingredients ) || ! is_array( $ingredients ) ) {
             return [];
         }
         
-        $ingredients = get_field( 'ingredients', $recipe_id );
-        $ingredient_ids = [];
-        
-        if ( is_array( $ingredients ) ) {
-            foreach ( $ingredients as $ing ) {
-                if ( isset( $ing['ingredient'] ) && is_object( $ing['ingredient'] ) ) {
-                    $ingredient_ids[] = $ing['ingredient']->ID;
-                } elseif ( isset( $ing['ingredient'] ) && is_numeric( $ing['ingredient'] ) ) {
-                    $ingredient_ids[] = (int) $ing['ingredient'];
-                }
+        foreach ( $ingredients as $ing ) {
+            // ingredient_id field'ını kullan
+            if ( isset( $ing['ingredient_id'] ) && ! empty( $ing['ingredient_id'] ) ) {
+                $ingredient_ids[] = intval( $ing['ingredient_id'] );
             }
         }
         
