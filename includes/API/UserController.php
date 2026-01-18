@@ -1467,22 +1467,20 @@ class UserController {
 
         $shopping_list = get_user_meta( $user_id, '_kg_shopping_list', true );
         if ( ! is_array( $shopping_list ) ) {
-            return new \WP_Error( 'empty_list', 'Shopping list is empty', [ 'status' => 404 ] );
+            return new \WP_Error( 'no_list', 'Shopping list not found', [ 'status' => 404 ] );
         }
 
         // Find and update the item
-        $found = false;
         $updated_item = null;
         foreach ( $shopping_list as $index => $item ) {
             if ( isset( $item['id'] ) && $item['id'] === $item_id ) {
                 $shopping_list[$index]['checked'] = $checked;
                 $updated_item = $shopping_list[$index];
-                $found = true;
                 break;
             }
         }
 
-        if ( ! $found ) {
+        if ( $updated_item === null ) {
             return new \WP_Error( 'item_not_found', 'Item not found in shopping list', [ 'status' => 404 ] );
         }
 
