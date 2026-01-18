@@ -255,29 +255,51 @@ class ChildProfileAvatarController {
      * Check authentication
      */
     public function check_authentication( $request ) {
-        $jwt_handler = new JWTHandler();
         $auth_header = $request->get_header( 'Authorization' );
         
         if ( ! $auth_header ) {
-            return false;
+            return new \WP_Error(
+                'rest_forbidden',
+                'Authorization header is missing',
+                [ 'status' => 401 ]
+            );
         }
         
         $token = str_replace( 'Bearer ', '', $auth_header );
-        $decoded = $jwt_handler->decode_token( $token );
+        $payload = JWTHandler::validate_token( $token );
         
-        return ! is_wp_error( $decoded );
+        if ( ! $payload ) {
+            return new \WP_Error(
+                'rest_forbidden',
+                'Invalid or expired token',
+                [ 'status' => 401 ]
+            );
+        }
+        
+        // Store user_id in request for later use
+        $request->set_param( 'authenticated_user_id', $payload['user_id'] );
+        
+        return true;
     }
     
     /**
      * Get authenticated user ID
      */
     private function get_authenticated_user_id( $request ) {
-        $jwt_handler = new JWTHandler();
-        $auth_header = $request->get_header( 'Authorization' );
-        $token = str_replace( 'Bearer ', '', $auth_header );
-        $decoded = $jwt_handler->decode_token( $token );
+        // First check if already set by check_authentication
+        $user_id = $request->get_param( 'authenticated_user_id' );
+        if ( $user_id ) {
+            return $user_id;
+        }
         
-        return $decoded->data->user_id;
+        // Fallback: extract from token
+        $auth_header = $request->get_header( 'Authorization' );
+        if ( ! $auth_header ) {
+            return null;
+        }
+        
+        $token = str_replace( 'Bearer ', '', $auth_header );
+        return JWTHandler::get_user_id_from_token( $token );
     }
     
     /**
