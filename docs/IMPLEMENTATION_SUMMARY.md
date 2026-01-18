@@ -1,225 +1,207 @@
-# Implementation Summary: Slug Lookup Endpoint & Frontend Features
+# Authorization Fields Added to /user/me Endpoint
 
-## 📋 Task Completion
+## Summary of Changes
 
-All requirements from the problem statement have been successfully implemented:
+The `/kg/v1/user/me` endpoint in `includes/API/UserController.php` has been enhanced to include authorization fields that were previously only available in the `/kg/v1/auth/me` endpoint.
 
-### ✅ 1. Slug Lookup Endpoint (`/wp-json/kg/v1/lookup`)
+## Changes Made
 
-**File:** `includes/API/LookupController.php`
+### 1. Added Authorization Calculations (Lines 1299-1334)
 
-**Features:**
-- Public REST API endpoint accepting `slug` parameter
-- Returns content type, ID, and frontend redirect URL
-- Supports: recipe, post, ingredient, discussion, category, post_tag
-- Proper error handling for non-existent slugs
-- Input sanitization via `sanitize_title()`
+After the `$is_expert` check, the following calculations were added:
 
-**Response Format:**
+```php
+// Rol kontrolleri
+$roles = $user->roles;
+$is_admin = in_array( 'administrator', $roles );
+$is_editor = in_array( 'editor', $roles ) || $is_admin;
+
+// Editör seviyesi yetki (admin, editor, kg_expert)
+$has_editor_access = $is_admin || $is_editor || $is_expert;
+
+// Admin URL
+$admin_url = defined( 'KG_API_URL' ) 
+    ? KG_API_URL . '/wp-admin/'
+    : admin_url();
+
+// Basitleştirilmiş düzenleme yetkileri (frontend için)
+$can_edit = [
+    'posts'       => $user->has_cap( 'edit_posts' ),
+    'recipes'     => $user->has_cap( 'edit_posts' ),
+    'ingredients' => $user->has_cap( 'edit_posts' ),
+    'discussions' => $user->has_cap( 'edit_posts' ),
+];
+
+// Başkalarının içeriklerini düzenleyebilir mi?
+$can_edit_others = [
+    'posts'       => $user->has_cap( 'edit_others_posts' ),
+    'recipes'     => $user->has_cap( 'edit_others_posts' ),
+    'ingredients' => $user->has_cap( 'edit_others_posts' ),
+    'discussions' => $user->has_cap( 'edit_others_posts' ),
+];
+
+// Edit URLs
+$edit_urls = [
+    'new_post'       => $admin_url . 'post-new.php',
+    'new_recipe'     => $admin_url . 'post-new.php?post_type=recipe',
+    'new_ingredient' => $admin_url . 'post-new.php?post_type=ingredient',
+    'new_discussion' => $admin_url . 'post-new.php?post_type=discussion',
+];
+```
+
+### 2. Updated Response Array (Lines 1395-1401)
+
+Added the following fields to the response array:
+
+```php
+'is_admin' => $is_admin,
+'is_editor' => $is_editor,
+'has_editor_access' => $has_editor_access,
+'admin_url' => $has_editor_access ? $admin_url : null,
+'edit_urls' => $has_editor_access ? $edit_urls : null,
+'can_edit' => $can_edit,
+'can_edit_others' => $can_edit_others,
+```
+
+### 3. Minor Refactoring
+
+- Removed duplicate `$roles` assignment (was at line 1368)
+- Combined role-related calculations in one place for better code organization
+
+## Response Format Examples
+
+### Admin User Response
 ```json
 {
-  "found": true,
-  "type": "recipe",
-  "slug": "brokoli-corbasi-9-ay",
-  "id": 123,
-  "redirect": "/tarifler/brokoli-corbasi-9-ay"
+  "id": 44,
+  "email": "admin@example.com",
+  "name": "Admin User",
+  "role": "administrator",
+  "is_admin": true,
+  "is_editor": true,
+  "is_expert": true,
+  "has_editor_access": true,
+  "can_edit": {
+    "posts": true,
+    "recipes": true,
+    "ingredients": true,
+    "discussions": true
+  },
+  "can_edit_others": {
+    "posts": true,
+    "recipes": true,
+    "ingredients": true,
+    "discussions": true
+  },
+  "admin_url": "https://api.kidsgourmet.com.tr/wp-admin/",
+  "edit_urls": {
+    "new_post": "https://api.kidsgourmet.com.tr/wp-admin/post-new.php",
+    "new_recipe": "https://api.kidsgourmet.com.tr/wp-admin/post-new.php?post_type=recipe",
+    "new_ingredient": "https://api.kidsgourmet.com.tr/wp-admin/post-new.php?post_type=ingredient",
+    "new_discussion": "https://api.kidsgourmet.com.tr/wp-admin/post-new.php?post_type=discussion"
+  }
 }
 ```
 
-### ✅ 2. Frontend View Links
-
-**File:** `includes/Admin/FrontendViewLinks.php`
-
-**Features:**
-- Admin bar button: "Frontend'de Görüntüle" (orange highlight)
-- Modified row actions in post lists
-- Frontend URL notice box on edit pages (blue info box)
-- Preview link override for published content
-- Custom CSS styling injected via `admin_head`
-
-**Supported Post Types:**
-- recipe, post, ingredient, discussion
-
-### ✅ 3. Frontend Redirect
-
-**File:** `includes/Redirect/FrontendRedirect.php`
-
-**Features:**
-- Automatic 301 redirects to frontend site
-- Hooks: `parse_request` (early) and `template_redirect` (fallback)
-- Smart exclusion of admin/API paths
-- Content-aware redirection using lookup logic
-
-**Excluded Paths (No Redirect):**
-- `/wp-admin`, `/wp-login.php`, `/wp-json`
-- `/wp-content`, `/wp-includes`
-- `/xmlrpc.php`, `/wp-cron.php`
-- `/favicon.ico`, `/robots.txt`, `/sitemap*`
-
-### ✅ 4. Integration
-
-**File:** `kg-core.php` (modified)
-
-**Changes:**
-- Added require statements for all three new classes
-- Initialized `LookupController` (always)
-- Initialized `FrontendViewLinks` (admin only)
-- Initialized `FrontendRedirect` (frontend only, excluding admin/AJAX/REST)
-
-## 📁 Files Created/Modified
-
-### New Files (8):
-1. `includes/API/LookupController.php` - 159 lines
-2. `includes/Admin/FrontendViewLinks.php` - 215 lines
-3. `includes/Redirect/FrontendRedirect.php` - 175 lines
-4. `tests/test-slug-lookup.php` - 219 lines
-5. `tests/test-slug-lookup-unit.php` - 276 lines
-6. `docs/SLUG_LOOKUP_IMPLEMENTATION.md` - 249 lines
-7. `docs/SLUG_LOOKUP_QUICKSTART.md` - 208 lines
-
-### Modified Files (1):
-1. `kg-core.php` - Added 19 lines
-
-**Total:** 1,520 lines added across 8 files
-
-## 🧪 Testing
-
-### Unit Tests Created
-- **test-slug-lookup-unit.php**: Standalone tests (no WordPress required)
-  - File existence checks
-  - PHP syntax validation (using token_get_all, not exec)
-  - Namespace and class verification
-  - Method existence checks
-  - Integration verification
-  - Prefix consistency checks
-
-- **test-slug-lookup.php**: WordPress integration tests
-  - Class instantiation tests
-  - API endpoint registration verification
-  - Real content lookup tests
-  - Frontend URL generation tests
-
-### Test Results
-All tests passing ✅:
-- ✅ All files exist
-- ✅ Valid PHP syntax
-- ✅ Correct namespaces and class declarations
-- ✅ All required methods present
-- ✅ Proper integration with kg-core.php
-
-## 🔒 Security
-
-### Implemented Protections:
-1. **Input Sanitization**
-   - All slugs sanitized via `sanitize_title()`
-   - Required parameter validation
-
-2. **URI Sanitization**
-   - `$_SERVER['REQUEST_URI']` sanitized with `esc_url_raw()`
-   - Protection against XSS attacks
-
-3. **Output Escaping**
-   - All URLs escaped with `esc_url()`
-   - All HTML escaped with `esc_html()`
-
-4. **Permission Checks**
-   - Admin features only load in admin context
-   - Public endpoint explicitly marked as public
-
-5. **Safe Testing**
-   - Replaced `exec()` with `token_get_all()` for syntax checks
-
-### Code Review Feedback Addressed:
-- ✅ Sanitized `$_SERVER['REQUEST_URI']`
-- ✅ Removed `exec()` from tests
-- ✅ Verified text domain consistency
-
-## 📚 Documentation
-
-### Created Documentation:
-1. **SLUG_LOOKUP_IMPLEMENTATION.md**
-   - Detailed technical documentation
-   - API specifications
-   - Architecture overview
-   - Security considerations
-   - Performance notes
-   - Troubleshooting guide
-
-2. **SLUG_LOOKUP_QUICKSTART.md**
-   - Quick start guide
-   - Configuration instructions
-   - Usage examples
-   - Common troubleshooting
-   - Support resources
-
-## 🎯 Content Type URL Mapping
-
-| Content Type | URL Pattern | Example |
-|--------------|-------------|---------|
-| Recipe | `/tarifler/{slug}` | `/tarifler/brokoli-corbasi` |
-| Post | `/kesfet/{slug}` | `/kesfet/bebeklerde-reflu` |
-| Ingredient | `/beslenme-rehberi/{slug}` | `/beslenme-rehberi/havuc` |
-| Discussion | `/topluluk/soru/{slug}` | `/topluluk/soru/emzirme` |
-| Category | `/kesfet/kategori/{slug}` | `/kesfet/kategori/bebek-bakimi` |
-| Tag | `/etiket/{slug}` | `/etiket/organik` |
-
-## ⚙️ Configuration
-
-### Required Constant:
-```php
-// Add to wp-config.php
-define('KG_FRONTEND_URL', 'https://kidsgourmet.com.tr');
+### Parent User Response
+```json
+{
+  "id": 123,
+  "role": "kg_parent",
+  "is_admin": false,
+  "is_editor": false,
+  "is_expert": false,
+  "has_editor_access": false,
+  "can_edit": {
+    "posts": false,
+    "recipes": false,
+    "ingredients": false,
+    "discussions": false
+  },
+  "can_edit_others": {
+    "posts": false,
+    "recipes": false,
+    "ingredients": false,
+    "discussions": false
+  },
+  "admin_url": null,
+  "edit_urls": null
+}
 ```
 
-**Default:** Falls back to `https://kidsgourmet.com.tr` if not defined
+### Expert User Response
+```json
+{
+  "id": 789,
+  "role": "kg_expert",
+  "is_admin": false,
+  "is_editor": false,
+  "is_expert": true,
+  "has_editor_access": true,
+  "can_edit": {
+    "posts": true,
+    "recipes": true,
+    "ingredients": true,
+    "discussions": true
+  },
+  "can_edit_others": {
+    "posts": false,
+    "recipes": false,
+    "ingredients": false,
+    "discussions": false
+  },
+  "admin_url": "https://api.kidsgourmet.com.tr/wp-admin/",
+  "edit_urls": {
+    "new_post": "https://api.kidsgourmet.com.tr/wp-admin/post-new.php",
+    "new_recipe": "https://api.kidsgourmet.com.tr/wp-admin/post-new.php?post_type=recipe",
+    "new_ingredient": "https://api.kidsgourmet.com.tr/wp-admin/post-new.php?post_type=ingredient",
+    "new_discussion": "https://api.kidsgourmet.com.tr/wp-admin/post-new.php?post_type=discussion"
+  }
+}
+```
 
-## 🔄 Git Commits
+## Backward Compatibility
 
-1. `5936567` - Add LookupController, FrontendViewLinks, and FrontendRedirect classes
-2. `9e88e44` - Add unit tests for slug lookup functionality
-3. `71d9e61` - Add security improvements - sanitize REQUEST_URI and improve test security
-4. `136e2ba` - Add comprehensive documentation for slug lookup feature
+✅ **This change is fully backward compatible:**
+- Only **adds** new fields to the response
+- Does **not remove** or modify any existing fields
+- Existing API consumers will continue to work without any changes
+- New fields are optional and can be safely ignored by older clients
 
-## ✨ Key Achievements
+## Security Considerations
 
-1. **Minimal Changes**: Only 1 existing file modified (kg-core.php)
-2. **Clean Architecture**: Proper namespace organization and separation of concerns
-3. **Comprehensive Testing**: Both unit and integration tests provided
-4. **Security First**: All inputs sanitized, outputs escaped
-5. **Well Documented**: Complete implementation and quick start guides
-6. **Follows Conventions**: Consistent with existing KG-Core code style
-7. **No Breaking Changes**: All existing functionality preserved
+✅ **Security measures implemented:**
+- `admin_url` is only returned when `has_editor_access` is true (null otherwise)
+- `edit_urls` is only returned when `has_editor_access` is true (null otherwise)
+- Permission checks use WordPress native capabilities (`has_cap`)
+- Role checks align with existing authorization logic in `get_current_user()`
 
-## 🚀 Deployment Checklist
+## Testing
 
-Before deploying to production:
+Two test files have been created:
 
-- [ ] Add `KG_FRONTEND_URL` constant to wp-config.php
-- [ ] Activate or update KG-Core plugin
-- [ ] Flush rewrite rules (Settings → Permalinks → Save)
-- [ ] Test lookup endpoint with real slugs
-- [ ] Verify admin view buttons appear
-- [ ] Test frontend redirects (ensure wp-admin still accessible)
-- [ ] Monitor for any redirect loops
-- [ ] Check frontend 404 handling for redirected content
+1. **static-analysis-user-me-auth-fields.php** - Static code analysis test that verifies all required fields are present (can run without WordPress)
+   - ✅ All 7 authorization calculations verified
+   - ✅ All 7 response fields verified
+   - ✅ All array structures verified
 
-## 📞 Support
+2. **test-user-me-authorization-fields.php** - Integration test for WordPress environment
+   - Tests admin user permissions
+   - Tests parent user permissions
+   - Tests expert user permissions
+   - Validates correct null values for restricted users
 
-For issues or questions:
-1. Check troubleshooting in docs
-2. Review test results
-3. Enable WordPress debug mode
-4. Check error logs
+## Impact on Frontend
 
-## 🎉 Success Criteria Met
+The frontend `AdminQuickMenu` component will now correctly display:
+- "Yeni Tarif" (New Recipe) button for users with editor access
+- "Yeni Malzeme" (New Ingredient) button for users with editor access
+- "Yeni Yazı" (New Post) button for users with editor access
 
-✅ All requirements from problem statement implemented  
-✅ Code passes all unit tests  
-✅ Security review completed and issues resolved  
-✅ Comprehensive documentation provided  
-✅ No breaking changes to existing code  
-✅ Follows WordPress and KG-Core best practices  
+This resolves the issue where admin users couldn't see these menu options because the `/kg/v1/user/me` endpoint didn't include the necessary permission fields.
 
----
+## Files Changed
 
-**Implementation Complete!** 🎊
+1. `includes/API/UserController.php` - Modified `get_user_me()` method
+2. `tests/static-analysis-user-me-auth-fields.php` - New static analysis test
+3. `tests/test-user-me-authorization-fields.php` - New integration test
