@@ -182,6 +182,11 @@ class VaccineController {
                     'type' => 'string',
                     'sanitize_callback' => 'sanitize_text_field',
                 ],
+                'limit' => [
+                    'required' => false,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint',
+                ],
             ],
         ]);
 
@@ -626,6 +631,7 @@ class VaccineController {
     public function get_upcoming_vaccines( $request ) {
         $user_id = $this->get_authenticated_user_id( $request );
         $child_id = $request->get_param( 'child_id' );
+        $limit = $request->get_param( 'limit' );
 
         // Verify child belongs to user
         if ( ! $this->verify_child_ownership( $user_id, $child_id ) ) {
@@ -633,7 +639,7 @@ class VaccineController {
         }
 
         $record_manager = new VaccineRecordManager();
-        $upcoming = $record_manager->get_upcoming_vaccines( $child_id );
+        $upcoming = $record_manager->get_upcoming_vaccines( $child_id, $limit );
 
         if ( is_wp_error( $upcoming ) ) {
             return $upcoming;
