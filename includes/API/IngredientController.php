@@ -285,7 +285,7 @@ class IngredientController {
     /**
      * Get recipes that use this ingredient
      */
-    private function get_recipes_by_ingredient( $ingredient_id, $limit = 5 ) {
+    private function get_recipes_by_ingredient( $ingredient_id, $limit = 6 ) {
         $ingredient_name = get_the_title( $ingredient_id );
         
         // Search in recipe ingredients meta field
