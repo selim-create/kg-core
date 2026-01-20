@@ -85,6 +85,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/PostTypes/Ingredient.php' ) ) require
 if ( file_exists( KG_CORE_PATH . 'includes/PostTypes/Tool.php' ) ) require_once KG_CORE_PATH . 'includes/PostTypes/Tool.php';
 // Discussion (Topluluk Soruları) Post Type
 if ( file_exists( KG_CORE_PATH . 'includes/PostTypes/Discussion.php' ) ) require_once KG_CORE_PATH . 'includes/PostTypes/Discussion.php';
+// Stain (Leke Ansiklopedisi) Post Type
+if ( file_exists( KG_CORE_PATH . 'includes/PostTypes/Stain.php' ) ) require_once KG_CORE_PATH . 'includes/PostTypes/Stain.php';
 
 // 4. TAXONOMY SINIFLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/AgeGroup.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/AgeGroup.php';
@@ -95,6 +97,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/IngredientCategory.php' ) 
 if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/SpecialCondition.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/SpecialCondition.php';
 // Community Circle (Çemberler) Taxonomy
 if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/CommunityCircle.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/CommunityCircle.php';
+// Stain Category (Leke Kategorileri) Taxonomy
+if ( file_exists( KG_CORE_PATH . 'includes/Taxonomies/StainCategory.php' ) ) require_once KG_CORE_PATH . 'includes/Taxonomies/StainCategory.php';
 
 // 5. ADMIN PANELİ ÖZEL ALANLARI (ACF Alternatifi)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/RecipeMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/RecipeMetaBox.php';
@@ -102,6 +106,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientMetaBox.php' ) ) requ
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/PostMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/PostMetaBox.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/DiscussionMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/DiscussionMetaBox.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/ToolSponsorMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/ToolSponsorMetaBox.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/StainMetaBox.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/StainMetaBox.php';
 
 // 5.5. AI ADMIN SAYFALARI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/SettingsPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/SettingsPage.php';
@@ -109,6 +114,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php' ) ) r
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientEnricher.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/IngredientEnricher.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/MigrationPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/MigrationPage.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/StainMigrationPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/StainMigrationPage.php';
 // Tool Seeder (Araç Oluşturma Sayfası)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/ToolSeeder.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/ToolSeeder.php';
 // Discussion Admin (Moderasyon Sayfası)
@@ -137,6 +143,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Migration/MigrationLogger.php' ) ) re
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/ChildProfileMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/ChildProfileMigrator.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Migration/StainMigration.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/StainMigration.php';
 
 // 5.7. SHORTCODE SINIFLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php' ) ) require_once KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php';
@@ -255,6 +262,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\PostTypes\Ingredient' ) ) new \KG_Core\PostTypes\Ingredient();
     if ( class_exists( '\KG_Core\PostTypes\Tool' ) ) new \KG_Core\PostTypes\Tool();
     if ( class_exists( '\KG_Core\PostTypes\Discussion' ) ) new \KG_Core\PostTypes\Discussion();
+    if ( class_exists( '\KG_Core\PostTypes\Stain' ) ) new \KG_Core\PostTypes\Stain();
 
     // Taxonomies
     if ( class_exists( '\KG_Core\Taxonomies\AgeGroup' ) ) new \KG_Core\Taxonomies\AgeGroup();
@@ -264,6 +272,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\Taxonomies\IngredientCategory' ) ) new \KG_Core\Taxonomies\IngredientCategory();
     if ( class_exists( '\KG_Core\Taxonomies\SpecialCondition' ) ) new \KG_Core\Taxonomies\SpecialCondition();
     if ( class_exists( '\KG_Core\Taxonomies\CommunityCircle' ) ) new \KG_Core\Taxonomies\CommunityCircle();
+    if ( class_exists( '\KG_Core\Taxonomies\StainCategory' ) ) new \KG_Core\Taxonomies\StainCategory();
 
     // Admin Meta Boxes (Sadece Admin panelinde çalışsın)
     if ( is_admin() && class_exists( '\KG_Core\Admin\RecipeMetaBox' ) ) {
@@ -277,6 +286,9 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\DiscussionMetaBox' ) ) {
         new \KG_Core\Admin\DiscussionMetaBox();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\StainMetaBox' ) ) {
+        new \KG_Core\Admin\StainMetaBox();
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\ToolSponsorMetaBox' ) ) {
         new \KG_Core\Admin\ToolSponsorMetaBox();
@@ -297,6 +309,9 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\MigrationPage' ) ) {
         new \KG_Core\Admin\MigrationPage();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\StainMigrationPage' ) ) {
+        new \KG_Core\Admin\StainMigrationPage();
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\ToolSeeder' ) ) {
         new \KG_Core\Admin\ToolSeeder();
