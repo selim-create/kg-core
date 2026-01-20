@@ -152,17 +152,19 @@ class ContactRESTController extends WP_REST_Controller {
     
     /**
      * Get client IP address
+     * Note: IP addresses from proxy headers can be spoofed, so this is only for logging purposes
      */
     private function get_client_ip() {
         $ip = '';
         
-        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-            $ip = $_SERVER['HTTP_CLIENT_IP'];
-        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-        } elseif (!empty($_SERVER['REMOTE_ADDR'])) {
+        // Use REMOTE_ADDR as it's the most reliable (can't be spoofed by the client)
+        if (!empty($_SERVER['REMOTE_ADDR'])) {
             $ip = $_SERVER['REMOTE_ADDR'];
         }
+        
+        // Only check proxy headers if we trust the proxy
+        // and REMOTE_ADDR is a known proxy IP (would need configuration for production)
+        // For now, we only use REMOTE_ADDR for security
         
         return filter_var($ip, FILTER_VALIDATE_IP) ?: '';
     }
