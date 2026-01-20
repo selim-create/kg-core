@@ -180,8 +180,12 @@ class NewsletterService {
         $updated = $this->repository->update($subscriber);
         
         if ($updated) {
-            // Send welcome email
-            $this->sendWelcomeEmail($subscriber);
+            // Try to send welcome email (non-blocking)
+            try {
+                $this->sendWelcomeEmail($subscriber);
+            } catch (\Exception $e) {
+                error_log(sprintf('Newsletter: Welcome email exception: %s', $e->getMessage()));
+            }
         }
         
         return $updated;
@@ -219,8 +223,7 @@ class NewsletterService {
                 return false;
             }
             
-            // Get site URL and build confirmation URL
-            $site_url = get_site_url();
+            // Build confirmation URL
             $confirmation_url = rest_url('kg/v1/newsletter/confirm/' . $subscriber->confirmation_token);
             
             // Get template
