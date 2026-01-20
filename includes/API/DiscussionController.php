@@ -491,7 +491,7 @@ class DiscussionController {
             }
         }
 
-        $discussion = $this->prepare_discussion_response( $post, true );
+        $discussion = $this->prepare_discussion_response( $post, true, $request );
 
         return new \WP_REST_Response( $discussion, 200 );
     }
@@ -516,7 +516,7 @@ class DiscussionController {
         $discussions = [];
 
         foreach ( $query->posts as $post ) {
-            $discussions[] = $this->prepare_discussion_response( $post );
+            $discussions[] = $this->prepare_discussion_response( $post, false, $request );
         }
 
         return new \WP_REST_Response( $discussions, 200 );
@@ -570,7 +570,7 @@ class DiscussionController {
             $discussion_query = new \WP_Query( $discussion_args );
             
             foreach ( $discussion_query->posts as $post ) {
-                $result['discussions'][] = $this->prepare_discussion_response( $post );
+                $result['discussions'][] = $this->prepare_discussion_response( $post, false, $request );
             }
         }
 
@@ -691,6 +691,14 @@ class DiscussionController {
             // Get vote counts
             $like_count = (int) get_comment_meta( $comment->comment_ID, '_like_count', true );
             $dislike_count = (int) get_comment_meta( $comment->comment_ID, '_dislike_count', true );
+            
+            // Get user's vote if authenticated
+            $user_vote = null;
+            $user_id = $this->get_authenticated_user_id( $request );
+            if ( $user_id ) {
+                $vote_data = $this->get_vote_data( 'comment', $comment->comment_ID, $request );
+                $user_vote = $vote_data['user_vote'];
+            }
 
             $result[] = [
                 'id' => $comment->comment_ID,
@@ -704,7 +712,7 @@ class DiscussionController {
                 'parent_id' => (int) $comment->comment_parent,
                 'like_count' => $like_count,
                 'dislike_count' => $dislike_count,
-                'user_vote' => null,
+                'user_vote' => $user_vote,
                 'created_at' => $comment->comment_date,
             ];
         }
@@ -722,7 +730,7 @@ class DiscussionController {
     /**
      * Prepare discussion response object
      */
-    private function prepare_discussion_response( $post, $include_content = false ) {
+    private function prepare_discussion_response( $post, $include_content = false, $request = null ) {
         $author = get_user_by( 'id', $post->post_author );
         $is_anonymous = (bool) get_post_meta( $post->ID, '_is_anonymous', true );
         
@@ -733,6 +741,16 @@ class DiscussionController {
         // Get vote counts
         $like_count = (int) get_post_meta( $post->ID, '_like_count', true );
         $dislike_count = (int) get_post_meta( $post->ID, '_dislike_count', true );
+        
+        // Get user's vote if authenticated
+        $user_vote = null;
+        if ( $request ) {
+            $user_id = $this->get_authenticated_user_id( $request );
+            if ( $user_id ) {
+                $vote_data = $this->get_vote_data( 'discussion', $post->ID, $request );
+                $user_vote = $vote_data['user_vote'];
+            }
+        }
 
         $response = [
             'id' => $post->ID,
@@ -761,7 +779,7 @@ class DiscussionController {
             'comment_count' => get_comments_number( $post->ID ),
             'like_count' => $like_count,
             'dislike_count' => $dislike_count,
-            'user_vote' => null,
+            'user_vote' => $user_vote,
             'created_at' => $post->post_date,
             'type' => 'discussion',
         ];
@@ -773,16 +791,27 @@ class DiscussionController {
             $excerpt = wp_strip_all_tags( $post->post_content );
             $excerpt = mb_substr( $excerpt, 0, 160 );
             
+            // Use author avatar or default community image
             $og_image = get_avatar_url( $author->ID );
             if ( $is_anonymous ) {
-                $og_image = get_site_url() . '/wp-content/uploads/community-default.png';
+                // Use WordPress site URL with proper path
+                $upload_dir = wp_upload_dir();
+                $default_image = $upload_dir['baseurl'] . '/community-default.png';
+                // Fallback to site icon or logo
+                if ( ! file_exists( str_replace( $upload_dir['baseurl'], $upload_dir['basedir'], $default_image ) ) ) {
+                    $default_image = get_site_icon_url( 512 ) ?: get_avatar_url( 0 );
+                }
+                $og_image = $default_image;
             }
+            
+            // Use home URL with proper community path
+            $community_base = apply_filters( 'kg_community_base_url', 'topluluk' );
             
             $response['seo'] = [
                 'title' => $post->post_title . ' | KidsGourmet Topluluk',
                 'description' => $excerpt,
                 'og_image' => $og_image,
-                'canonical_url' => get_site_url() . '/topluluk/' . $post->post_name,
+                'canonical_url' => trailingslashit( get_home_url() ) . $community_base . '/' . $post->post_name,
             ];
         }
 
