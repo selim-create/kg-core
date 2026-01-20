@@ -11,11 +11,70 @@ class NewsletterRepository {
     private $table_name;
     
     /**
+     * @var bool Static cache for table existence check
+     */
+    private static $table_checked = false;
+    
+    /**
      * Constructor
      */
     public function __construct() {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'kg_newsletter_subscribers';
+        
+        // Ensure table exists (only check once per request)
+        if (!self::$table_checked) {
+            $this->ensure_table_exists();
+            self::$table_checked = true;
+        }
+    }
+    
+    /**
+     * Ensure newsletter table exists, create if missing
+     */
+    private function ensure_table_exists() {
+        global $wpdb;
+        
+        // Check if table exists
+        $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $this->table_name));
+        
+        if ($table_exists != $this->table_name) {
+            error_log('Newsletter: Table does not exist, creating...');
+            
+            // Table doesn't exist, create it
+            $charset_collate = $wpdb->get_charset_collate();
+            
+            $sql = "CREATE TABLE {$this->table_name} (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(255) NOT NULL UNIQUE,
+                name VARCHAR(255) DEFAULT NULL,
+                status ENUM('pending', 'active', 'unsubscribed') DEFAULT 'pending',
+                source VARCHAR(100) DEFAULT 'website',
+                interests JSON DEFAULT NULL,
+                confirmation_token VARCHAR(64) DEFAULT NULL,
+                ip_address VARCHAR(45) DEFAULT NULL,
+                user_agent TEXT DEFAULT NULL,
+                subscribed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                confirmed_at DATETIME DEFAULT NULL,
+                unsubscribed_at DATETIME DEFAULT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_email (email),
+                INDEX idx_status (status),
+                INDEX idx_token (confirmation_token)
+            ) $charset_collate;";
+            
+            require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+            dbDelta($sql);
+            
+            // Verify table was created
+            $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $this->table_name));
+            if ($table_exists == $this->table_name) {
+                error_log('Newsletter: Table created successfully');
+            } else {
+                error_log('Newsletter: Failed to create table');
+            }
+        }
     }
     
     /**
@@ -27,25 +86,37 @@ class NewsletterRepository {
     public function create(NewsletterSubscriber $subscriber) {
         global $wpdb;
         
-        $data = [
-            'email' => $subscriber->email,
-            'name' => $subscriber->name,
-            'status' => $subscriber->status ?? 'pending',
-            'source' => $subscriber->source ?? 'website',
-            'interests' => !empty($subscriber->interests) ? json_encode($subscriber->interests) : null,
-            'confirmation_token' => $subscriber->confirmation_token,
-            'ip_address' => $subscriber->ip_address,
-            'user_agent' => $subscriber->user_agent,
-            'subscribed_at' => current_time('mysql'),
-        ];
-        
-        $result = $wpdb->insert($this->table_name, $data);
-        
-        if ($result === false) {
+        try {
+            $data = [
+                'email' => $subscriber->email,
+                'name' => $subscriber->name,
+                'status' => $subscriber->status ?? 'pending',
+                'source' => $subscriber->source ?? 'website',
+                'interests' => !empty($subscriber->interests) ? json_encode($subscriber->interests) : null,
+                'confirmation_token' => $subscriber->confirmation_token,
+                'ip_address' => $subscriber->ip_address,
+                'user_agent' => $subscriber->user_agent,
+                'subscribed_at' => current_time('mysql'),
+            ];
+            
+            $result = $wpdb->insert($this->table_name, $data);
+            
+            if ($result === false) {
+                error_log(sprintf(
+                    'Newsletter: Database insert failed: %s',
+                    $wpdb->last_error
+                ));
+                return false;
+            }
+            
+            return $wpdb->insert_id;
+        } catch (\Exception $e) {
+            error_log(sprintf(
+                'Newsletter: Create subscriber exception: %s',
+                $e->getMessage()
+            ));
             return false;
         }
-        
-        return $wpdb->insert_id;
     }
     
     /**
@@ -57,24 +128,32 @@ class NewsletterRepository {
     public function findByEmail($email) {
         global $wpdb;
         
-        $row = $wpdb->get_row(
-            $wpdb->prepare(
-                "SELECT * FROM {$this->table_name} WHERE email = %s",
-                $email
-            ),
-            ARRAY_A
-        );
-        
-        if (!$row) {
+        try {
+            $row = $wpdb->get_row(
+                $wpdb->prepare(
+                    "SELECT * FROM {$this->table_name} WHERE email = %s",
+                    $email
+                ),
+                ARRAY_A
+            );
+            
+            if (!$row) {
+                return null;
+            }
+            
+            // Decode JSON fields
+            if (!empty($row['interests'])) {
+                $row['interests'] = json_decode($row['interests'], true);
+            }
+            
+            return new NewsletterSubscriber($row);
+        } catch (\Exception $e) {
+            error_log(sprintf(
+                'Newsletter: Find by email exception: %s',
+                $e->getMessage()
+            ));
             return null;
         }
-        
-        // Decode JSON fields
-        if (!empty($row['interests'])) {
-            $row['interests'] = json_decode($row['interests'], true);
-        }
-        
-        return new NewsletterSubscriber($row);
     }
     
     /**
@@ -115,26 +194,41 @@ class NewsletterRepository {
     public function update(NewsletterSubscriber $subscriber) {
         global $wpdb;
         
-        $data = [
-            'email' => $subscriber->email,
-            'name' => $subscriber->name,
-            'status' => $subscriber->status,
-            'source' => $subscriber->source,
-            'interests' => !empty($subscriber->interests) ? json_encode($subscriber->interests) : null,
-            'confirmation_token' => $subscriber->confirmation_token,
-            'confirmed_at' => $subscriber->confirmed_at,
-            'unsubscribed_at' => $subscriber->unsubscribed_at,
-        ];
-        
-        $result = $wpdb->update(
-            $this->table_name,
-            $data,
-            ['id' => $subscriber->id],
-            ['%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s'],
-            ['%d']
-        );
-        
-        return $result !== false;
+        try {
+            $data = [
+                'email' => $subscriber->email,
+                'name' => $subscriber->name,
+                'status' => $subscriber->status,
+                'source' => $subscriber->source,
+                'interests' => !empty($subscriber->interests) ? json_encode($subscriber->interests) : null,
+                'confirmation_token' => $subscriber->confirmation_token,
+                'confirmed_at' => $subscriber->confirmed_at,
+                'unsubscribed_at' => $subscriber->unsubscribed_at,
+            ];
+            
+            $result = $wpdb->update(
+                $this->table_name,
+                $data,
+                ['id' => $subscriber->id],
+                ['%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s'],
+                ['%d']
+            );
+            
+            if ($result === false) {
+                error_log(sprintf(
+                    'Newsletter: Database update failed: %s',
+                    $wpdb->last_error
+                ));
+            }
+            
+            return $result !== false;
+        } catch (\Exception $e) {
+            error_log(sprintf(
+                'Newsletter: Update subscriber exception: %s',
+                $e->getMessage()
+            ));
+            return false;
+        }
     }
     
     /**

@@ -29,92 +29,109 @@ class NewsletterService {
      * @return array ['success' => bool, 'message' => string, 'data' => array]
      */
     public function subscribe($email, $name = null, $source = 'website') {
-        // Validate email
-        if (!is_email($email)) {
-            return [
-                'success' => false,
-                'message' => __('Geçersiz e-posta adresi.', 'kg-core'),
-                'code' => 'invalid_email'
-            ];
-        }
-        
-        // Check if already subscribed
-        $existing = $this->repository->findByEmail($email);
-        
-        if ($existing) {
-            if ($existing->is_active()) {
+        try {
+            // Validate email
+            if (!is_email($email)) {
                 return [
                     'success' => false,
-                    'message' => __('Bu e-posta adresi zaten bültenimize kayıtlı.', 'kg-core'),
-                    'code' => 'already_subscribed'
-                ];
-            } elseif ($existing->is_pending()) {
-                // Resend confirmation email
-                $this->sendConfirmationEmail($existing);
-                return [
-                    'success' => true,
-                    'message' => __('Onay e-postası tekrar gönderildi. Lütfen e-postanızı kontrol edin.', 'kg-core'),
-                    'data' => ['status' => 'pending']
-                ];
-            } elseif ($existing->is_unsubscribed()) {
-                // Reactivate subscription
-                $existing->status = 'pending';
-                $existing->confirmation_token = $this->generate_token();
-                $existing->subscribed_at = current_time('mysql');
-                $existing->unsubscribed_at = null;
-                
-                $this->repository->update($existing);
-                $this->sendConfirmationEmail($existing);
-                
-                return [
-                    'success' => true,
-                    'message' => __('Abonelik talebi alındı. Lütfen e-postanızı kontrol ederek onaylayın.', 'kg-core'),
-                    'data' => ['status' => 'pending']
+                    'message' => __('Geçersiz e-posta adresi.', 'kg-core'),
+                    'code' => 'invalid_email'
                 ];
             }
-        }
-        
-        // Create new subscriber
-        $subscriber = new NewsletterSubscriber();
-        $subscriber->email = sanitize_email($email);
-        $subscriber->name = !empty($name) ? sanitize_text_field($name) : null;
-        $subscriber->status = 'pending';
-        $subscriber->source = sanitize_text_field($source);
-        $subscriber->confirmation_token = $this->generate_token();
-        $subscriber->ip_address = $this->get_client_ip();
-        $subscriber->user_agent = !empty($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 500) : null;
-        
-        $subscriber_id = $this->repository->create($subscriber);
-        
-        if (!$subscriber_id) {
+            
+            // Check if already subscribed
+            $existing = $this->repository->findByEmail($email);
+            
+            if ($existing) {
+                if ($existing->is_active()) {
+                    return [
+                        'success' => false,
+                        'message' => __('Bu e-posta adresi zaten bültenimize kayıtlı.', 'kg-core'),
+                        'code' => 'already_subscribed'
+                    ];
+                } elseif ($existing->is_pending()) {
+                    // Resend confirmation email
+                    $this->sendConfirmationEmail($existing);
+                    return [
+                        'success' => true,
+                        'message' => __('Onay e-postası tekrar gönderildi. Lütfen e-postanızı kontrol edin.', 'kg-core'),
+                        'data' => ['status' => 'pending']
+                    ];
+                } elseif ($existing->is_unsubscribed()) {
+                    // Reactivate subscription
+                    $existing->status = 'pending';
+                    $existing->confirmation_token = $this->generate_token();
+                    $existing->subscribed_at = current_time('mysql');
+                    $existing->unsubscribed_at = null;
+                    
+                    $this->repository->update($existing);
+                    $this->sendConfirmationEmail($existing);
+                    
+                    return [
+                        'success' => true,
+                        'message' => __('Abonelik talebi alındı. Lütfen e-postanızı kontrol ederek onaylayın.', 'kg-core'),
+                        'data' => ['status' => 'pending']
+                    ];
+                }
+            }
+            
+            // Create new subscriber
+            $subscriber = new NewsletterSubscriber();
+            $subscriber->email = sanitize_email($email);
+            $subscriber->name = !empty($name) ? sanitize_text_field($name) : null;
+            $subscriber->status = 'pending';
+            $subscriber->source = sanitize_text_field($source);
+            $subscriber->confirmation_token = $this->generate_token();
+            $subscriber->ip_address = $this->get_client_ip();
+            $subscriber->user_agent = !empty($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 500) : null;
+            
+            $subscriber_id = $this->repository->create($subscriber);
+            
+            if (!$subscriber_id) {
+                error_log('Newsletter: Failed to create subscriber in database');
+                return [
+                    'success' => false,
+                    'message' => __('Abonelik kaydedilemedi. Lütfen daha sonra tekrar deneyin.', 'kg-core'),
+                    'code' => 'create_failed'
+                ];
+            }
+            
+            $subscriber->id = $subscriber_id;
+            
+            // Send confirmation email
+            $email_sent = $this->sendConfirmationEmail($subscriber);
+            
+            if (!$email_sent) {
+                error_log('Newsletter: Failed to send confirmation email');
+                return [
+                    'success' => false,
+                    'message' => __('Onay e-postası gönderilemedi. Lütfen daha sonra tekrar deneyin.', 'kg-core'),
+                    'code' => 'email_failed'
+                ];
+            }
+            
+            return [
+                'success' => true,
+                'message' => __('Abonelik talebi alındı! Lütfen e-postanızı kontrol ederek onaylayın.', 'kg-core'),
+                'data' => [
+                    'id' => $subscriber_id,
+                    'status' => 'pending'
+                ]
+            ];
+        } catch (\Exception $e) {
+            error_log(sprintf(
+                'Newsletter subscribe error: %s in %s:%d',
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine()
+            ));
+            
             return [
                 'success' => false,
-                'message' => __('Abonelik kaydedilemedi. Lütfen daha sonra tekrar deneyin.', 'kg-core'),
-                'code' => 'create_failed'
+                'message' => __('Bir hata oluştu. Lütfen daha sonra tekrar deneyin.', 'kg-core'),
+                'code' => 'internal_error'
             ];
         }
-        
-        $subscriber->id = $subscriber_id;
-        
-        // Send confirmation email
-        $email_sent = $this->sendConfirmationEmail($subscriber);
-        
-        if (!$email_sent) {
-            return [
-                'success' => false,
-                'message' => __('Onay e-postası gönderilemedi. Lütfen daha sonra tekrar deneyin.', 'kg-core'),
-                'code' => 'email_failed'
-            ];
-        }
-        
-        return [
-            'success' => true,
-            'message' => __('Abonelik talebi alındı! Lütfen e-postanızı kontrol ederek onaylayın.', 'kg-core'),
-            'data' => [
-                'id' => $subscriber_id,
-                'status' => 'pending'
-            ]
-        ];
     }
     
     /**

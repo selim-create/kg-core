@@ -15,6 +15,10 @@ class CORSHandler {
         
         // WordPress standard endpoint'leri için JWT auth desteği
         add_filter('rest_authentication_errors', [$this, 'enable_jwt_for_wp_endpoints'], 100);
+        
+        // REST API error responses için CORS headers ekle
+        add_filter('rest_request_after_callbacks', [$this, 'add_cors_to_response'], 10, 3);
+        add_filter('rest_pre_echo_response', [$this, 'ensure_cors_headers'], 10, 3);
     }
     
     /**
@@ -202,6 +206,51 @@ class CORSHandler {
         if ($payload && isset($payload['user_id'])) {
             wp_set_current_user($payload['user_id']);
             return true;
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * REST API yanıtlarına CORS header'larını ekle (başarılı ve hatalı durumlar için)
+     */
+    public function add_cors_to_response($response, $handler, $request) {
+        if (is_wp_error($response)) {
+            return $response;
+        }
+        
+        $origin = $this->get_origin();
+        
+        if ($origin && $this->is_allowed_origin($origin)) {
+            if ($response instanceof \WP_REST_Response || $response instanceof \WP_HTTP_Response) {
+                $response->header('Access-Control-Allow-Origin', $origin);
+                $response->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+                $response->header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Content-Disposition, X-Requested-With, X-WP-Nonce, Cache-Control, Pragma');
+                $response->header('Access-Control-Allow-Credentials', 'true');
+                $response->header('Access-Control-Max-Age', '86400');
+                $response->header('Vary', 'Origin');
+            }
+        }
+        
+        return $response;
+    }
+    
+    /**
+     * REST API response göndermeden önce CORS header'larını garantile
+     */
+    public function ensure_cors_headers($result, $server, $request) {
+        $origin = $this->get_origin();
+        
+        if ($origin && $this->is_allowed_origin($origin)) {
+            // Direkt header gönder (response objesine eklemenin yanında)
+            if (!headers_sent()) {
+                header('Access-Control-Allow-Origin: ' . $origin);
+                header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH');
+                header('Access-Control-Allow-Headers: Authorization, Content-Type, Content-Disposition, X-Requested-With, X-WP-Nonce, Cache-Control, Pragma');
+                header('Access-Control-Allow-Credentials: true');
+                header('Access-Control-Max-Age: 86400');
+                header('Vary: Origin');
+            }
         }
         
         return $result;
