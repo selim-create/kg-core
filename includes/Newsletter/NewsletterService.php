@@ -50,12 +50,20 @@ class NewsletterService {
                         'code' => 'already_subscribed'
                     ];
                 } elseif ($existing->is_pending()) {
-                    // Resend confirmation email
-                    $this->sendConfirmationEmail($existing);
+                    // Try to resend confirmation email (non-blocking)
+                    $email_sent = false;
+                    try {
+                        $email_sent = $this->sendConfirmationEmail($existing);
+                    } catch (\Exception $e) {
+                        error_log(sprintf('Newsletter: Resend email exception: %s', $e->getMessage()));
+                    }
+                    
                     return [
                         'success' => true,
-                        'message' => __('Onay e-postası tekrar gönderildi. Lütfen e-postanızı kontrol edin.', 'kg-core'),
-                        'data' => ['status' => 'pending']
+                        'message' => $email_sent
+                            ? __('Onay e-postası tekrar gönderildi. Lütfen e-postanızı kontrol edin.', 'kg-core')
+                            : __('Zaten kayıtlısınız. Onay e-postası kısa süre içinde tekrar gönderilecektir.', 'kg-core'),
+                        'data' => ['status' => 'pending', 'email_sent' => $email_sent]
                     ];
                 } elseif ($existing->is_unsubscribed()) {
                     // Reactivate subscription
@@ -65,12 +73,21 @@ class NewsletterService {
                     $existing->unsubscribed_at = null;
                     
                     $this->repository->update($existing);
-                    $this->sendConfirmationEmail($existing);
+                    
+                    // Try to send confirmation email (non-blocking)
+                    $email_sent = false;
+                    try {
+                        $email_sent = $this->sendConfirmationEmail($existing);
+                    } catch (\Exception $e) {
+                        error_log(sprintf('Newsletter: Reactivation email exception: %s', $e->getMessage()));
+                    }
                     
                     return [
                         'success' => true,
-                        'message' => __('Abonelik talebi alındı. Lütfen e-postanızı kontrol ederek onaylayın.', 'kg-core'),
-                        'data' => ['status' => 'pending']
+                        'message' => $email_sent
+                            ? __('Abonelik talebi alındı. Lütfen e-postanızı kontrol ederek onaylayın.', 'kg-core')
+                            : __('Abonelik talebiniz alındı. Onay e-postası kısa süre içinde gönderilecektir.', 'kg-core'),
+                        'data' => ['status' => 'pending', 'email_sent' => $email_sent]
                     ];
                 }
             }
@@ -98,24 +115,29 @@ class NewsletterService {
             
             $subscriber->id = $subscriber_id;
             
-            // Send confirmation email
-            $email_sent = $this->sendConfirmationEmail($subscriber);
-            
-            if (!$email_sent) {
-                error_log('Newsletter: Failed to send confirmation email');
-                return [
-                    'success' => false,
-                    'message' => __('Onay e-postası gönderilemedi. Lütfen daha sonra tekrar deneyin.', 'kg-core'),
-                    'code' => 'email_failed'
-                ];
+            // Try to send confirmation email (non-blocking)
+            $email_sent = false;
+            try {
+                $email_sent = $this->sendConfirmationEmail($subscriber);
+            } catch (\Exception $e) {
+                error_log(sprintf('Newsletter: Email send exception: %s', $e->getMessage()));
             }
             
+            if (!$email_sent) {
+                error_log(sprintf('Newsletter: Failed to send confirmation email to %s', $subscriber->email));
+                // Don't fail the subscription, just log the error
+            }
+            
+            // Always return success if database insert was successful
             return [
                 'success' => true,
-                'message' => __('Abonelik talebi alındı! Lütfen e-postanızı kontrol ederek onaylayın.', 'kg-core'),
+                'message' => $email_sent 
+                    ? __('Abonelik talebi alındı! Lütfen e-postanızı kontrol ederek onaylayın.', 'kg-core')
+                    : __('Abonelik kaydınız alındı! Onay e-postası kısa süre içinde gönderilecektir.', 'kg-core'),
                 'data' => [
                     'id' => $subscriber_id,
-                    'status' => 'pending'
+                    'status' => 'pending',
+                    'email_sent' => $email_sent
                 ]
             ];
         } catch (\Exception $e) {
@@ -158,8 +180,12 @@ class NewsletterService {
         $updated = $this->repository->update($subscriber);
         
         if ($updated) {
-            // Send welcome email
-            $this->sendWelcomeEmail($subscriber);
+            // Try to send welcome email (non-blocking)
+            try {
+                $this->sendWelcomeEmail($subscriber);
+            } catch (\Exception $e) {
+                error_log(sprintf('Newsletter: Welcome email exception: %s', $e->getMessage()));
+            }
         }
         
         return $updated;
@@ -191,33 +217,45 @@ class NewsletterService {
      * @return bool
      */
     public function sendConfirmationEmail(NewsletterSubscriber $subscriber) {
-        if (empty($subscriber->confirmation_token)) {
+        try {
+            if (empty($subscriber->confirmation_token)) {
+                error_log('Newsletter: No confirmation token for email send');
+                return false;
+            }
+            
+            // Build confirmation URL
+            $confirmation_url = rest_url('kg/v1/newsletter/confirm/' . $subscriber->confirmation_token);
+            
+            // Get template
+            $template_key = 'newsletter_confirmation';
+            
+            // Prepare placeholders
+            $placeholders = [
+                'confirmation_url' => $confirmation_url,
+            ];
+            
+            // Send email using EmailService
+            if (class_exists('\KG_Core\Notifications\EmailService')) {
+                $email_service = new EmailService();
+                return $email_service->send_template_email(
+                    $subscriber->email,
+                    $template_key,
+                    $placeholders
+                );
+            }
+            
+            error_log('Newsletter: EmailService class not found');
+            return false;
+            
+        } catch (\Exception $e) {
+            error_log(sprintf(
+                'Newsletter: sendConfirmationEmail error: %s in %s:%d',
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine()
+            ));
             return false;
         }
-        
-        // Get site URL and build confirmation URL
-        $site_url = get_site_url();
-        $confirmation_url = rest_url('kg/v1/newsletter/confirm/' . $subscriber->confirmation_token);
-        
-        // Get template
-        $template_key = 'newsletter_confirmation';
-        
-        // Prepare placeholders
-        $placeholders = [
-            'confirmation_url' => $confirmation_url,
-        ];
-        
-        // Send email using EmailService
-        if (class_exists('\KG_Core\Notifications\EmailService')) {
-            $email_service = new EmailService();
-            return $email_service->send_template_email(
-                $subscriber->email,
-                $template_key,
-                $placeholders
-            );
-        }
-        
-        return false;
     }
     
     /**
@@ -227,28 +265,40 @@ class NewsletterService {
      * @return bool
      */
     public function sendWelcomeEmail(NewsletterSubscriber $subscriber) {
-        // Get site URL
-        $app_url = get_site_url();
-        
-        // Get template
-        $template_key = 'newsletter_welcome';
-        
-        // Prepare placeholders
-        $placeholders = [
-            'app_url' => $app_url,
-        ];
-        
-        // Send email using EmailService
-        if (class_exists('\KG_Core\Notifications\EmailService')) {
-            $email_service = new EmailService();
-            return $email_service->send_template_email(
-                $subscriber->email,
-                $template_key,
-                $placeholders
-            );
+        try {
+            // Get site URL
+            $app_url = get_site_url();
+            
+            // Get template
+            $template_key = 'newsletter_welcome';
+            
+            // Prepare placeholders
+            $placeholders = [
+                'app_url' => $app_url,
+            ];
+            
+            // Send email using EmailService
+            if (class_exists('\KG_Core\Notifications\EmailService')) {
+                $email_service = new EmailService();
+                return $email_service->send_template_email(
+                    $subscriber->email,
+                    $template_key,
+                    $placeholders
+                );
+            }
+            
+            error_log('Newsletter: EmailService class not found for welcome email');
+            return false;
+            
+        } catch (\Exception $e) {
+            error_log(sprintf(
+                'Newsletter: sendWelcomeEmail error: %s in %s:%d',
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine()
+            ));
+            return false;
         }
-        
-        return false;
     }
     
     /**
