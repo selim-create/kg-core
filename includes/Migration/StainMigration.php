@@ -52,6 +52,41 @@ class StainMigration {
     }
 
     /**
+     * Fix Unicode escaped Turkish characters in existing stain data
+     */
+    public function fix_encoding() {
+        $stains = get_posts([
+            'post_type' => 'stain',
+            'posts_per_page' => -1,
+            'post_status' => 'any',
+        ]);
+
+        $fixed = 0;
+        foreach ($stains as $stain) {
+            $meta_keys = ['_kg_stain_steps', '_kg_stain_warnings', '_kg_stain_related_ingredients'];
+            
+            foreach ($meta_keys as $key) {
+                $value = get_post_meta($stain->ID, $key, true);
+                if (!empty($value)) {
+                    // Decode and re-encode with proper Unicode handling
+                    $decoded = json_decode($value, true);
+                    if ($decoded !== null) {
+                        $fixed_value = json_encode($decoded, JSON_UNESCAPED_UNICODE);
+                        update_post_meta($stain->ID, $key, $fixed_value);
+                    }
+                }
+            }
+            $fixed++;
+        }
+
+        return [
+            'success' => true,
+            'fixed' => $fixed,
+            'message' => $fixed . ' leke kaydının encoding\'i düzeltildi.',
+        ];
+    }
+
+    /**
      * Import a single stain
      */
     private function import_stain( $stain ) {
@@ -87,9 +122,9 @@ class StainMigration {
         // Save meta fields
         update_post_meta( $post_id, '_kg_stain_emoji', $stain['emoji'] ?? '' );
         update_post_meta( $post_id, '_kg_stain_difficulty', $stain['difficulty'] ?? 'easy' );
-        update_post_meta( $post_id, '_kg_stain_steps', wp_json_encode( $stain['steps'] ?? [] ) );
-        update_post_meta( $post_id, '_kg_stain_warnings', wp_json_encode( $stain['warnings'] ?? [] ) );
-        update_post_meta( $post_id, '_kg_stain_related_ingredients', wp_json_encode( $stain['related_ingredients'] ?? [] ) );
+        update_post_meta( $post_id, '_kg_stain_steps', json_encode( $stain['steps'] ?? [], JSON_UNESCAPED_UNICODE ) );
+        update_post_meta( $post_id, '_kg_stain_warnings', json_encode( $stain['warnings'] ?? [], JSON_UNESCAPED_UNICODE ) );
+        update_post_meta( $post_id, '_kg_stain_related_ingredients', json_encode( $stain['related_ingredients'] ?? [], JSON_UNESCAPED_UNICODE ) );
 
         return $post_id;
     }
