@@ -19,15 +19,15 @@ class CommunityCircle {
 
     public function register_taxonomy() {
         $labels = [
-            'name'              => _x( 'Çemberler', 'taxonomy general name', 'kg-core' ),
-            'singular_name'     => _x( 'Çember', 'taxonomy singular name', 'kg-core' ),
-            'search_items'      => __( 'Çember Ara', 'kg-core' ),
-            'all_items'         => __( 'Tüm Çemberler', 'kg-core' ),
-            'edit_item'         => __( 'Çemberi Düzenle', 'kg-core' ),
+            'name'              => _x( 'Odaklar', 'taxonomy general name', 'kg-core' ),
+            'singular_name'     => _x( 'Odak', 'taxonomy singular name', 'kg-core' ),
+            'search_items'      => __( 'Odak Ara', 'kg-core' ),
+            'all_items'         => __( 'Tüm Odaklar', 'kg-core' ),
+            'edit_item'         => __( 'Odağı Düzenle', 'kg-core' ),
             'update_item'       => __( 'Güncelle', 'kg-core' ),
-            'add_new_item'      => __( 'Yeni Çember Ekle', 'kg-core' ),
-            'new_item_name'     => __( 'Yeni Çember Adı', 'kg-core' ),
-            'menu_name'         => __( 'Çemberler (Topluluk)', 'kg-core' ),
+            'add_new_item'      => __( 'Yeni Odak Ekle', 'kg-core' ),
+            'new_item_name'     => __( 'Yeni Odak Adı', 'kg-core' ),
+            'menu_name'         => __( 'Odaklar (Topluluk)', 'kg-core' ),
         ];
 
         $args = [
@@ -147,13 +147,13 @@ class CommunityCircle {
         <div class="form-field">
             <label for="kg_circle_description"><?php _e( 'Açıklama', 'kg-core' ); ?></label>
             <textarea name="kg_circle_description" id="kg_circle_description" rows="3"></textarea>
-            <p class="description"><?php _e( 'Çember açıklaması', 'kg-core' ); ?></p>
+            <p class="description"><?php _e( 'Odak açıklaması', 'kg-core' ); ?></p>
         </div>
 
         <div class="form-field">
             <label for="kg_circle_icon"><?php _e( 'İkon (Emoji)', 'kg-core' ); ?></label>
             <input type="text" name="kg_circle_icon" id="kg_circle_icon" value="" placeholder="👶">
-            <p class="description"><?php _e( 'Çember için emoji ikon (örn: 👶, 🍼, ⚠️)', 'kg-core' ); ?></p>
+            <p class="description"><?php _e( 'Odak için emoji ikon (örn: 👶, 🍼, ⚠️)', 'kg-core' ); ?></p>
         </div>
 
         <div class="form-field">
@@ -181,7 +181,7 @@ class CommunityCircle {
             <th scope="row"><label for="kg_circle_description"><?php _e( 'Açıklama', 'kg-core' ); ?></label></th>
             <td>
                 <textarea name="kg_circle_description" id="kg_circle_description" rows="3" class="large-text"><?php echo esc_textarea( $description ); ?></textarea>
-                <p class="description"><?php _e( 'Çember açıklaması', 'kg-core' ); ?></p>
+                <p class="description"><?php _e( 'Odak açıklaması', 'kg-core' ); ?></p>
             </td>
         </tr>
 
@@ -189,7 +189,7 @@ class CommunityCircle {
             <th scope="row"><label for="kg_circle_icon"><?php _e( 'İkon (Emoji)', 'kg-core' ); ?></label></th>
             <td>
                 <input type="text" name="kg_circle_icon" id="kg_circle_icon" value="<?php echo esc_attr( $icon ); ?>" placeholder="👶">
-                <p class="description"><?php _e( 'Çember için emoji ikon', 'kg-core' ); ?></p>
+                <p class="description"><?php _e( 'Odak için emoji ikon', 'kg-core' ); ?></p>
             </td>
         </tr>
 
@@ -243,7 +243,7 @@ class CommunityCircle {
                 ];
             },
             'schema' => [
-                'description' => __( 'Çember meta verileri', 'kg-core' ),
+                'description' => __( 'Odak meta verileri', 'kg-core' ),
                 'type' => 'object',
             ],
         ] );

@@ -166,6 +166,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/MediaController.php' ) ) require_
 if ( file_exists( KG_CORE_PATH . 'includes/API/AIController.php' ) ) require_once KG_CORE_PATH . 'includes/API/AIController.php';
 // Discussion API Controller
 if ( file_exists( KG_CORE_PATH . 'includes/API/DiscussionController.php' ) ) require_once KG_CORE_PATH . 'includes/API/DiscussionController.php';
+// Report API Controller
+if ( file_exists( KG_CORE_PATH . 'includes/API/ReportController.php' ) ) require_once KG_CORE_PATH . 'includes/API/ReportController.php';
 // Expert API Controller
 if ( file_exists( KG_CORE_PATH . 'includes/API/ExpertController.php' ) ) require_once KG_CORE_PATH . 'includes/API/ExpertController.php';
 // Meal Plan API Controller
@@ -235,6 +237,10 @@ if ( file_exists( KG_CORE_PATH . 'includes/Cron/VaccineReminderCron.php' ) ) req
 // 6.11. VACCINATION TRACKER DATABASE SCHEMA (NEW)
 if ( file_exists( KG_CORE_PATH . 'includes/Database/VaccinationSchema.php' ) ) require_once KG_CORE_PATH . 'includes/Database/VaccinationSchema.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Database/ChildProfileSchema.php' ) ) require_once KG_CORE_PATH . 'includes/Database/ChildProfileSchema.php';
+
+// 6.11.5. COMMUNITY DATABASE SCHEMAS (NEW)
+if ( file_exists( KG_CORE_PATH . 'includes/Database/VotingSchema.php' ) ) require_once KG_CORE_PATH . 'includes/Database/VotingSchema.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Database/ReportSchema.php' ) ) require_once KG_CORE_PATH . 'includes/Database/ReportSchema.php';
 
 // 6.12. NEWSLETTER MODULE (NEW)
 if ( file_exists( KG_CORE_PATH . 'includes/Newsletter/NewsletterSubscriber.php' ) ) require_once KG_CORE_PATH . 'includes/Newsletter/NewsletterSubscriber.php';
@@ -388,6 +394,7 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\API\MediaController' ) ) new \KG_Core\API\MediaController();
     if ( class_exists( '\KG_Core\API\AIController' ) ) new \KG_Core\API\AIController();
     if ( class_exists( '\KG_Core\API\DiscussionController' ) ) new \KG_Core\API\DiscussionController();
+    if ( class_exists( '\KG_Core\API\ReportController' ) ) new \KG_Core\API\ReportController();
     if ( class_exists( '\KG_Core\API\ExpertController' ) ) new \KG_Core\API\ExpertController();
     if ( class_exists( '\KG_Core\API\MealPlanController' ) ) new \KG_Core\API\MealPlanController();
     if ( class_exists( '\KG_Core\API\PercentileController' ) ) new \KG_Core\API\PercentileController();
@@ -731,6 +738,16 @@ register_activation_hook( __FILE__, function() {
         // Create child profiles database table
         if ( class_exists( '\KG_Core\Database\ChildProfileSchema' ) ) {
             \KG_Core\Database\ChildProfileSchema::create_table();
+        }
+        
+        // Create community voting database table
+        if ( class_exists( '\KG_Core\Database\VotingSchema' ) ) {
+            \KG_Core\Database\VotingSchema::create_table();
+        }
+        
+        // Create community reports database table
+        if ( class_exists( '\KG_Core\Database\ReportSchema' ) ) {
+            \KG_Core\Database\ReportSchema::create_table();
         }
         
         // Load vaccine master data from JSON

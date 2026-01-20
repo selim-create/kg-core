@@ -114,6 +114,41 @@ class DiscussionController {
                 ]
             ]
         ]);
+
+        // Vote on discussion
+        register_rest_route( 'kg/v1', '/community/discussions/(?P<id>\d+)/vote', [
+            'methods'  => 'POST',
+            'callback' => [ $this, 'vote_discussion' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+            'args' => [
+                'vote_type' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'enum' => [ 'like', 'dislike' ],
+                ],
+            ],
+        ]);
+
+        // Vote on comment
+        register_rest_route( 'kg/v1', '/community/comments/(?P<id>\d+)/vote', [
+            'methods'  => 'POST',
+            'callback' => [ $this, 'vote_comment' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+            'args' => [
+                'vote_type' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'enum' => [ 'like', 'dislike' ],
+                ],
+            ],
+        ]);
+
+        // Get vote counts for discussion
+        register_rest_route( 'kg/v1', '/community/discussions/(?P<id>\d+)/votes', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_discussion_votes' ],
+            'permission_callback' => '__return_true',
+        ]);
     }
 
     /**
@@ -653,6 +688,10 @@ class DiscussionController {
                 }
             }
 
+            // Get vote counts
+            $like_count = (int) get_comment_meta( $comment->comment_ID, '_like_count', true );
+            $dislike_count = (int) get_comment_meta( $comment->comment_ID, '_dislike_count', true );
+
             $result[] = [
                 'id' => $comment->comment_ID,
                 'content' => $comment->comment_content,
@@ -663,6 +702,9 @@ class DiscussionController {
                 ],
                 'is_expert_comment' => $is_expert,
                 'parent_id' => (int) $comment->comment_parent,
+                'like_count' => $like_count,
+                'dislike_count' => $dislike_count,
+                'user_vote' => null,
                 'created_at' => $comment->comment_date,
             ];
         }
@@ -687,6 +729,10 @@ class DiscussionController {
         // Get circle
         $circles = wp_get_object_terms( $post->ID, 'community_circle' );
         $circle = !  empty( $circles ) ? $circles[0] : null;
+
+        // Get vote counts
+        $like_count = (int) get_post_meta( $post->ID, '_like_count', true );
+        $dislike_count = (int) get_post_meta( $post->ID, '_dislike_count', true );
 
         $response = [
             'id' => $post->ID,
@@ -713,12 +759,31 @@ class DiscussionController {
             'is_featured' => (bool) get_post_meta( $post->ID, '_is_featured_question', true ),
             'expert_answered' => (bool) get_post_meta( $post->ID, '_expert_answered', true ),
             'comment_count' => get_comments_number( $post->ID ),
+            'like_count' => $like_count,
+            'dislike_count' => $dislike_count,
+            'user_vote' => null,
             'created_at' => $post->post_date,
             'type' => 'discussion',
         ];
 
         if ( $include_content ) {
             $response['content'] = apply_filters( 'the_content', $post->post_content );
+            
+            // Add SEO metadata for full discussion view
+            $excerpt = wp_strip_all_tags( $post->post_content );
+            $excerpt = mb_substr( $excerpt, 0, 160 );
+            
+            $og_image = get_avatar_url( $author->ID );
+            if ( $is_anonymous ) {
+                $og_image = get_site_url() . '/wp-content/uploads/community-default.png';
+            }
+            
+            $response['seo'] = [
+                'title' => $post->post_title . ' | KidsGourmet Topluluk',
+                'description' => $excerpt,
+                'og_image' => $og_image,
+                'canonical_url' => get_site_url() . '/topluluk/' . $post->post_name,
+            ];
         }
 
         return $response;
@@ -848,5 +913,252 @@ class DiscussionController {
         }
         
         return new \WP_REST_Response( $contributors, 200 );
+    }
+
+    /**
+     * Vote on a discussion
+     */
+    public function vote_discussion( $request ) {
+        global $wpdb;
+
+        $discussion_id = absint( $request->get_param( 'id' ) );
+        $vote_type = $request->get_param( 'vote_type' );
+        $user_id = $this->get_authenticated_user_id( $request );
+
+        // Check if discussion exists
+        $discussion = get_post( $discussion_id );
+        if ( ! $discussion || $discussion->post_type !== 'discussion' ) {
+            return new \WP_Error(
+                'invalid_discussion',
+                __( 'Geçersiz tartışma ID.', 'kg-core' ),
+                [ 'status' => 404 ]
+            );
+        }
+
+        // Check for existing vote
+        $existing_vote = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}kg_discussion_votes 
+             WHERE user_id = %d AND discussion_id = %d",
+            $user_id,
+            $discussion_id
+        ) );
+
+        if ( $existing_vote ) {
+            // Same vote = remove (toggle)
+            if ( $existing_vote->vote_type === $vote_type ) {
+                $wpdb->delete(
+                    $wpdb->prefix . 'kg_discussion_votes',
+                    [ 'id' => $existing_vote->id ],
+                    [ '%d' ]
+                );
+                $this->update_vote_counts( 'discussion', $discussion_id );
+                return new \WP_REST_Response( [
+                    'success' => true,
+                    'action' => 'removed',
+                    'message' => __( 'Oyunuz kaldırıldı.', 'kg-core' ),
+                ], 200 );
+            } else {
+                // Different vote = update
+                $wpdb->update(
+                    $wpdb->prefix . 'kg_discussion_votes',
+                    [ 'vote_type' => $vote_type ],
+                    [ 'id' => $existing_vote->id ],
+                    [ '%s' ],
+                    [ '%d' ]
+                );
+                $this->update_vote_counts( 'discussion', $discussion_id );
+                return new \WP_REST_Response( [
+                    'success' => true,
+                    'action' => 'updated',
+                    'message' => __( 'Oyunuz güncellendi.', 'kg-core' ),
+                ], 200 );
+            }
+        } else {
+            // New vote
+            $wpdb->insert(
+                $wpdb->prefix . 'kg_discussion_votes',
+                [
+                    'user_id' => $user_id,
+                    'discussion_id' => $discussion_id,
+                    'vote_type' => $vote_type,
+                ],
+                [ '%d', '%d', '%s' ]
+            );
+            $this->update_vote_counts( 'discussion', $discussion_id );
+            return new \WP_REST_Response( [
+                'success' => true,
+                'action' => 'added',
+                'message' => __( 'Oyunuz kaydedildi.', 'kg-core' ),
+            ], 200 );
+        }
+    }
+
+    /**
+     * Vote on a comment
+     */
+    public function vote_comment( $request ) {
+        global $wpdb;
+
+        $comment_id = absint( $request->get_param( 'id' ) );
+        $vote_type = $request->get_param( 'vote_type' );
+        $user_id = $this->get_authenticated_user_id( $request );
+
+        // Check if comment exists
+        $comment = get_comment( $comment_id );
+        if ( ! $comment ) {
+            return new \WP_Error(
+                'invalid_comment',
+                __( 'Geçersiz yorum ID.', 'kg-core' ),
+                [ 'status' => 404 ]
+            );
+        }
+
+        // Check for existing vote
+        $existing_vote = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}kg_discussion_votes 
+             WHERE user_id = %d AND comment_id = %d",
+            $user_id,
+            $comment_id
+        ) );
+
+        if ( $existing_vote ) {
+            // Same vote = remove (toggle)
+            if ( $existing_vote->vote_type === $vote_type ) {
+                $wpdb->delete(
+                    $wpdb->prefix . 'kg_discussion_votes',
+                    [ 'id' => $existing_vote->id ],
+                    [ '%d' ]
+                );
+                $this->update_vote_counts( 'comment', $comment_id );
+                return new \WP_REST_Response( [
+                    'success' => true,
+                    'action' => 'removed',
+                    'message' => __( 'Oyunuz kaldırıldı.', 'kg-core' ),
+                ], 200 );
+            } else {
+                // Different vote = update
+                $wpdb->update(
+                    $wpdb->prefix . 'kg_discussion_votes',
+                    [ 'vote_type' => $vote_type ],
+                    [ 'id' => $existing_vote->id ],
+                    [ '%s' ],
+                    [ '%d' ]
+                );
+                $this->update_vote_counts( 'comment', $comment_id );
+                return new \WP_REST_Response( [
+                    'success' => true,
+                    'action' => 'updated',
+                    'message' => __( 'Oyunuz güncellendi.', 'kg-core' ),
+                ], 200 );
+            }
+        } else {
+            // New vote
+            $wpdb->insert(
+                $wpdb->prefix . 'kg_discussion_votes',
+                [
+                    'user_id' => $user_id,
+                    'comment_id' => $comment_id,
+                    'vote_type' => $vote_type,
+                ],
+                [ '%d', '%d', '%s' ]
+            );
+            $this->update_vote_counts( 'comment', $comment_id );
+            return new \WP_REST_Response( [
+                'success' => true,
+                'action' => 'added',
+                'message' => __( 'Oyunuz kaydedildi.', 'kg-core' ),
+            ], 200 );
+        }
+    }
+
+    /**
+     * Get vote counts for a discussion
+     */
+    public function get_discussion_votes( $request ) {
+        $discussion_id = absint( $request->get_param( 'id' ) );
+        
+        // Check if discussion exists
+        $discussion = get_post( $discussion_id );
+        if ( ! $discussion || $discussion->post_type !== 'discussion' ) {
+            return new \WP_Error(
+                'invalid_discussion',
+                __( 'Geçersiz tartışma ID.', 'kg-core' ),
+                [ 'status' => 404 ]
+            );
+        }
+
+        $vote_data = $this->get_vote_data( 'discussion', $discussion_id, $request );
+
+        return new \WP_REST_Response( $vote_data, 200 );
+    }
+
+    /**
+     * Get vote data (counts and user vote)
+     */
+    private function get_vote_data( $type, $content_id, $request = null ) {
+        global $wpdb;
+
+        $column = $type === 'discussion' ? 'discussion_id' : 'comment_id';
+
+        $likes = $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}kg_discussion_votes 
+             WHERE {$column} = %d AND vote_type = 'like'",
+            $content_id
+        ) );
+
+        $dislikes = $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}kg_discussion_votes 
+             WHERE {$column} = %d AND vote_type = 'dislike'",
+            $content_id
+        ) );
+
+        $user_vote = null;
+        if ( $request ) {
+            $user_id = $this->get_authenticated_user_id( $request );
+            if ( $user_id ) {
+                $user_vote_row = $wpdb->get_var( $wpdb->prepare(
+                    "SELECT vote_type FROM {$wpdb->prefix}kg_discussion_votes 
+                     WHERE user_id = %d AND {$column} = %d",
+                    $user_id,
+                    $content_id
+                ) );
+                $user_vote = $user_vote_row ? $user_vote_row : null;
+            }
+        }
+
+        return [
+            'likes' => (int) $likes,
+            'dislikes' => (int) $dislikes,
+            'user_vote' => $user_vote,
+        ];
+    }
+
+    /**
+     * Update vote counts (for cache/denormalization if needed)
+     */
+    private function update_vote_counts( $type, $content_id ) {
+        global $wpdb;
+
+        $column = $type === 'discussion' ? 'discussion_id' : 'comment_id';
+
+        $likes = $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}kg_discussion_votes 
+             WHERE {$column} = %d AND vote_type = 'like'",
+            $content_id
+        ) );
+
+        $dislikes = $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}kg_discussion_votes 
+             WHERE {$column} = %d AND vote_type = 'dislike'",
+            $content_id
+        ) );
+
+        if ( $type === 'discussion' ) {
+            update_post_meta( $content_id, '_like_count', $likes );
+            update_post_meta( $content_id, '_dislike_count', $dislikes );
+        } else {
+            update_comment_meta( $content_id, '_like_count', $likes );
+            update_comment_meta( $content_id, '_dislike_count', $dislikes );
+        }
     }
 }

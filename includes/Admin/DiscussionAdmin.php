@@ -93,7 +93,7 @@ class DiscussionAdmin {
             $new_columns[ $key ] = $value;
             
             if ( $key === 'title' ) {
-                $new_columns['kg_circle'] = __( 'Çember', 'kg-core' );
+                $new_columns['kg_circle'] = __( 'Odak', 'kg-core' );
                 $new_columns['kg_expert'] = __( 'Uzman Cevabı', 'kg-core' );
                 $new_columns['kg_featured'] = __( 'Öne Çıkan', 'kg-core' );
             }
