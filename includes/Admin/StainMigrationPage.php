@@ -15,6 +15,7 @@ class StainMigrationPage {
         
         add_action( 'admin_menu', [ $this, 'add_menu_page' ] );
         add_action( 'admin_post_kg_run_stain_migration', [ $this, 'handle_migration' ] );
+        add_action( 'admin_post_kg_fix_stain_encoding', [ $this, 'handle_fix_encoding' ] );
     }
     
     /**
@@ -49,6 +50,16 @@ class StainMigrationPage {
                 40+ leke kaydı içerik, meta veriler ve kategorileriyle birlikte import edilecek.
             </p>
             
+            <?php
+            // Display messages
+            if ( isset( $_GET['message'] ) ) {
+                echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( urldecode( $_GET['message'] ) ) . '</p></div>';
+            }
+            if ( isset( $_GET['error'] ) ) {
+                echo '<div class="notice notice-error is-dismissible"><p>' . esc_html( urldecode( $_GET['error'] ) ) . '</p></div>';
+            }
+            ?>
+            
             <div class="card" style="max-width: 600px; margin-top: 20px;">
                 <h2>Migration Durumu</h2>
                 
@@ -63,6 +74,19 @@ class StainMigrationPage {
                             📋 Leke Listesini Görüntüle
                         </a>
                     </p>
+                    
+                    <hr>
+                    
+                    <h3>🔧 Encoding Düzeltme</h3>
+                    <p>
+                        Mevcut leke kayıtlarındaki Türkçe karakter encoding sorunlarını düzeltmek için:
+                    </p>
+                    <form method="post" action="<?php echo admin_url( 'admin-post.php' ); ?>" 
+                          onsubmit="return confirm('Tüm leke kayıtlarının encodingi düzeltilecek. Devam etmek istiyor musunuz?');">
+                        <?php wp_nonce_field( 'kg_stain_fix_encoding', 'kg_stain_fix_encoding_nonce' ); ?>
+                        <input type="hidden" name="action" value="kg_fix_stain_encoding">
+                        <button type="submit" class="button button-secondary">🔄 Encoding Düzelt</button>
+                    </form>
                     
                     <hr>
                     
@@ -154,6 +178,38 @@ class StainMigrationPage {
             wp_redirect( add_query_arg( [
                 'page' => 'kg-stain-migration',
                 'error' => urlencode( $result['message'] ),
+            ], admin_url( 'admin.php' ) ) );
+        }
+        exit;
+    }
+    
+    /**
+     * Handle fix encoding form submission
+     */
+    public function handle_fix_encoding() {
+        // Verify nonce
+        if ( ! isset( $_POST['kg_stain_fix_encoding_nonce'] ) || 
+             ! wp_verify_nonce( $_POST['kg_stain_fix_encoding_nonce'], 'kg_stain_fix_encoding' ) ) {
+            wp_die( 'Security check failed' );
+        }
+        
+        // Check permissions
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( 'Insufficient permissions' );
+        }
+        
+        // Run fix
+        $result = $this->migration->fix_encoding();
+        
+        if ( $result['success'] ) {
+            wp_redirect( add_query_arg( [
+                'page' => 'kg-stain-migration',
+                'message' => urlencode( $result['message'] ),
+            ], admin_url( 'admin.php' ) ) );
+        } else {
+            wp_redirect( add_query_arg( [
+                'page' => 'kg-stain-migration',
+                'error' => urlencode( 'Encoding düzeltme işlemi başarısız oldu.' ),
             ], admin_url( 'admin.php' ) ) );
         }
         exit;

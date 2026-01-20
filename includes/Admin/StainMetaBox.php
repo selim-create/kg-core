@@ -214,7 +214,7 @@ class StainMetaBox {
                 }
             }
         }
-        update_post_meta( $post_id, '_kg_stain_steps', wp_json_encode( $steps ) );
+        update_post_meta( $post_id, '_kg_stain_steps', json_encode( $steps, JSON_UNESCAPED_UNICODE ) );
 
         // Save warnings
         $warnings = [];
@@ -225,7 +225,7 @@ class StainMetaBox {
                 }
             }
         }
-        update_post_meta( $post_id, '_kg_stain_warnings', wp_json_encode( $warnings ) );
+        update_post_meta( $post_id, '_kg_stain_warnings', json_encode( $warnings, JSON_UNESCAPED_UNICODE ) );
 
         // Save related ingredients
         $ingredients = [];
@@ -236,6 +236,6 @@ class StainMetaBox {
                 }
             }
         }
-        update_post_meta( $post_id, '_kg_stain_related_ingredients', wp_json_encode( $ingredients ) );
+        update_post_meta( $post_id, '_kg_stain_related_ingredients', json_encode( $ingredients, JSON_UNESCAPED_UNICODE ) );
     }
 }
