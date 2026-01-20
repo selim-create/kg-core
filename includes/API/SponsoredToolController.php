@@ -1091,9 +1091,40 @@ class SponsoredToolController {
     }
 
     private function get_stain_database() {
-        // Comprehensive stain database with 40+ stains
-        return [
+        // Get stains from CPT
+        $stains = get_posts([
+            'post_type' => 'stain',
+            'posts_per_page' => -1,
+            'post_status' => 'publish',
+            'orderby' => 'ID',
+            'order' => 'ASC',
+        ]);
+
+        $result = [];
+        foreach ( $stains as $stain ) {
+            $category_terms = wp_get_post_terms( $stain->ID, 'stain_category', ['fields' => 'slugs'] );
+            
+            $result[] = [
+                'id' => $stain->ID,
+                'slug' => $stain->post_name,
+                'name' => $stain->post_title,
+                'emoji' => get_post_meta( $stain->ID, '_kg_stain_emoji', true ),
+                'category' => ! empty( $category_terms ) ? $category_terms[0] : 'food',
+                'difficulty' => get_post_meta( $stain->ID, '_kg_stain_difficulty', true ) ?: 'easy',
+                'steps' => json_decode( get_post_meta( $stain->ID, '_kg_stain_steps', true ), true ) ?: [],
+                'warnings' => json_decode( get_post_meta( $stain->ID, '_kg_stain_warnings', true ), true ) ?: [],
+                'related_ingredients' => json_decode( get_post_meta( $stain->ID, '_kg_stain_related_ingredients', true ), true ) ?: [],
+            ];
+        }
+
+        return $result;
+
+        // OLD HARDCODED DATA - Kept for reference, use StainMigration to import
+        // return [
+        // OLD HARDCODED DATA - Kept for reference, use StainMigration to import
+        // return [
             // FOOD STAINS (20 stains)
+            /*
             [
                 'id' => 1,
                 'slug' => 'domates-lekesi',
@@ -2542,7 +2573,8 @@ class SponsoredToolController {
                     'Oksijenli leke çıkarıcı',
                 ],
             ],
-        ];
+            */
+        // ];
     }
 
     private function get_stain_categories() {
