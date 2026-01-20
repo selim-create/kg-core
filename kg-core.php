@@ -236,6 +236,9 @@ if ( file_exists( KG_CORE_PATH . 'includes/Newsletter/NewsletterService.php' ) )
 if ( file_exists( KG_CORE_PATH . 'includes/Newsletter/NewsletterRESTController.php' ) ) require_once KG_CORE_PATH . 'includes/Newsletter/NewsletterRESTController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/NewsletterAdminPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/NewsletterAdminPage.php';
 
+// 6.12.1. CONTACT MODULE (NEW)
+if ( file_exists( KG_CORE_PATH . 'includes/Contact/ContactRESTController.php' ) ) require_once KG_CORE_PATH . 'includes/Contact/ContactRESTController.php';
+
 // 6.13. REDIRECT SINIFLARI DAHİL ET (Frontend Redirect)
 if ( file_exists( KG_CORE_PATH . 'includes/Redirect/FrontendRedirect.php' ) ) require_once KG_CORE_PATH . 'includes/Redirect/FrontendRedirect.php';
 
@@ -396,6 +399,11 @@ function kg_core_init() {
     // Newsletter REST Controller
     if ( class_exists( '\KG_Core\Newsletter\NewsletterRESTController' ) ) {
         new \KG_Core\Newsletter\NewsletterRESTController();
+    }
+    
+    // Contact REST Controller
+    if ( class_exists( '\KG_Core\Contact\ContactRESTController' ) ) {
+        new \KG_Core\Contact\ContactRESTController();
     }
     
     // Frontend View Links (Admin only)
