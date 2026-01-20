@@ -82,7 +82,7 @@ class StainMigrationPage {
                         Mevcut leke kayıtlarındaki Türkçe karakter encoding sorunlarını düzeltmek için:
                     </p>
                     <form method="post" action="<?php echo admin_url( 'admin-post.php' ); ?>" 
-                          onsubmit="return confirm('Tüm leke kayıtlarının encoding\'i düzeltilecek. Devam etmek istiyor musunuz?');">
+                          onsubmit="return confirm('Tüm leke kayıtlarının encodingi düzeltilecek. Devam etmek istiyor musunuz?');">
                         <?php wp_nonce_field( 'kg_stain_fix_encoding', 'kg_stain_fix_encoding_nonce' ); ?>
                         <input type="hidden" name="action" value="kg_fix_stain_encoding">
                         <button type="submit" class="button button-secondary">🔄 Encoding Düzelt</button>

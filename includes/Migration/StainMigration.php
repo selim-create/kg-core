@@ -82,7 +82,7 @@ class StainMigration {
         return [
             'success' => true,
             'fixed' => $fixed,
-            'message' => $fixed . ' leke kaydının encoding\'i düzeltildi.',
+            'message' => $fixed . ' leke kaydının encodingi düzeltildi.',
         ];
     }
 
