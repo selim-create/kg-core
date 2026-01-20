@@ -31,7 +31,11 @@ class VotingSchema {
                 INDEX idx_discussion_id (discussion_id),
                 INDEX idx_comment_id (comment_id),
                 UNIQUE KEY unique_user_discussion (user_id, discussion_id),
-                UNIQUE KEY unique_user_comment (user_id, comment_id)
+                UNIQUE KEY unique_user_comment (user_id, comment_id),
+                CONSTRAINT chk_vote_target CHECK (
+                    (discussion_id IS NOT NULL AND comment_id IS NULL) OR 
+                    (discussion_id IS NULL AND comment_id IS NOT NULL)
+                )
             ) $charset_collate;";
             
             // Suppress dbDelta output

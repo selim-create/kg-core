@@ -794,14 +794,18 @@ class DiscussionController {
             // Use author avatar or default community image
             $og_image = get_avatar_url( $author->ID );
             if ( $is_anonymous ) {
-                // Use WordPress site URL with proper path
-                $upload_dir = wp_upload_dir();
-                $default_image = $upload_dir['baseurl'] . '/community-default.png';
-                // Fallback to site icon or logo
-                if ( ! file_exists( str_replace( $upload_dir['baseurl'], $upload_dir['basedir'], $default_image ) ) ) {
-                    $default_image = get_site_icon_url( 512 ) ?: get_avatar_url( 0 );
+                // Use site icon, custom logo, or default avatar as fallback
+                $og_image = get_site_icon_url( 512 );
+                if ( ! $og_image ) {
+                    $custom_logo_id = get_theme_mod( 'custom_logo' );
+                    if ( $custom_logo_id ) {
+                        $og_image = wp_get_attachment_image_url( $custom_logo_id, 'full' );
+                    }
                 }
-                $og_image = $default_image;
+                // Final fallback to generic avatar
+                if ( ! $og_image ) {
+                    $og_image = get_avatar_url( 0 );
+                }
             }
             
             // Use home URL with proper community path

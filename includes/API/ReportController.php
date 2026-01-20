@@ -239,18 +239,23 @@ class ReportController {
         $where_clause = implode( ' AND ', $where );
 
         // Get total count
-        $total = $wpdb->get_var( $wpdb->prepare(
-            "SELECT COUNT(*) FROM {$wpdb->prefix}kg_reports WHERE {$where_clause}",
-            ...$where_values
-        ) );
+        if ( empty( $where_values ) ) {
+            $total = $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}kg_reports WHERE {$where_clause}" );
+        } else {
+            $total = $wpdb->get_var( $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}kg_reports WHERE {$where_clause}",
+                ...$where_values
+            ) );
+        }
 
         // Get reports
+        $query_params = array_merge( $where_values, [ $per_page, $offset ] );
         $reports = $wpdb->get_results( $wpdb->prepare(
             "SELECT * FROM {$wpdb->prefix}kg_reports 
              WHERE {$where_clause}
              ORDER BY created_at DESC
              LIMIT %d OFFSET %d",
-            array_merge( $where_values, [ $per_page, $offset ] )
+            ...$query_params
         ), ARRAY_A );
 
         // Add user and content info
