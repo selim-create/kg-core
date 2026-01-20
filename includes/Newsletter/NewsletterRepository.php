@@ -11,14 +11,22 @@ class NewsletterRepository {
     private $table_name;
     
     /**
+     * @var bool Static cache for table existence check
+     */
+    private static $table_checked = false;
+    
+    /**
      * Constructor
      */
     public function __construct() {
         global $wpdb;
         $this->table_name = $wpdb->prefix . 'kg_newsletter_subscribers';
         
-        // Ensure table exists
-        $this->ensure_table_exists();
+        // Ensure table exists (only check once per request)
+        if (!self::$table_checked) {
+            $this->ensure_table_exists();
+            self::$table_checked = true;
+        }
     }
     
     /**
@@ -28,7 +36,7 @@ class NewsletterRepository {
         global $wpdb;
         
         // Check if table exists
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'");
+        $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $this->table_name));
         
         if ($table_exists != $this->table_name) {
             error_log('Newsletter: Table does not exist, creating...');
@@ -60,7 +68,7 @@ class NewsletterRepository {
             dbDelta($sql);
             
             // Verify table was created
-            $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$this->table_name}'");
+            $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $this->table_name));
             if ($table_exists == $this->table_name) {
                 error_log('Newsletter: Table created successfully');
             } else {

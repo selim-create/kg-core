@@ -134,9 +134,9 @@ class NewsletterRESTController extends WP_REST_Controller {
                 ));
                 return new WP_REST_Response($result, 400);
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             error_log(sprintf(
-                'Newsletter subscribe exception: %s in %s:%d',
+                'Newsletter subscribe error: %s in %s:%d',
                 $e->getMessage(),
                 $e->getFile(),
                 $e->getLine()
@@ -146,19 +146,6 @@ class NewsletterRESTController extends WP_REST_Controller {
                 'success' => false,
                 'message' => __('Bir hata oluştu. Lütfen daha sonra tekrar deneyin.', 'kg-core'),
                 'code' => 'internal_error'
-            ], 500);
-        } catch (\Error $e) {
-            error_log(sprintf(
-                'Newsletter subscribe fatal error: %s in %s:%d',
-                $e->getMessage(),
-                $e->getFile(),
-                $e->getLine()
-            ));
-            
-            return new WP_REST_Response([
-                'success' => false,
-                'message' => __('Kritik bir hata oluştu. Lütfen site yöneticisi ile iletişime geçin.', 'kg-core'),
-                'code' => 'fatal_error'
             ], 500);
         }
     }
@@ -204,9 +191,9 @@ class NewsletterRESTController extends WP_REST_Controller {
                     'code' => 'invalid_token',
                 ], 400);
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             error_log(sprintf(
-                'Newsletter confirm exception: %s in %s:%d',
+                'Newsletter confirm error: %s in %s:%d',
                 $e->getMessage(),
                 $e->getFile(),
                 $e->getLine()
@@ -250,9 +237,9 @@ class NewsletterRESTController extends WP_REST_Controller {
                     'code' => 'not_found',
                 ], 404);
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             error_log(sprintf(
-                'Newsletter unsubscribe exception: %s in %s:%d',
+                'Newsletter unsubscribe error: %s in %s:%d',
                 $e->getMessage(),
                 $e->getFile(),
                 $e->getLine()

@@ -222,7 +222,7 @@ class CORSHandler {
         $origin = $this->get_origin();
         
         if ($origin && $this->is_allowed_origin($origin)) {
-            if (is_a($response, 'WP_REST_Response') || is_a($response, 'WP_HTTP_Response')) {
+            if ($response instanceof \WP_REST_Response || $response instanceof \WP_HTTP_Response) {
                 $response->header('Access-Control-Allow-Origin', $origin);
                 $response->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
                 $response->header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Content-Disposition, X-Requested-With, X-WP-Nonce, Cache-Control, Pragma');
