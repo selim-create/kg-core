@@ -203,10 +203,11 @@ class StainMetaBox {
         // Save steps
         $steps = [];
         if ( isset( $_POST['kg_stain_steps'] ) && is_array( $_POST['kg_stain_steps'] ) ) {
+            $step_number = 1;
             foreach ( $_POST['kg_stain_steps'] as $index => $step ) {
                 if ( ! empty( $step['instruction'] ) ) {
                     $steps[] = [
-                        'step' => count( $steps ) + 1,
+                        'step' => $step_number++, // Use sequential counter for consistent numbering
                         'instruction' => sanitize_textarea_field( $step['instruction'] ),
                         'tip' => ! empty( $step['tip'] ) ? sanitize_text_field( $step['tip'] ) : '',
                     ];

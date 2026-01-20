@@ -104,6 +104,7 @@ if (!function_exists('wp_nonce_field')) {
 }
 
 if (!function_exists('wp_verify_nonce')) {
+    // Note: This is a mock function for testing only. Do not use in production.
     function wp_verify_nonce($nonce, $action) {
         return $nonce === 'test_nonce';
     }

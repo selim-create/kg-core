@@ -1121,8 +1121,6 @@ class SponsoredToolController {
 
         // OLD HARDCODED DATA - Kept for reference, use StainMigration to import
         // return [
-        // OLD HARDCODED DATA - Kept for reference, use StainMigration to import
-        // return [
             // FOOD STAINS (20 stains)
             /*
             [

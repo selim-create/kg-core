@@ -75,7 +75,7 @@ class Stain {
                 break;
 
             case 'stain_category':
-                $terms = wp_get_post_terms( $post_id, 'stain_category' );
+                $terms = get_the_terms( $post_id, 'stain_category' );
                 if ( ! empty( $terms ) && ! is_wp_error( $terms ) ) {
                     $term_names = array_map( function( $term ) {
                         return $term->name;

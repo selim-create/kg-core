@@ -508,7 +508,7 @@ class StainMigration {
                 'steps' => [
                     [
                         'step' => 1,
-                        'instruction' => 'Fazla ıspaklığı kazıyın.',
+                        'instruction' => 'Fazla ıspanağı kazıyın.',
                     ],
                     [
                         'step' => 2,
