@@ -105,16 +105,61 @@ class NewsletterRESTController extends WP_REST_Controller {
      * @return WP_REST_Response|WP_Error
      */
     public function handle_subscribe(WP_REST_Request $request) {
-        $email = $request->get_param('email');
-        $name = $request->get_param('name');
-        $source = $request->get_param('source') ?? 'website';
-        
-        $result = $this->service->subscribe($email, $name, $source);
-        
-        if ($result['success']) {
-            return new WP_REST_Response($result, 200);
-        } else {
-            return new WP_REST_Response($result, 400);
+        try {
+            $email = $request->get_param('email');
+            $name = $request->get_param('name');
+            $source = $request->get_param('source') ?? 'website';
+            
+            // Log request for debugging
+            error_log(sprintf(
+                'Newsletter subscribe request: email=%s, source=%s',
+                $email,
+                $source
+            ));
+            
+            $result = $this->service->subscribe($email, $name, $source);
+            
+            if ($result['success']) {
+                error_log(sprintf(
+                    'Newsletter subscribe success: email=%s',
+                    $email
+                ));
+                return new WP_REST_Response($result, 200);
+            } else {
+                error_log(sprintf(
+                    'Newsletter subscribe failed: email=%s, code=%s, message=%s',
+                    $email,
+                    isset($result['code']) ? $result['code'] : 'unknown',
+                    isset($result['message']) ? $result['message'] : 'unknown'
+                ));
+                return new WP_REST_Response($result, 400);
+            }
+        } catch (\Exception $e) {
+            error_log(sprintf(
+                'Newsletter subscribe exception: %s in %s:%d',
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine()
+            ));
+            
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => __('Bir hata oluştu. Lütfen daha sonra tekrar deneyin.', 'kg-core'),
+                'code' => 'internal_error'
+            ], 500);
+        } catch (\Error $e) {
+            error_log(sprintf(
+                'Newsletter subscribe fatal error: %s in %s:%d',
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine()
+            ));
+            
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => __('Kritik bir hata oluştu. Lütfen site yöneticisi ile iletişime geçin.', 'kg-core'),
+                'code' => 'fatal_error'
+            ], 500);
         }
     }
     
@@ -125,32 +170,53 @@ class NewsletterRESTController extends WP_REST_Controller {
      * @return WP_REST_Response|WP_Error
      */
     public function handle_confirm(WP_REST_Request $request) {
-        $token = $request->get_param('token');
-        
-        $confirmed = $this->service->confirm($token);
-        
-        if ($confirmed) {
-            // Redirect to success page or return JSON
-            $redirect_url = get_site_url() . '/?newsletter=confirmed';
+        try {
+            $token = $request->get_param('token');
             
-            // Check if Accept header is JSON
-            $accept = $request->get_header('accept');
-            if (strpos($accept, 'application/json') !== false) {
+            error_log(sprintf('Newsletter confirm request: token=%s', substr($token, 0, 10) . '...'));
+            
+            $confirmed = $this->service->confirm($token);
+            
+            if ($confirmed) {
+                error_log('Newsletter confirm success');
+                
+                // Redirect to success page or return JSON
+                $redirect_url = get_site_url() . '/?newsletter=confirmed';
+                
+                // Check if Accept header is JSON
+                $accept = $request->get_header('accept');
+                if (strpos($accept, 'application/json') !== false) {
+                    return new WP_REST_Response([
+                        'success' => true,
+                        'message' => __('Aboneliğiniz başarıyla onaylandı! Teşekkür ederiz.', 'kg-core'),
+                    ], 200);
+                }
+                
+                // HTML redirect for browser
+                wp_redirect($redirect_url);
+                exit;
+            } else {
+                error_log('Newsletter confirm failed: invalid or expired token');
+                
                 return new WP_REST_Response([
-                    'success' => true,
-                    'message' => __('Aboneliğiniz başarıyla onaylandı! Teşekkür ederiz.', 'kg-core'),
-                ], 200);
+                    'success' => false,
+                    'message' => __('Geçersiz veya süresi dolmuş onay linki.', 'kg-core'),
+                    'code' => 'invalid_token',
+                ], 400);
             }
+        } catch (\Exception $e) {
+            error_log(sprintf(
+                'Newsletter confirm exception: %s in %s:%d',
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine()
+            ));
             
-            // HTML redirect for browser
-            wp_redirect($redirect_url);
-            exit;
-        } else {
             return new WP_REST_Response([
                 'success' => false,
-                'message' => __('Geçersiz veya süresi dolmuş onay linki.', 'kg-core'),
-                'code' => 'invalid_token',
-            ], 400);
+                'message' => __('Bir hata oluştu. Lütfen daha sonra tekrar deneyin.', 'kg-core'),
+                'code' => 'internal_error'
+            ], 500);
         }
     }
     
@@ -161,21 +227,42 @@ class NewsletterRESTController extends WP_REST_Controller {
      * @return WP_REST_Response|WP_Error
      */
     public function handle_unsubscribe(WP_REST_Request $request) {
-        $email = $request->get_param('email');
-        
-        $unsubscribed = $this->service->unsubscribe($email);
-        
-        if ($unsubscribed) {
-            return new WP_REST_Response([
-                'success' => true,
-                'message' => __('Bülten aboneliğiniz iptal edildi.', 'kg-core'),
-            ], 200);
-        } else {
+        try {
+            $email = $request->get_param('email');
+            
+            error_log(sprintf('Newsletter unsubscribe request: email=%s', $email));
+            
+            $unsubscribed = $this->service->unsubscribe($email);
+            
+            if ($unsubscribed) {
+                error_log(sprintf('Newsletter unsubscribe success: email=%s', $email));
+                
+                return new WP_REST_Response([
+                    'success' => true,
+                    'message' => __('Bülten aboneliğiniz iptal edildi.', 'kg-core'),
+                ], 200);
+            } else {
+                error_log(sprintf('Newsletter unsubscribe failed: email=%s not found', $email));
+                
+                return new WP_REST_Response([
+                    'success' => false,
+                    'message' => __('E-posta adresi bulunamadı.', 'kg-core'),
+                    'code' => 'not_found',
+                ], 404);
+            }
+        } catch (\Exception $e) {
+            error_log(sprintf(
+                'Newsletter unsubscribe exception: %s in %s:%d',
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine()
+            ));
+            
             return new WP_REST_Response([
                 'success' => false,
-                'message' => __('E-posta adresi bulunamadı.', 'kg-core'),
-                'code' => 'not_found',
-            ], 404);
+                'message' => __('Bir hata oluştu. Lütfen daha sonra tekrar deneyin.', 'kg-core'),
+                'code' => 'internal_error'
+            ], 500);
         }
     }
 }
