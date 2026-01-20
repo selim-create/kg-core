@@ -265,28 +265,40 @@ class NewsletterService {
      * @return bool
      */
     public function sendWelcomeEmail(NewsletterSubscriber $subscriber) {
-        // Get site URL
-        $app_url = get_site_url();
-        
-        // Get template
-        $template_key = 'newsletter_welcome';
-        
-        // Prepare placeholders
-        $placeholders = [
-            'app_url' => $app_url,
-        ];
-        
-        // Send email using EmailService
-        if (class_exists('\KG_Core\Notifications\EmailService')) {
-            $email_service = new EmailService();
-            return $email_service->send_template_email(
-                $subscriber->email,
-                $template_key,
-                $placeholders
-            );
+        try {
+            // Get site URL
+            $app_url = get_site_url();
+            
+            // Get template
+            $template_key = 'newsletter_welcome';
+            
+            // Prepare placeholders
+            $placeholders = [
+                'app_url' => $app_url,
+            ];
+            
+            // Send email using EmailService
+            if (class_exists('\KG_Core\Notifications\EmailService')) {
+                $email_service = new EmailService();
+                return $email_service->send_template_email(
+                    $subscriber->email,
+                    $template_key,
+                    $placeholders
+                );
+            }
+            
+            error_log('Newsletter: EmailService class not found for welcome email');
+            return false;
+            
+        } catch (\Exception $e) {
+            error_log(sprintf(
+                'Newsletter: sendWelcomeEmail error: %s in %s:%d',
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine()
+            ));
+            return false;
         }
-        
-        return false;
     }
     
     /**
