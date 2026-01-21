@@ -570,7 +570,7 @@ class DataMigration {
         }
         
         // "180 kcal", "6 g", "200 mg" -> extract number
-        if (preg_match('/(\d+(?:[\.,]\d+)?)/', $value, $matches)) {
+        if (preg_match('/(\d+(?:[.,]\d+)?)/', $value, $matches)) {
             // Turkish decimal separator (comma) -> dot
             return floatval(str_replace(',', '.', $matches[1]));
         }
