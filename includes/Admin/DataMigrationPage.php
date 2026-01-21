@@ -23,6 +23,7 @@ class DataMigrationPage {
         add_action('wp_ajax_kg_get_table_status', [$this, 'ajaxGetTableStatus']);
         add_action('wp_ajax_kg_migrate_missing', [$this, 'ajaxMigrateMissing']);
         add_action('wp_ajax_kg_force_migrate_single', [$this, 'ajaxForceMigrateSingle']);
+        add_action('wp_ajax_kg_force_migrate_missing', [$this, 'ajaxForceMigrateMissing']);
     }
     
     /**
@@ -178,6 +179,9 @@ class DataMigrationPage {
                         <button type="button" class="button button-primary kg-migrate-btn" data-type="recipes">
                             Tarifleri Migrate Et
                         </button>
+                        <button type="button" class="button button-secondary kg-force-migrate-btn" data-type="recipe" style="margin-top: 10px; display: block;">
+                            🔧 Eksikleri Zorla Migrate Et
+                        </button>
                     </div>
                     
                     <div class="kg-action-card">
@@ -186,6 +190,9 @@ class DataMigrationPage {
                         <button type="button" class="button button-primary kg-migrate-btn" data-type="ingredients">
                             Malzemeleri Migrate Et
                         </button>
+                        <button type="button" class="button button-secondary kg-force-migrate-btn" data-type="ingredient" style="margin-top: 10px; display: block;">
+                            🔧 Eksikleri Zorla Migrate Et
+                        </button>
                     </div>
                     
                     <div class="kg-action-card">
@@ -193,6 +200,9 @@ class DataMigrationPage {
                         <p>Post type'ına ait tüm postmeta verilerini kg_post_meta tablosuna taşır.</p>
                         <button type="button" class="button button-primary kg-migrate-btn" data-type="posts">
                             Postları Migrate Et
+                        </button>
+                        <button type="button" class="button button-secondary kg-force-migrate-btn" data-type="post" style="margin-top: 10px; display: block;">
+                            🔧 Eksikleri Zorla Migrate Et
                         </button>
                     </div>
                     
@@ -515,5 +525,28 @@ class DataMigrationPage {
         } else {
             wp_send_json_error('Migration başarısız.');
         }
+    }
+    
+    /**
+     * AJAX: Force migrate all missing records
+     */
+    public function ajaxForceMigrateMissing() {
+        check_ajax_referer('kg_data_migration_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Yetkiniz yok.');
+        }
+        
+        $type = isset($_POST['type']) ? sanitize_text_field($_POST['type']) : '';
+        
+        if (!in_array($type, ['recipe', 'ingredient', 'post'])) {
+            wp_send_json_error('Invalid type');
+        }
+        
+        set_time_limit(300);
+        
+        $result = DataMigration::forceMigrateMissing($type);
+        
+        wp_send_json_success($result);
     }
 }

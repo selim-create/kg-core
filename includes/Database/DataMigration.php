@@ -838,4 +838,71 @@ class DataMigration {
         
         return $results;
     }
+    
+    /**
+     * Force migrate all missing records for a post type
+     * 
+     * @param string $post_type Post type (recipe, ingredient, post)
+     * @return array Results with total, migrated, failed counts and errors
+     */
+    public static function forceMigrateMissing($post_type) {
+        global $wpdb;
+        
+        $table_map = [
+            'recipe' => 'kg_recipe_meta',
+            'ingredient' => 'kg_ingredient_meta',
+            'post' => 'kg_post_meta',
+        ];
+        
+        if (!isset($table_map[$post_type])) {
+            return ['error' => 'Invalid post type'];
+        }
+        
+        $table = $wpdb->prefix . $table_map[$post_type];
+        
+        // Find missing post IDs
+        $missing_ids = $wpdb->get_col($wpdb->prepare("
+            SELECT p.ID 
+            FROM {$wpdb->posts} p
+            LEFT JOIN {$table} m ON p.ID = m.post_id
+            WHERE p.post_type = %s 
+            AND p.post_status != 'trash'
+            AND m.post_id IS NULL
+        ", $post_type));
+        
+        if (empty($missing_ids)) {
+            return [
+                'total' => 0,
+                'migrated' => 0,
+                'failed' => 0,
+                'message' => 'No missing records found'
+            ];
+        }
+        
+        $migrated = 0;
+        $failed = 0;
+        $errors = [];
+        
+        foreach ($missing_ids as $post_id) {
+            try {
+                $result = self::forceMigrate($post_id, $post_type);
+                if ($result === true) {
+                    $migrated++;
+                } else {
+                    $failed++;
+                    $errors[] = "Post {$post_id}: Migration returned false";
+                }
+            } catch (\Exception $e) {
+                $failed++;
+                $errors[] = "Post {$post_id}: " . $e->getMessage();
+            }
+        }
+        
+        return [
+            'total' => count($missing_ids),
+            'migrated' => $migrated,
+            'failed' => $failed,
+            'errors' => array_slice($errors, 0, 20), // First 20 errors only
+        ];
+    }
 }
