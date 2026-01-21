@@ -114,7 +114,6 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php' ) ) r
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientEnricher.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/IngredientEnricher.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/MigrationPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/MigrationPage.php';
-if ( file_exists( KG_CORE_PATH . 'includes/Admin/StainMigrationPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/StainMigrationPage.php';
 // Tool Seeder (Araç Oluşturma Sayfası)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/ToolSeeder.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/ToolSeeder.php';
 // Discussion Admin (Moderasyon Sayfası)
@@ -143,8 +142,6 @@ if ( file_exists( KG_CORE_PATH . 'includes/Migration/MigrationLogger.php' ) ) re
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/ChildProfileMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/ChildProfileMigrator.php';
-if ( file_exists( KG_CORE_PATH . 'includes/Migration/StainMigration.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/StainMigration.php';
-if ( file_exists( KG_CORE_PATH . 'includes/Migration/ExpertMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/ExpertMigrator.php';
 
 // 5.7. SHORTCODE SINIFLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php' ) ) require_once KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php';
@@ -316,12 +313,6 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\MigrationPage' ) ) {
         new \KG_Core\Admin\MigrationPage();
-    }
-    if ( is_admin() && class_exists( '\KG_Core\Admin\StainMigrationPage' ) ) {
-        new \KG_Core\Admin\StainMigrationPage();
-    }
-    if ( is_admin() && class_exists( '\KG_Core\Migration\ExpertMigrator' ) ) {
-        new \KG_Core\Migration\ExpertMigrator();
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\ToolSeeder' ) ) {
         new \KG_Core\Admin\ToolSeeder();
