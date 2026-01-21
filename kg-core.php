@@ -772,6 +772,14 @@ function kg_core_check_db_version() {
     }
 }
 
+
+// 9.6. CLI Commands (WP-CLI)
+if ( defined( 'WP_CLI' ) && WP_CLI ) {
+	if ( file_exists( KG_CORE_PATH . 'includes/CLI/MigrationCommands.php' ) ) {
+		require_once KG_CORE_PATH . 'includes/CLI/MigrationCommands.php';
+		\KG_Core\CLI\MigrationCommands::register();
+	}
+}
 // 10. ACTIVATION HOOK - Seed tools on plugin activation
 register_activation_hook( __FILE__, function() {
     // Start output buffering - guarantee no output is produced
