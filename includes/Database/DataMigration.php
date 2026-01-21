@@ -625,13 +625,16 @@ class DataMigration {
     private static function verifyRecipes() {
         global $wpdb;
         
-        // Get post IDs that exist but don't have custom meta
+        // Get post IDs that have _kg_ meta but don't have custom meta
+        // Only count publish status posts with actual KG meta data
         $sql = "
-            SELECT p.ID 
+            SELECT DISTINCT p.ID 
             FROM {$wpdb->posts} p 
+            INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
             LEFT JOIN {$wpdb->prefix}kg_recipe_meta m ON p.ID = m.post_id 
             WHERE p.post_type = 'recipe' 
-            AND p.post_status != 'trash'
+            AND p.post_status = 'publish'
+            AND pm.meta_key LIKE '_kg_%'
             AND m.post_id IS NULL
         ";
         
@@ -646,13 +649,16 @@ class DataMigration {
     private static function verifyIngredients() {
         global $wpdb;
         
-        // Get post IDs that exist but don't have custom meta
+        // Get post IDs that have _kg_ meta but don't have custom meta
+        // Only count publish status posts with actual KG meta data
         $sql = "
-            SELECT p.ID 
+            SELECT DISTINCT p.ID 
             FROM {$wpdb->posts} p 
+            INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
             LEFT JOIN {$wpdb->prefix}kg_ingredient_meta m ON p.ID = m.post_id 
             WHERE p.post_type = 'ingredient' 
-            AND p.post_status != 'trash'
+            AND p.post_status = 'publish'
+            AND pm.meta_key LIKE '_kg_%'
             AND m.post_id IS NULL
         ";
         
@@ -667,13 +673,16 @@ class DataMigration {
     private static function verifyPosts() {
         global $wpdb;
         
-        // Get post IDs that exist but don't have custom meta
+        // Get post IDs that have _kg_ meta but don't have custom meta
+        // Only count publish status posts with actual KG meta data
         $sql = "
-            SELECT p.ID 
+            SELECT DISTINCT p.ID 
             FROM {$wpdb->posts} p 
+            INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
             LEFT JOIN {$wpdb->prefix}kg_post_meta m ON p.ID = m.post_id 
             WHERE p.post_type = 'post' 
-            AND p.post_status != 'trash'
+            AND p.post_status = 'publish'
+            AND pm.meta_key LIKE '_kg_%'
             AND m.post_id IS NULL
         ";
         
