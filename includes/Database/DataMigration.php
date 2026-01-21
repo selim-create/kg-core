@@ -544,12 +544,12 @@ class DataMigration {
             return null;
         }
         
-        // "1 saat" veya "1.5 saat" -> dakikaya çevir
+        // "1 saat" or "1.5 saat" -> convert to minutes
         if (preg_match('/(\d+(?:\.\d+)?)\s*saat/iu', $value, $matches)) {
             return intval(floatval($matches[1]) * 60);
         }
         
-        // "30 dakika" veya "30 dk" -> sayıyı al
+        // "30 dakika" or "30 dk" -> extract number
         if (preg_match('/(\d+)/', $value, $matches)) {
             return intval($matches[1]);
         }
@@ -569,9 +569,9 @@ class DataMigration {
             return null;
         }
         
-        // "180 kcal", "6 g", "200 mg" -> sayıyı al
+        // "180 kcal", "6 g", "200 mg" -> extract number
         if (preg_match('/(\d+(?:[\.,]\d+)?)/', $value, $matches)) {
-            // Türkçe ondalık ayırıcı (virgül) -> nokta
+            // Turkish decimal separator (comma) -> dot
             return floatval(str_replace(',', '.', $matches[1]));
         }
         
