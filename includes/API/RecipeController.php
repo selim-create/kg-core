@@ -159,8 +159,16 @@ class RecipeController {
         // If custom table data exists, use it with formatting
         if ($recipe_meta) {
             $prep_time = \KG_Core\Models\RecipeMeta::formatPrepTime($recipe_meta['prep_time']);
-            $ingredients = json_decode($recipe_meta['ingredients'] ?? '[]', true) ?: [];
-            $instructions = json_decode($recipe_meta['instructions'] ?? '[]', true) ?: [];
+            // Model layer already deserializes JSON fields to arrays
+            $ingredients = $recipe_meta['ingredients'] ?? [];
+            $instructions = $recipe_meta['instructions'] ?? [];
+            // Defensive check: ensure arrays
+            if (!is_array($ingredients)) {
+                $ingredients = is_string($ingredients) ? (json_decode($ingredients, true) ?: []) : [];
+            }
+            if (!is_array($instructions)) {
+                $instructions = is_string($instructions) ? (json_decode($instructions, true) ?: []) : [];
+            }
         } else {
             // Fallback to wp_postmeta for backward compatibility
             $prep_time = get_post_meta($post_id, '_kg_prep_time', true);
@@ -297,7 +305,11 @@ class RecipeController {
                 $data['video_url'] = $recipe_meta['video_url'] ?? '';
                 $data['special_notes'] = $recipe_meta['special_notes'] ?? '';
                 
-                $substitutes = json_decode($recipe_meta['substitutes'] ?? '[]', true) ?: [];
+                // Model layer already deserializes JSON fields
+                $substitutes = $recipe_meta['substitutes'] ?? [];
+                if (!is_array($substitutes)) {
+                    $substitutes = is_string($substitutes) ? (json_decode($substitutes, true) ?: []) : [];
+                }
                 $data['substitutes'] = $substitutes;
             } else {
                 // Fallback to wp_postmeta

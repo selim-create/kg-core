@@ -197,7 +197,12 @@ class IngredientController {
         // Get allergy_risk and season - prefer custom table
         if ($ingredient_meta) {
             $allergy_risk = $ingredient_meta['allergy_risk_display'] ?? $ingredient_meta['allergy_risk'];
-            $season = json_decode($ingredient_meta['season'] ?? '[]', true) ?: [];
+            // Model layer already deserializes JSON fields to arrays
+            $season = $ingredient_meta['season'] ?? [];
+            // Ensure season is always an array (defensive check)
+            if (!is_array($season)) {
+                $season = is_string($season) ? (json_decode($season, true) ?: []) : [];
+            }
             $start_age = \KG_Core\Models\IngredientMeta::formatStartAge($ingredient_meta['start_age']);
         } else {
             // Fallback to wp_postmeta
