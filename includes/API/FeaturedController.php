@@ -1,6 +1,8 @@
 <?php
 namespace KG_Core\API;
 
+use KG_Core\Services\CacheService;
+
 class FeaturedController {
 
     public function __construct() {
@@ -35,6 +37,15 @@ class FeaturedController {
     public function get_featured_content( $request ) {
         $limit = $request->get_param( 'limit' );
         $type = $request->get_param( 'type' );
+        
+        // Check cache first
+        $cached = CacheService::get_featured($type, $limit);
+        if ($cached !== null) {
+            return new \WP_REST_Response( [
+                'success' => true,
+                'data' => $cached
+            ], 200 );
+        }
         
         $featured = [];
         
@@ -76,6 +87,9 @@ class FeaturedController {
         // Limit final results
         $featured = array_slice( $featured, 0, $limit );
         
+        // Cache the response
+        CacheService::set_featured($featured, $type, $limit);
+        
         return new \WP_REST_Response( [
             'success' => true,
             'data' => $featured
@@ -99,6 +113,18 @@ class FeaturedController {
         ];
         
         $query = new \WP_Query( $args );
+        
+        // Bulk fetch meta and terms to avoid N+1 queries
+        if ( $query->have_posts() ) {
+            $post_ids = wp_list_pluck( $query->posts, 'ID' );
+            
+            // Prime meta cache
+            update_meta_cache( 'post', $post_ids );
+            
+            // Prime term cache
+            update_object_term_cache( $post_ids, 'recipe' );
+        }
+        
         $recipes = [];
         
         foreach ( $query->posts as $post ) {
@@ -182,6 +208,15 @@ class FeaturedController {
         ];
         
         $query = new \WP_Query( $args );
+        
+        // Bulk fetch meta and terms to avoid N+1 queries
+        if ( $query->have_posts() ) {
+            $post_ids = wp_list_pluck( $query->posts, 'ID' );
+            
+            // Prime meta cache
+            update_meta_cache( 'post', $post_ids );
+        }
+        
         $posts = [];
         
         foreach ( $query->posts as $post ) {
@@ -243,6 +278,15 @@ class FeaturedController {
         ];
         
         $query = new \WP_Query( $args );
+        
+        // Bulk fetch meta to avoid N+1 queries
+        if ( $query->have_posts() ) {
+            $post_ids = wp_list_pluck( $query->posts, 'ID' );
+            
+            // Prime meta cache
+            update_meta_cache( 'post', $post_ids );
+        }
+        
         $questions = [];
         
         foreach ( $query->posts as $post ) {
@@ -312,6 +356,15 @@ class FeaturedController {
         ];
         
         $query = new \WP_Query( $args );
+        
+        // Bulk fetch meta to avoid N+1 queries
+        if ( $query->have_posts() ) {
+            $post_ids = wp_list_pluck( $query->posts, 'ID' );
+            
+            // Prime meta cache
+            update_meta_cache( 'post', $post_ids );
+        }
+        
         $sponsors = [];
         
         foreach ( $query->posts as $post ) {
@@ -394,6 +447,15 @@ class FeaturedController {
         ];
         
         $query = new \WP_Query( $args );
+        
+        // Bulk fetch meta to avoid N+1 queries
+        if ( $query->have_posts() ) {
+            $post_ids = wp_list_pluck( $query->posts, 'ID' );
+            
+            // Prime meta cache
+            update_meta_cache( 'post', $post_ids );
+        }
+        
         $ingredients = [];
         
         foreach ( $query->posts as $post ) {

@@ -2,6 +2,7 @@
 namespace KG_Core\API;
 
 use KG_Core\Auth\JWTHandler;
+use KG_Core\Services\CacheService;
 
 class RecipeController {
 
@@ -108,6 +109,12 @@ class RecipeController {
     }
 
     public function get_featured_recipes( $request ) {
+        // Check cache first
+        $cached = CacheService::get_featured('recipe', 5);
+        if ($cached !== null) {
+            return new \WP_REST_Response( $cached, 200 );
+        }
+        
         $args = [
             'post_type'      => 'recipe',
             'posts_per_page' => 5,
@@ -122,6 +129,18 @@ class RecipeController {
         ];
 
         $query = new \WP_Query( $args );
+        
+        // Bulk fetch meta and terms to avoid N+1 queries
+        if ( $query->have_posts() ) {
+            $post_ids = wp_list_pluck( $query->posts, 'ID' );
+            
+            // Prime meta cache
+            update_meta_cache( 'post', $post_ids );
+            
+            // Prime term cache
+            update_object_term_cache( $post_ids, 'recipe' );
+        }
+        
         $recipes = [];
 
         if ( $query->have_posts() ) {
@@ -131,6 +150,9 @@ class RecipeController {
             }
         }
         wp_reset_postdata();
+        
+        // Cache the response
+        CacheService::set_featured($recipes, 'recipe', 5);
 
         return new \WP_REST_Response( $recipes, 200 );
     }
@@ -310,6 +332,28 @@ class RecipeController {
         $orderby = $request->get_param( 'orderby' ) ?: 'date';
         $order = $request->get_param( 'order' ) ?: 'DESC';
         
+        // Create cache key from query params
+        $cache_args = [
+            'page' => $page,
+            'per_page' => $per_page,
+            'age_group' => $age_group,
+            'diet_type' => $diet_type,
+            'allergen' => $allergen,
+            'meal_type' => $meal_type,
+            'special_condition' => $special_condition,
+            'ingredient' => $ingredient,
+            'search' => $search,
+            'orderby' => $orderby,
+            'order' => $order,
+        ];
+        $cache_hash = CacheService::hash_args($cache_args);
+        
+        // Check cache first
+        $cached = CacheService::get_list('recipes', $cache_hash);
+        if ($cached !== null) {
+            return new \WP_REST_Response( $cached, 200 );
+        }
+        
         $args = [
             'post_type'      => 'recipe',
             'posts_per_page' => $per_page,
@@ -413,6 +457,18 @@ class RecipeController {
         }
 
         $query = new \WP_Query( $args );
+        
+        // Bulk fetch meta and terms to avoid N+1 queries
+        if ( $query->have_posts() ) {
+            $post_ids = wp_list_pluck( $query->posts, 'ID' );
+            
+            // Prime meta cache
+            update_meta_cache( 'post', $post_ids );
+            
+            // Prime term cache
+            update_object_term_cache( $post_ids, 'recipe' );
+        }
+        
         $recipes = [];
 
         if ( $query->have_posts() ) {
@@ -424,13 +480,18 @@ class RecipeController {
         wp_reset_postdata();
 
         // DÜZGÜN PAGİNATİON RESPONSE
-        return new \WP_REST_Response( [
+        $response_data = [
             'recipes'     => $recipes,
             'total'       => $query->found_posts,
             'page'        => (int) $page,
             'per_page'    => (int) $per_page,
             'total_pages' => $query->max_num_pages,
-        ], 200 );
+        ];
+        
+        // Cache the response
+        CacheService::set_list('recipes', $cache_hash, $response_data);
+        
+        return new \WP_REST_Response( $response_data, 200 );
     }
 
     /**
@@ -451,8 +512,19 @@ class RecipeController {
         if ( empty( $posts ) ) {
             return new \WP_Error( 'recipe_not_found', 'Recipe not found', [ 'status' => 404 ] );
         }
+        
+        $post_id = $posts[0]->ID;
+        
+        // Check cache first
+        $cached = CacheService::get_recipe($post_id);
+        if ($cached !== null) {
+            return new \WP_REST_Response( $cached, 200 );
+        }
 
-        $recipe = $this->prepare_recipe_data( $posts[0]->ID, true );
+        $recipe = $this->prepare_recipe_data( $post_id, true );
+        
+        // Cache the response
+        CacheService::set_recipe($post_id, $recipe);
         
         return new \WP_REST_Response( $recipe, 200 );
     }
@@ -855,6 +927,9 @@ class RecipeController {
         update_post_meta( $recipe_id, '_kg_ratings', $all_ratings );
         update_post_meta( $recipe_id, '_kg_rating', round( $average, 1 ) );
         update_post_meta( $recipe_id, '_kg_rating_count', $total_count );
+        
+        // Trigger cache invalidation hook
+        do_action('kg_recipe_rated', $recipe_id, $user_id);
         
         return new \WP_REST_Response( [
             'success' => true,
