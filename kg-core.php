@@ -30,6 +30,10 @@ if ( file_exists( KG_CORE_PATH . 'includes/Utils/PrivacyHelper.php' ) ) {
     require_once KG_CORE_PATH . 'includes/Utils/PrivacyHelper.php';
 }
 
+if ( file_exists( KG_CORE_PATH . 'includes/Utils/BulkCacheHelper.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/Utils/BulkCacheHelper.php';
+}
+
 // 2.5. AUTH SINIFLARI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Auth/JWTHandler.php' ) ) require_once KG_CORE_PATH . 'includes/Auth/JWTHandler.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Auth/GoogleAuth.php' ) ) require_once KG_CORE_PATH . 'includes/Auth/GoogleAuth.php';

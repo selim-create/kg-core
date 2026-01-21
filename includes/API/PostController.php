@@ -42,7 +42,10 @@ class PostController {
         $query = new \WP_Query( $args );
         $posts = [];
 
+        // Bulk cache posts, meta, terms, and users to prevent N+1 queries
         if ( $query->have_posts() ) {
+            \KG_Core\Utils\BulkCacheHelper::prime_post_caches( $query->posts );
+            
             while ( $query->have_posts() ) {
                 $query->the_post();
                 $posts[] = $this->prepare_post_data( get_the_ID(), false );

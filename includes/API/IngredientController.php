@@ -63,7 +63,10 @@ class IngredientController {
         $query = new \WP_Query( $args );
         $ingredients = [];
 
+        // Bulk cache ingredients, meta, and terms to prevent N+1 queries
         if ( $query->have_posts() ) {
+            \KG_Core\Utils\BulkCacheHelper::prime_ingredient_caches( $query->posts );
+            
             while ( $query->have_posts() ) {
                 $query->the_post();
                 $ingredients[] = $this->prepare_ingredient_data( get_the_ID(), false );
@@ -122,7 +125,10 @@ class IngredientController {
         $query = new \WP_Query( $args );
         $ingredients = [];
 
+        // Bulk cache ingredients, meta, and terms to prevent N+1 queries
         if ( $query->have_posts() ) {
+            \KG_Core\Utils\BulkCacheHelper::prime_ingredient_caches( $query->posts );
+            
             while ( $query->have_posts() ) {
                 $query->the_post();
                 $ingredients[] = $this->prepare_ingredient_data( get_the_ID(), false );

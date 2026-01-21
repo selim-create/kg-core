@@ -451,6 +451,11 @@ class DiscussionController {
         $query = new \WP_Query( $args );
         $discussions = [];
 
+        // Bulk cache discussions, meta, terms, and users to prevent N+1 queries
+        if ( ! empty( $query->posts ) ) {
+            \KG_Core\Utils\BulkCacheHelper::prime_discussion_caches( $query->posts );
+        }
+
         foreach ( $query->posts as $post ) {
             $discussions[] = $this->prepare_discussion_response( $post );
         }
@@ -569,6 +574,11 @@ class DiscussionController {
 
             $discussion_query = new \WP_Query( $discussion_args );
             
+            // Bulk cache discussions, meta, terms, and users to prevent N+1 queries
+            if ( ! empty( $discussion_query->posts ) ) {
+                \KG_Core\Utils\BulkCacheHelper::prime_discussion_caches( $discussion_query->posts );
+            }
+            
             foreach ( $discussion_query->posts as $post ) {
                 $result['discussions'][] = $this->prepare_discussion_response( $post, false, $request );
             }
@@ -675,6 +685,11 @@ class DiscussionController {
             'orderby' => 'comment_date',
             'order' => 'ASC',
         ] );
+
+        // Bulk cache comment user data to prevent N+1 queries
+        if ( ! empty( $comments ) ) {
+            \KG_Core\Utils\BulkCacheHelper::prime_comment_user_caches( $comments );
+        }
 
         $result = [];
         foreach ( $comments as $comment ) {
