@@ -95,6 +95,11 @@ class SearchController {
         $search_query = new \WP_Query( $args );
         $results = [];
         
+        // Bulk cache all posts, meta, and terms to prevent N+1 queries
+        if ( $search_query->have_posts() ) {
+            \KG_Core\Utils\BulkCacheHelper::prime_search_caches( $search_query->posts );
+        }
+        
         // Categorized results structure
         $categorized = [
             'recipes' => [],

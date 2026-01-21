@@ -132,13 +132,7 @@ class RecipeController {
         
         // Bulk fetch meta and terms to avoid N+1 queries
         if ( $query->have_posts() ) {
-            $post_ids = wp_list_pluck( $query->posts, 'ID' );
-            
-            // Prime meta cache
-            update_meta_cache( 'post', $post_ids );
-            
-            // Prime term cache
-            update_object_term_cache( $post_ids, 'recipe' );
+            \KG_Core\Utils\BulkCacheHelper::prime_recipe_caches( $query->posts );
         }
         
         $recipes = [];
@@ -460,13 +454,7 @@ class RecipeController {
         
         // Bulk fetch meta and terms to avoid N+1 queries
         if ( $query->have_posts() ) {
-            $post_ids = wp_list_pluck( $query->posts, 'ID' );
-            
-            // Prime meta cache
-            update_meta_cache( 'post', $post_ids );
-            
-            // Prime term cache
-            update_object_term_cache( $post_ids, 'recipe' );
+            \KG_Core\Utils\BulkCacheHelper::prime_recipe_caches( $query->posts );
         }
         
         $recipes = [];
@@ -552,6 +540,11 @@ class RecipeController {
         $query = new \WP_Query( $args );
         $recipes = [];
 
+        // Bulk cache recipes, meta, and terms to prevent N+1 queries
+        if ( ! empty( $query->posts ) ) {
+            \KG_Core\Utils\BulkCacheHelper::prime_recipe_caches( $query->posts );
+        }
+
         if ( $query->have_posts() ) {
             while ( $query->have_posts() ) {
                 $query->the_post();
@@ -626,6 +619,11 @@ class RecipeController {
         $query = new \WP_Query( $args );
         $related = [];
         
+        // Bulk cache related recipes, meta, and terms to prevent N+1 queries
+        if ( ! empty( $query->posts ) ) {
+            \KG_Core\Utils\BulkCacheHelper::prime_recipe_caches( $query->posts );
+        }
+        
         foreach ( $query->posts as $post ) {
             $related[] = $this->prepare_recipe_card_data( $post->ID );
         }
@@ -644,6 +642,12 @@ class RecipeController {
             ];
             
             $random_query = new \WP_Query( $random_args );
+            
+            // Bulk cache random recipes too
+            if ( ! empty( $random_query->posts ) ) {
+                \KG_Core\Utils\BulkCacheHelper::prime_recipe_caches( $random_query->posts );
+            }
+            
             foreach ( $random_query->posts as $post ) {
                 $related[] = $this->prepare_recipe_card_data( $post->ID );
             }
