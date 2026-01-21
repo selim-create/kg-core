@@ -570,7 +570,7 @@ class DataMigration {
         }
         
         // "180 kcal", "6 g", "200 mg" -> extract number
-        if (preg_match('/(\d+(?:[\.,]\d+)?)/', $value, $matches)) {
+        if (preg_match('/(\d+(?:[.,]\d+)?)/', $value, $matches)) {
             // Turkish decimal separator (comma) -> dot
             return floatval(str_replace(',', '.', $matches[1]));
         }
@@ -837,5 +837,76 @@ class DataMigration {
         }
         
         return $results;
+    }
+    
+    /**
+     * Force migrate all missing records for a post type
+     * 
+     * @param string $post_type Post type (recipe, ingredient, post)
+     * @return array Results with total, migrated, failed counts and errors
+     */
+    public static function forceMigrateMissing($post_type) {
+        global $wpdb;
+        
+        $table_map = [
+            'recipe' => 'kg_recipe_meta',
+            'ingredient' => 'kg_ingredient_meta',
+            'post' => 'kg_post_meta',
+        ];
+        
+        if (!isset($table_map[$post_type])) {
+            return ['error' => 'Invalid post type'];
+        }
+        
+        // Table name is from a whitelist, safe to use
+        $table_name = $table_map[$post_type];
+        $table = $wpdb->prefix . $table_name;
+        
+        // Find missing post IDs - using esc_sql for table name even though it's from whitelist
+        $sql = $wpdb->prepare("
+            SELECT p.ID 
+            FROM {$wpdb->posts} p
+            LEFT JOIN " . esc_sql($table) . " m ON p.ID = m.post_id
+            WHERE p.post_type = %s 
+            AND p.post_status != 'trash'
+            AND m.post_id IS NULL
+        ", $post_type);
+        
+        $missing_ids = $wpdb->get_col($sql);
+        
+        if (empty($missing_ids)) {
+            return [
+                'total' => 0,
+                'migrated' => 0,
+                'failed' => 0,
+                'message' => 'No missing records found'
+            ];
+        }
+        
+        $migrated = 0;
+        $failed = 0;
+        $errors = [];
+        
+        foreach ($missing_ids as $post_id) {
+            try {
+                $result = self::forceMigrate($post_id, $post_type);
+                if ($result === true) {
+                    $migrated++;
+                } else {
+                    $failed++;
+                    $errors[] = "Post {$post_id}: Migration returned false";
+                }
+            } catch (\Exception $e) {
+                $failed++;
+                $errors[] = "Post {$post_id}: " . $e->getMessage();
+            }
+        }
+        
+        return [
+            'total' => count($missing_ids),
+            'migrated' => $migrated,
+            'failed' => $failed,
+            'errors' => array_slice($errors, 0, 20), // First 20 errors only
+        ];
     }
 }

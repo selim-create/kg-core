@@ -132,6 +132,65 @@ jQuery(document).ready(function($) {
         refreshTableStatus();
     });
     
+    // Force migrate missing button click handler
+    $('.kg-force-migrate-btn').on('click', function() {
+        const $btn = $(this);
+        const type = $btn.data('type');
+        const originalText = $btn.text();
+        
+        if (!confirm(`Eksik ${type} kayıtlarını zorla migrate etmek istiyor musunuz?`)) {
+            return;
+        }
+        
+        $btn.prop('disabled', true).text('İşleniyor...');
+        clearResults();
+        
+        $.ajax({
+            url: kgDataMigration.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'kg_force_migrate_missing',
+                type: type,
+                nonce: kgDataMigration.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    const data = response.data;
+                    let html = '<div class="success-message">✓ Force migration tamamlandı!</div>';
+                    html += '<ul>';
+                    html += `<li>Toplam: <strong>${data.total}</strong></li>`;
+                    html += `<li>Migrate Edilen: <strong>${data.migrated}</strong></li>`;
+                    html += `<li>Hata: <strong>${data.failed}</strong></li>`;
+                    html += '</ul>';
+                    
+                    if (data.errors && data.errors.length > 0) {
+                        html += '<h4>Hatalar:</h4><ul>';
+                        data.errors.forEach(function(err) {
+                            html += `<li class="error-message">${err}</li>`;
+                        });
+                        html += '</ul>';
+                    }
+                    
+                    if (data.message) {
+                        html += `<p class="info-message">${data.message}</p>`;
+                    }
+                    
+                    $('#kg-results-content').html(html);
+                    $('#kg-migration-results').show();
+                    refreshTableStatus();
+                } else {
+                    showError(response.data || 'Bir hata oluştu.');
+                }
+            },
+            error: function() {
+                showError('AJAX hatası oluştu.');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).text(originalText);
+            }
+        });
+    });
+    
     // Show results
     function showResults(data, type) {
         let html = '<div class="success-message">✓ Migration tamamlandı!</div>';
@@ -308,6 +367,12 @@ jQuery(document).ready(function($) {
         const html = '<div class="success-message">✓ ' + message + '</div>';
         $('#kg-results-content').html(html);
         $('#kg-migration-results').show();
+    }
+    
+    // Clear results
+    function clearResults() {
+        $('#kg-results-content').html('');
+        $('#kg-migration-results').hide();
     }
     
     // Refresh table status
