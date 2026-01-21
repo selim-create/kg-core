@@ -99,6 +99,20 @@ if ( file_exists( KG_CORE_PATH . 'includes/Services/CacheInvalidator.php' ) ) {
 // 2.13. MODELS
 if ( file_exists( KG_CORE_PATH . 'includes/Models/ChildProfile.php' ) ) require_once KG_CORE_PATH . 'includes/Models/ChildProfile.php';
 
+// 2.13.1. MODEL CLASSES (Meta Models)
+if ( file_exists( KG_CORE_PATH . 'includes/Models/BaseModel.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/Models/BaseModel.php';
+}
+if ( file_exists( KG_CORE_PATH . 'includes/Models/RecipeMeta.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/Models/RecipeMeta.php';
+}
+if ( file_exists( KG_CORE_PATH . 'includes/Models/IngredientMeta.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/Models/IngredientMeta.php';
+}
+if ( file_exists( KG_CORE_PATH . 'includes/Models/PostMeta.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/Models/PostMeta.php';
+}
+
 // 3. POST TYPE SINIFLARINI DAHİL ET (CPT)
 // Dosyalar mevcutsa dahil et
 if ( file_exists( KG_CORE_PATH . 'includes/PostTypes/Recipe.php' ) ) require_once KG_CORE_PATH . 'includes/PostTypes/Recipe.php';
