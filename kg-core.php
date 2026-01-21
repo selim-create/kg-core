@@ -29,6 +29,11 @@ if ( file_exists( KG_CORE_PATH . 'includes/Database/DataMigration.php' ) ) {
     require_once KG_CORE_PATH . 'includes/Database/DataMigration.php';
 }
 
+// 1.6. CONFIG CLASSES (Feature Flags)
+if ( file_exists( KG_CORE_PATH . 'includes/Config/FeatureFlags.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/Config/FeatureFlags.php';
+}
+
 // 2. YARDIMCI SINIFLARI DAHİL ET (Utils)
 // Dosya var mı kontrolü eklenerek hata önleniyor.
 if ( file_exists( KG_CORE_PATH . 'includes/Utils/Helper.php' ) ) {
@@ -61,6 +66,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/CORS/CORSHandler.php' ) ) {
 
 // 2.7. SERVİS SINIFLARI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Services/TariftenService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/TariftenService.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Services/MetaSyncService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/MetaSyncService.php';
 
 // 2.8. AI SERVİSLERİ DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Services/AIService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/AIService.php';

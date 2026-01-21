@@ -647,6 +647,11 @@ class RecipeMetaBox {
         if ( get_option( 'kg_auto_generate_seo', true ) ) {
             $this->autoGenerateSEO( $post_id );
         }
+        
+        // === DUAL-WRITE: Sync to custom table ===
+        if ( class_exists( '\KG_Core\Config\FeatureFlags' ) && \KG_Core\Config\FeatureFlags::useDualWrite() ) {
+            \KG_Core\Services\MetaSyncService::syncRecipe( $post_id );
+        }
     }
     
     /**
