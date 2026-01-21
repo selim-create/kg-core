@@ -176,11 +176,24 @@ abstract class BaseModel {
         
         if (!empty($where)) {
             $conditions = [];
+            // Whitelist field names to prevent SQL injection
+            $allowed_fields = array_keys(static::$field_types);
+            $allowed_fields[] = 'post_id';
+            $allowed_fields[] = 'created_at';
+            $allowed_fields[] = 'updated_at';
+            
             foreach ($where as $field => $value) {
-                $conditions[] = "{$field} = %s";
+                // Only allow whitelisted fields
+                if (!in_array($field, $allowed_fields, true)) {
+                    continue;
+                }
+                $conditions[] = "`{$field}` = %s";
                 $params[] = $value;
             }
-            $sql .= " WHERE " . implode(' AND ', $conditions);
+            
+            if (!empty($conditions)) {
+                $sql .= " WHERE " . implode(' AND ', $conditions);
+            }
         }
         
         if (!empty($params)) {
@@ -211,6 +224,7 @@ abstract class BaseModel {
                         if (json_last_error() !== JSON_ERROR_NONE) {
                             $data[$field] = '[]';
                         }
+                        // If valid, leave as-is (string is already assigned to $data[$field])
                     } else {
                         $data[$field] = null;
                     }

@@ -56,7 +56,7 @@ class IngredientMeta extends BaseModel {
      * Override save to handle allergy_risk mapping
      */
     public static function save($post_id, array $data) {
-        if (isset($data['allergy_risk'])) {
+        if (isset($data['allergy_risk']) && is_string($data['allergy_risk'])) {
             $data['allergy_risk'] = self::$allergy_risk_map[$data['allergy_risk']] ?? $data['allergy_risk'];
         }
         
