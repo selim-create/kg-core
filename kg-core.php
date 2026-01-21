@@ -94,6 +94,11 @@ if ( file_exists( KG_CORE_PATH . 'includes/Tools/WHOGrowthData.php' ) ) require_
 // 2.11. RATE LIMITER SERVICE
 if ( file_exists( KG_CORE_PATH . 'includes/Services/RateLimiter.php' ) ) require_once KG_CORE_PATH . 'includes/Services/RateLimiter.php';
 
+// 2.11.1. RATE LIMIT MIDDLEWARE
+if ( file_exists( KG_CORE_PATH . 'includes/API/RateLimitMiddleware.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/API/RateLimitMiddleware.php';
+}
+
 // 2.12. CHILD AVATAR SERVICE
 if ( file_exists( KG_CORE_PATH . 'includes/Services/ChildAvatarService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/ChildAvatarService.php';
 
@@ -103,6 +108,19 @@ if ( file_exists( KG_CORE_PATH . 'includes/Services/CacheInvalidator.php' ) ) {
     require_once KG_CORE_PATH . 'includes/Services/CacheInvalidator.php';
     // Initialize cache invalidator to hook into WordPress events
     new \KG_Core\Services\CacheInvalidator();
+}
+
+// 2.12.2. CACHE WARMER SERVICE
+if ( file_exists( KG_CORE_PATH . 'includes/Services/CacheWarmer.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/Services/CacheWarmer.php';
+}
+
+// 2.12.3. API HELPERS (Pagination, Fields Filter)
+if ( file_exists( KG_CORE_PATH . 'includes/API/PaginationHelper.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/API/PaginationHelper.php';
+}
+if ( file_exists( KG_CORE_PATH . 'includes/API/FieldsFilter.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/API/FieldsFilter.php';
 }
 
 // 2.13. MODELS
@@ -780,6 +798,17 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		\KG_Core\CLI\MigrationCommands::register();
 	}
 }
+
+// 9.7. Initialize Rate Limit Middleware
+if ( class_exists( '\KG_Core\API\RateLimitMiddleware' ) ) {
+    new \KG_Core\API\RateLimitMiddleware();
+}
+
+// 9.8. Initialize Cache Warmer
+if ( class_exists( '\KG_Core\Services\CacheWarmer' ) ) {
+    new \KG_Core\Services\CacheWarmer();
+}
+
 // 10. ACTIVATION HOOK - Seed tools on plugin activation
 register_activation_hook( __FILE__, function() {
     // Start output buffering - guarantee no output is produced
@@ -842,4 +871,13 @@ register_activation_hook( __FILE__, function() {
     
     // Clean all output
     ob_end_clean();
+} );
+
+
+// DEACTIVATION HOOK - Clean up scheduled events
+register_deactivation_hook( __FILE__, function() {
+    // Remove cache warming scheduled event
+    if ( class_exists( '\KG_Core\Services\CacheWarmer' ) ) {
+        \KG_Core\Services\CacheWarmer::deactivate();
+    }
 } );

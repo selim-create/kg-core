@@ -1,0 +1,47 @@
+<?php
+namespace KG_Core\Database\Migrations;
+
+/**
+ * Migration: Add composite indexes to wp_postmeta table
+ * 
+ * Purpose: Optimize meta_query performance by adding composite indexes
+ * for common query patterns like `meta_key + meta_value` and `meta_key + post_id`
+ */
+class AddPostmetaIndexes {
+    
+    /**
+     * Run the migration (add indexes)
+     */
+    public function up() {
+        global $wpdb;
+        
+        // Get existing indexes
+        $existing_indexes = $wpdb->get_results("SHOW INDEX FROM {$wpdb->postmeta}");
+        $index_names = array_column($existing_indexes, 'Key_name');
+        
+        // Add meta_key + meta_value composite index
+        if (!in_array('idx_kg_meta_key_value', $index_names)) {
+            $wpdb->query("CREATE INDEX idx_kg_meta_key_value ON {$wpdb->postmeta} (meta_key, meta_value(191))");
+        }
+        
+        // Add meta_key + post_id composite index
+        if (!in_array('idx_kg_meta_key_post', $index_names)) {
+            $wpdb->query("CREATE INDEX idx_kg_meta_key_post ON {$wpdb->postmeta} (meta_key, post_id)");
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Reverse the migration (remove indexes)
+     */
+    public function down() {
+        global $wpdb;
+        
+        // Drop indexes if they exist
+        $wpdb->query("DROP INDEX IF EXISTS idx_kg_meta_key_value ON {$wpdb->postmeta}");
+        $wpdb->query("DROP INDEX IF EXISTS idx_kg_meta_key_post ON {$wpdb->postmeta}");
+        
+        return true;
+    }
+}

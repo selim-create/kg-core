@@ -31,6 +31,8 @@ class MigrationCommands {
         \WP_CLI::add_command('kg rollback', [__CLASS__, 'rollback']);
         \WP_CLI::add_command('kg status', [__CLASS__, 'status']);
         \WP_CLI::add_command('kg schema', [__CLASS__, 'schema']);
+        \WP_CLI::add_command('kg index', [__CLASS__, 'index']);
+        \WP_CLI::add_command('kg cache', [__CLASS__, 'cache']);
     }
     
     /**
@@ -533,6 +535,177 @@ class MigrationCommands {
             return \WP_CLI::colorize("%Y{$bar}%n");
         } else {
             return \WP_CLI::colorize("%R{$bar}%n");
+        }
+    }
+    
+    /**
+     * Manage postmeta indexes
+     * 
+     * ## OPTIONS
+     * 
+     * <action>
+     * : Action to perform: add, remove, status
+     * 
+     * ## EXAMPLES
+     * 
+     *     wp kg index add
+     *     wp kg index remove
+     *     wp kg index status
+     * 
+     * @when after_wp_load
+     */
+    public static function index($args, $assoc_args) {
+        list($action) = $args;
+        
+        // Validate action
+        $valid_actions = ['add', 'remove', 'status'];
+        if (!in_array($action, $valid_actions)) {
+            \WP_CLI::error("Invalid action '{$action}'. Must be one of: " . implode(', ', $valid_actions));
+        }
+        
+        global $wpdb;
+        
+        switch ($action) {
+            case 'add':
+                \WP_CLI::line(\WP_CLI::colorize('%GAdding postmeta indexes...%n'));
+                
+                // Get existing indexes
+                $existing_indexes = $wpdb->get_results("SHOW INDEX FROM {$wpdb->postmeta}");
+                $index_names = array_column($existing_indexes, 'Key_name');
+                
+                $added = 0;
+                
+                // Add meta_key + meta_value composite index
+                if (!in_array('idx_kg_meta_key_value', $index_names)) {
+                    $result = $wpdb->query("CREATE INDEX idx_kg_meta_key_value ON {$wpdb->postmeta} (meta_key, meta_value(191))");
+                    if ($result !== false) {
+                        \WP_CLI::line(\WP_CLI::colorize('%G✓%n Added index: idx_kg_meta_key_value'));
+                        $added++;
+                    } else {
+                        \WP_CLI::warning('Failed to add index: idx_kg_meta_key_value');
+                    }
+                } else {
+                    \WP_CLI::line('Index already exists: idx_kg_meta_key_value');
+                }
+                
+                // Add meta_key + post_id composite index
+                if (!in_array('idx_kg_meta_key_post', $index_names)) {
+                    $result = $wpdb->query("CREATE INDEX idx_kg_meta_key_post ON {$wpdb->postmeta} (meta_key, post_id)");
+                    if ($result !== false) {
+                        \WP_CLI::line(\WP_CLI::colorize('%G✓%n Added index: idx_kg_meta_key_post'));
+                        $added++;
+                    } else {
+                        \WP_CLI::warning('Failed to add index: idx_kg_meta_key_post');
+                    }
+                } else {
+                    \WP_CLI::line('Index already exists: idx_kg_meta_key_post');
+                }
+                
+                if ($added > 0) {
+                    \WP_CLI::success("Added {$added} index(es)");
+                } else {
+                    \WP_CLI::success('All indexes already exist');
+                }
+                break;
+                
+            case 'remove':
+                \WP_CLI::line(\WP_CLI::colorize('%YRemoving postmeta indexes...%n'));
+                
+                $removed = 0;
+                
+                $result = $wpdb->query("DROP INDEX IF EXISTS idx_kg_meta_key_value ON {$wpdb->postmeta}");
+                if ($result !== false) {
+                    \WP_CLI::line(\WP_CLI::colorize('%G✓%n Removed index: idx_kg_meta_key_value'));
+                    $removed++;
+                }
+                
+                $result = $wpdb->query("DROP INDEX IF EXISTS idx_kg_meta_key_post ON {$wpdb->postmeta}");
+                if ($result !== false) {
+                    \WP_CLI::line(\WP_CLI::colorize('%G✓%n Removed index: idx_kg_meta_key_post'));
+                    $removed++;
+                }
+                
+                \WP_CLI::success("Removed {$removed} index(es)");
+                break;
+                
+            case 'status':
+                \WP_CLI::line(\WP_CLI::colorize('%GPostmeta Index Status%n'));
+                \WP_CLI::line('');
+                
+                // Get existing indexes
+                $existing_indexes = $wpdb->get_results("SHOW INDEX FROM {$wpdb->postmeta}");
+                $index_names = array_column($existing_indexes, 'Key_name');
+                
+                $indexes = ['idx_kg_meta_key_value', 'idx_kg_meta_key_post'];
+                
+                foreach ($indexes as $index) {
+                    if (in_array($index, $index_names)) {
+                        \WP_CLI::line(\WP_CLI::colorize("%G✓%n {$index}: Exists"));
+                    } else {
+                        \WP_CLI::line(\WP_CLI::colorize("%R✗%n {$index}: Does not exist"));
+                    }
+                }
+                
+                \WP_CLI::line('');
+                \WP_CLI::success('Index status check complete');
+                break;
+        }
+    }
+    
+    /**
+     * Manage cache warming
+     * 
+     * ## OPTIONS
+     * 
+     * <action>
+     * : Action to perform: warm, status
+     * 
+     * ## EXAMPLES
+     * 
+     *     wp kg cache warm
+     *     wp kg cache status
+     * 
+     * @when after_wp_load
+     */
+    public static function cache($args, $assoc_args) {
+        list($action) = $args;
+        
+        // Validate action
+        $valid_actions = ['warm', 'status'];
+        if (!in_array($action, $valid_actions)) {
+            \WP_CLI::error("Invalid action '{$action}'. Must be one of: " . implode(', ', $valid_actions));
+        }
+        
+        if (!class_exists('\KG_Core\Services\CacheWarmer')) {
+            \WP_CLI::error('CacheWarmer service not available');
+        }
+        
+        switch ($action) {
+            case 'warm':
+                \WP_CLI::line(\WP_CLI::colorize('%GWarming caches...%n'));
+                
+                \KG_Core\Services\CacheWarmer::trigger();
+                
+                \WP_CLI::success('Cache warming complete');
+                break;
+                
+            case 'status':
+                \WP_CLI::line(\WP_CLI::colorize('%GCache Warming Status%n'));
+                \WP_CLI::line('');
+                
+                $next_run = wp_next_scheduled('kg_cache_warm');
+                
+                if ($next_run) {
+                    $time_until = human_time_diff(time(), $next_run);
+                    \WP_CLI::line(\WP_CLI::colorize("%G✓%n Cache warming is scheduled"));
+                    \WP_CLI::line("  Next run: in {$time_until}");
+                } else {
+                    \WP_CLI::line(\WP_CLI::colorize("%R✗%n Cache warming is not scheduled"));
+                }
+                
+                \WP_CLI::line('');
+                \WP_CLI::success('Cache status check complete');
+                break;
         }
     }
 }
