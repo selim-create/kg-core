@@ -764,16 +764,25 @@ wp kg migrate recipes
 
 #### Faz 5: Temizlik (Opsiyonel)
 
-**⚠️ UYARI:** Bu adım geri dönüşü olmayan bir adımdır!
+**⚠️ UYARI: GERİ DÖNÜŞÜ OLMAYAN ADIM!** 
+
+**KRİTİK:** Bu adım wp_postmeta tablosundaki TÜM _kg_* meta verilerini kalıcı olarak siler. Bu işlemden sonra custom table'lara geri dönüş YAPILAMAZ. Sadece aşağıdaki koşulların TÜMÜ sağlanıyorsa yapılmalıdır:
+
+- ✅ Custom table migration %100 tamamlanmış olmalı
+- ✅ En az 1 ay boyunca production'da sorunsuz çalışmış olmalı
+- ✅ Performans kazançları doğrulanmış olmalı
+- ✅ Eksiksiz backup alınmış olmalı
+- ✅ Rollback planı hazırlanmış olmalı
+- ✅ Yönetici onayı alınmış olmalı
 
 ```bash
 # wp_postmeta'daki _kg_* meta verilerini temizleme
 # Manuel SQL ile yapılmalıdır:
 
-# Önce backup alalım
+# Önce MUTLAKA backup alalım
 wp db export before-cleanup-$(date +%Y%m%d).sql
 
-# Meta verileri silelim (UYARI!)
+# Meta verileri silelim (UYARI: GERİ DÖNÜŞÜ YOK!)
 DELETE FROM wp_postmeta WHERE meta_key LIKE '_kg_%';
 ```
 
