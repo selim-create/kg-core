@@ -152,6 +152,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Blocks/EmbedBlock.php' ) ) require_on
 // 6. API KONTROL CİHAZLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/API/RecipeController.php' ) ) require_once KG_CORE_PATH . 'includes/API/RecipeController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/IngredientController.php' ) ) require_once KG_CORE_PATH . 'includes/API/IngredientController.php';
+if ( file_exists( KG_CORE_PATH . 'includes/API/PostController.php' ) ) require_once KG_CORE_PATH . 'includes/API/PostController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/UserController.php' ) ) require_once KG_CORE_PATH . 'includes/API/UserController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/SearchController.php' ) ) require_once KG_CORE_PATH . 'includes/API/SearchController.php';
 if ( file_exists( KG_CORE_PATH . 'includes/API/CrossSellController.php' ) ) require_once KG_CORE_PATH . 'includes/API/CrossSellController.php';
@@ -380,6 +381,7 @@ function kg_core_init() {
     // API Controllers
     if ( class_exists( '\KG_Core\API\RecipeController' ) ) new \KG_Core\API\RecipeController();
     if ( class_exists( '\KG_Core\API\IngredientController' ) ) new \KG_Core\API\IngredientController();
+    if ( class_exists( '\KG_Core\API\PostController' ) ) new \KG_Core\API\PostController();
     if ( class_exists( '\KG_Core\API\UserController' ) ) new \KG_Core\API\UserController();
     if ( class_exists( '\KG_Core\API\SearchController' ) ) new \KG_Core\API\SearchController();
     if ( class_exists( '\KG_Core\API\CrossSellController' ) ) new \KG_Core\API\CrossSellController();
