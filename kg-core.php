@@ -75,6 +75,14 @@ if ( file_exists( KG_CORE_PATH . 'includes/Services/RateLimiter.php' ) ) require
 // 2.12. CHILD AVATAR SERVICE
 if ( file_exists( KG_CORE_PATH . 'includes/Services/ChildAvatarService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/ChildAvatarService.php';
 
+// 2.12.1. CACHE SERVICE AND INVALIDATOR
+if ( file_exists( KG_CORE_PATH . 'includes/Services/CacheService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/CacheService.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Services/CacheInvalidator.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/Services/CacheInvalidator.php';
+    // Initialize cache invalidator to hook into WordPress events
+    new \KG_Core\Services\CacheInvalidator();
+}
+
 // 2.13. MODELS
 if ( file_exists( KG_CORE_PATH . 'includes/Models/ChildProfile.php' ) ) require_once KG_CORE_PATH . 'includes/Models/ChildProfile.php';
 
