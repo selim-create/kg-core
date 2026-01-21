@@ -237,8 +237,15 @@ class DataMigration {
                     $data = self::extractRecipeData($post_id);
                     
                     if (!empty($data)) {
-                        RecipeMeta::save($post_id, $data);
-                        $migrated++;
+                        $result = RecipeMeta::save($post_id, $data);
+                        if (!$result) {
+                            $errors[] = [
+                                'post_id' => $post_id,
+                                'error' => 'Failed to save recipe meta',
+                            ];
+                        } else {
+                            $migrated++;
+                        }
                     } else {
                         $skipped++;
                     }
@@ -296,8 +303,15 @@ class DataMigration {
                     $data = self::extractIngredientData($post_id);
                     
                     if (!empty($data)) {
-                        IngredientMeta::save($post_id, $data);
-                        $migrated++;
+                        $result = IngredientMeta::save($post_id, $data);
+                        if (!$result) {
+                            $errors[] = [
+                                'post_id' => $post_id,
+                                'error' => 'Failed to save ingredient meta',
+                            ];
+                        } else {
+                            $migrated++;
+                        }
                     } else {
                         $skipped++;
                     }
@@ -355,8 +369,15 @@ class DataMigration {
                     $data = self::extractPostData($post_id);
                     
                     if (!empty($data)) {
-                        PostMeta::save($post_id, $data);
-                        $migrated++;
+                        $result = PostMeta::save($post_id, $data);
+                        if (!$result) {
+                            $errors[] = [
+                                'post_id' => $post_id,
+                                'error' => 'Failed to save post meta',
+                            ];
+                        } else {
+                            $migrated++;
+                        }
                     } else {
                         $skipped++;
                     }
@@ -487,15 +508,94 @@ class DataMigration {
             case 'boolean':
                 return (bool) $value;
             case 'int':
-                return (int) $value;
+                // Special handling for time fields in recipes
+                if ($post_type === 'recipe' && in_array($field_name, ['prep_time', 'cook_time'])) {
+                    return self::parseTimeValue($value);
+                }
+                // Special handling for start_age in ingredients
+                if ($post_type === 'ingredient' && $field_name === 'start_age') {
+                    return self::parseNumericValue($value);
+                }
+                return self::parseNumericValue($value);
             case 'float':
-                return (float) $value;
+                // Special handling for nutrition values
+                if (in_array($field_name, ['calories', 'protein', 'carbs', 'fat', 'fiber', 'sugar', 'sodium', 
+                                          'calories_100g', 'protein_100g', 'carbs_100g', 'fat_100g', 'fiber_100g', 'sugar_100g'])) {
+                    return self::parseNutritionValue($value);
+                }
+                return self::parseNumericValue($value);
             case 'json':
                 // Keep as-is, will be serialized by model
                 return $value;
             default:
                 return $value;
         }
+    }
+    
+    /**
+     * Parse time value from string (e.g., "30 dakika", "1 saat", "1.5 saat")
+     */
+    private static function parseTimeValue($value) {
+        if (is_numeric($value)) {
+            return intval($value);
+        }
+        
+        if (!is_string($value)) {
+            return null;
+        }
+        
+        // "1 saat" or "1.5 saat" -> convert to minutes
+        if (preg_match('/(\d+(?:\.\d+)?)\s*saat/iu', $value, $matches)) {
+            return intval(floatval($matches[1]) * 60);
+        }
+        
+        // "30 dakika" or "30 dk" -> extract number
+        if (preg_match('/(\d+)/', $value, $matches)) {
+            return intval($matches[1]);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Parse nutrition value from string (e.g., "180 kcal", "6 g", "200 mg")
+     */
+    private static function parseNutritionValue($value) {
+        if (is_numeric($value)) {
+            return floatval($value);
+        }
+        
+        if (!is_string($value)) {
+            return null;
+        }
+        
+        // "180 kcal", "6 g", "200 mg" -> extract number
+        if (preg_match('/(\d+(?:[\.,]\d+)?)/', $value, $matches)) {
+            // Turkish decimal separator (comma) -> dot
+            return floatval(str_replace(',', '.', $matches[1]));
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Parse generic numeric value from string
+     */
+    private static function parseNumericValue($value) {
+        if (is_numeric($value)) {
+            return intval($value);
+        }
+        
+        if (!is_string($value)) {
+            return null;
+        }
+        
+        // Extract first number from string
+        if (preg_match('/(\d+)/', $value, $matches)) {
+            return intval($matches[1]);
+        }
+        
+        return null;
     }
     
     /**
@@ -608,5 +708,134 @@ class DataMigration {
         }
         
         return true;
+    }
+    
+    /**
+     * Migrate a single post by ID and type
+     * 
+     * @param int $post_id Post ID to migrate
+     * @param string $post_type Post type (recipe, ingredient, post)
+     * @return bool True on success, false on failure
+     */
+    public static function migrateSinglePost($post_id, $post_type) {
+        try {
+            $data = null;
+            
+            switch ($post_type) {
+                case 'recipe':
+                    // Skip if already migrated
+                    if (RecipeMeta::exists($post_id)) {
+                        return true;
+                    }
+                    
+                    $data = self::extractRecipeData($post_id);
+                    
+                    if (!empty($data)) {
+                        $result = RecipeMeta::save($post_id, $data);
+                        if (!$result) {
+                            error_log("Failed to save recipe meta for post {$post_id}");
+                            return false;
+                        }
+                        return true;
+                    }
+                    break;
+                    
+                case 'ingredient':
+                    // Skip if already migrated
+                    if (IngredientMeta::exists($post_id)) {
+                        return true;
+                    }
+                    
+                    $data = self::extractIngredientData($post_id);
+                    
+                    if (!empty($data)) {
+                        $result = IngredientMeta::save($post_id, $data);
+                        if (!$result) {
+                            error_log("Failed to save ingredient meta for post {$post_id}");
+                            return false;
+                        }
+                        return true;
+                    }
+                    break;
+                    
+                case 'post':
+                    // Skip if already migrated
+                    if (PostMeta::exists($post_id)) {
+                        return true;
+                    }
+                    
+                    $data = self::extractPostData($post_id);
+                    
+                    if (!empty($data)) {
+                        $result = PostMeta::save($post_id, $data);
+                        if (!$result) {
+                            error_log("Failed to save post meta for post {$post_id}");
+                            return false;
+                        }
+                        return true;
+                    }
+                    break;
+            }
+            
+            return false;
+        } catch (\Exception $e) {
+            error_log("Error migrating {$post_type} {$post_id}: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Force migrate a single post (delete existing and re-migrate)
+     * 
+     * @param int $post_id Post ID to migrate
+     * @param string $post_type Post type (recipe, ingredient, post)
+     * @return bool True on success, false on failure
+     */
+    public static function forceMigrate($post_id, $post_type) {
+        try {
+            // Delete existing record first
+            switch ($post_type) {
+                case 'recipe':
+                    RecipeMeta::delete($post_id);
+                    break;
+                case 'ingredient':
+                    IngredientMeta::delete($post_id);
+                    break;
+                case 'post':
+                    PostMeta::delete($post_id);
+                    break;
+                default:
+                    return false;
+            }
+            
+            // Now migrate
+            return self::migrateSinglePost($post_id, $post_type);
+        } catch (\Exception $e) {
+            error_log("Error force migrating {$post_type} {$post_id}: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Force migrate multiple posts
+     * 
+     * @param array $post_ids Array of post IDs to migrate
+     * @param string $post_type Post type (recipe, ingredient, post)
+     * @return array Results with success/failed counts and error list
+     */
+    public static function forceMigrateMultiple(array $post_ids, $post_type) {
+        $results = ['success' => 0, 'failed' => 0, 'errors' => []];
+        
+        foreach ($post_ids as $post_id) {
+            $result = self::forceMigrate($post_id, $post_type);
+            if ($result === true) {
+                $results['success']++;
+            } else {
+                $results['failed']++;
+                $results['errors'][] = $post_id;
+            }
+        }
+        
+        return $results;
     }
 }

@@ -184,13 +184,23 @@ jQuery(document).ready(function($) {
     function showVerificationResults(data) {
         let html = '<div class="info-message">Doğrulama Sonuçları:</div>';
         
+        let hasMissing = false;
+        let missingData = {};
+        
         if (data.recipe !== undefined) {
             html += '<h4>Tarifler (Recipes):</h4>';
             if (data.recipe.length === 0) {
                 html += '<p class="success-message">✓ Tüm tarifler migrate edilmiş!</p>';
             } else {
+                hasMissing = true;
+                missingData.recipe = data.recipe;
                 html += '<p class="error-message">⚠ ' + data.recipe.length + ' tarif eksik:</p>';
-                html += '<p>Post IDs: ' + data.recipe.join(', ') + '</p>';
+                html += '<p>Post IDs: ' + data.recipe.slice(0, 10).join(', ');
+                if (data.recipe.length > 10) {
+                    html += '... (ve ' + (data.recipe.length - 10) + ' daha)';
+                }
+                html += '</p>';
+                html += '<button class="button button-primary kg-migrate-missing-btn" data-type="recipe" data-count="' + data.recipe.length + '">Bu ' + data.recipe.length + ' Tarifi Migrate Et</button>';
             }
         }
         
@@ -199,8 +209,15 @@ jQuery(document).ready(function($) {
             if (data.ingredient.length === 0) {
                 html += '<p class="success-message">✓ Tüm malzemeler migrate edilmiş!</p>';
             } else {
+                hasMissing = true;
+                missingData.ingredient = data.ingredient;
                 html += '<p class="error-message">⚠ ' + data.ingredient.length + ' malzeme eksik:</p>';
-                html += '<p>Post IDs: ' + data.ingredient.join(', ') + '</p>';
+                html += '<p>Post IDs: ' + data.ingredient.slice(0, 10).join(', ');
+                if (data.ingredient.length > 10) {
+                    html += '... (ve ' + (data.ingredient.length - 10) + ' daha)';
+                }
+                html += '</p>';
+                html += '<button class="button button-primary kg-migrate-missing-btn" data-type="ingredient" data-count="' + data.ingredient.length + '">Bu ' + data.ingredient.length + ' Malzemeyi Migrate Et</button>';
             }
         }
         
@@ -209,13 +226,74 @@ jQuery(document).ready(function($) {
             if (data.post.length === 0) {
                 html += '<p class="success-message">✓ Tüm postlar migrate edilmiş!</p>';
             } else {
+                hasMissing = true;
+                missingData.post = data.post;
                 html += '<p class="error-message">⚠ ' + data.post.length + ' post eksik:</p>';
-                html += '<p>Post IDs: ' + data.post.join(', ') + '</p>';
+                html += '<p>Post IDs: ' + data.post.slice(0, 10).join(', ');
+                if (data.post.length > 10) {
+                    html += '... (ve ' + (data.post.length - 10) + ' daha)';
+                }
+                html += '</p>';
+                html += '<button class="button button-primary kg-migrate-missing-btn" data-type="post" data-count="' + data.post.length + '">Bu ' + data.post.length + ' Postu Migrate Et</button>';
             }
         }
         
         $('#kg-results-content').html(html);
         $('#kg-migration-results').show();
+        
+        // Store missing data for migrate buttons
+        $('#kg-migration-results').data('missingData', missingData);
+        
+        // Attach event handlers to dynamically created buttons
+        $('.kg-migrate-missing-btn').on('click', function() {
+            const $btn = $(this);
+            const type = $btn.data('type');
+            const count = $btn.data('count');
+            const missingIds = missingData[type] || [];
+            
+            if (missingIds.length === 0) {
+                showError('Migrate edilecek kayıt bulunamadı.');
+                return;
+            }
+            
+            if (confirm(count + ' adet ' + type + ' kaydını migrate etmek istediğinize emin misiniz?')) {
+                $btn.prop('disabled', true).text('Migrate ediliyor...');
+                
+                $.ajax({
+                    url: kgDataMigration.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'kg_migrate_missing',
+                        type: type,
+                        post_ids: missingIds,
+                        nonce: kgDataMigration.nonce
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            const result = response.data;
+                            let msg = '<div class="success-message">✓ Migration tamamlandı!</div>';
+                            msg += '<ul>';
+                            msg += '<li>Başarılı: <strong>' + result.success + '</strong></li>';
+                            msg += '<li>Başarısız: <strong>' + result.failed + '</strong></li>';
+                            if (result.errors && result.errors.length > 0) {
+                                msg += '<li class="error-message">Hatalı Post IDs: ' + result.errors.join(', ') + '</li>';
+                            }
+                            msg += '</ul>';
+                            $('#kg-results-content').html(msg);
+                            refreshTableStatus();
+                        } else {
+                            showError(response.data || 'Bir hata oluştu.');
+                        }
+                    },
+                    error: function() {
+                        showError('AJAX hatası oluştu.');
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false).text('Migration Tamamlandı');
+                    }
+                });
+            }
+        });
     }
     
     // Show error

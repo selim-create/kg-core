@@ -21,6 +21,8 @@ class DataMigrationPage {
         add_action('wp_ajax_kg_verify_migration', [$this, 'ajaxVerify']);
         add_action('wp_ajax_kg_rollback_migration', [$this, 'ajaxRollback']);
         add_action('wp_ajax_kg_get_table_status', [$this, 'ajaxGetTableStatus']);
+        add_action('wp_ajax_kg_migrate_missing', [$this, 'ajaxMigrateMissing']);
+        add_action('wp_ajax_kg_force_migrate_single', [$this, 'ajaxForceMigrateSingle']);
     }
     
     /**
@@ -463,5 +465,55 @@ class DataMigrationPage {
         $status = Schema::getTableStatus();
         
         wp_send_json_success($status);
+    }
+    
+    /**
+     * AJAX: Migrate missing records
+     */
+    public function ajaxMigrateMissing() {
+        check_ajax_referer('kg_data_migration_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Yetkiniz yok.');
+        }
+        
+        $type = isset($_POST['type']) ? sanitize_text_field($_POST['type']) : '';
+        $post_ids = isset($_POST['post_ids']) ? array_map('intval', $_POST['post_ids']) : [];
+        
+        if (empty($type) || empty($post_ids)) {
+            wp_send_json_error('Geçersiz parametreler.');
+        }
+        
+        set_time_limit(300);
+        
+        $result = DataMigration::forceMigrateMultiple($post_ids, $type);
+        
+        wp_send_json_success($result);
+    }
+    
+    /**
+     * AJAX: Force migrate single post
+     */
+    public function ajaxForceMigrateSingle() {
+        check_ajax_referer('kg_data_migration_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Yetkiniz yok.');
+        }
+        
+        $type = isset($_POST['type']) ? sanitize_text_field($_POST['type']) : '';
+        $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+        
+        if (empty($type) || empty($post_id)) {
+            wp_send_json_error('Geçersiz parametreler.');
+        }
+        
+        $result = DataMigration::forceMigrate($post_id, $type);
+        
+        if ($result) {
+            wp_send_json_success(['message' => 'Migration başarılı.']);
+        } else {
+            wp_send_json_error('Migration başarısız.');
+        }
     }
 }
