@@ -51,6 +51,10 @@ if ( file_exists( KG_CORE_PATH . 'includes/Utils/BulkCacheHelper.php' ) ) {
     require_once KG_CORE_PATH . 'includes/Utils/BulkCacheHelper.php';
 }
 
+if ( file_exists( KG_CORE_PATH . 'includes/Utils/UserConsentHelper.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/Utils/UserConsentHelper.php';
+}
+
 // 2.5. AUTH SINIFLARI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Auth/JWTHandler.php' ) ) require_once KG_CORE_PATH . 'includes/Auth/JWTHandler.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Auth/GoogleAuth.php' ) ) require_once KG_CORE_PATH . 'includes/Auth/GoogleAuth.php';
@@ -125,6 +129,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/FieldsFilter.php' ) ) {
 
 // 2.13. MODELS
 if ( file_exists( KG_CORE_PATH . 'includes/Models/ChildProfile.php' ) ) require_once KG_CORE_PATH . 'includes/Models/ChildProfile.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Models/UserConsent.php' ) ) require_once KG_CORE_PATH . 'includes/Models/UserConsent.php';
 
 // 2.13.1. MODEL CLASSES (Meta Models)
 if ( file_exists( KG_CORE_PATH . 'includes/Models/BaseModel.php' ) ) {
@@ -302,6 +307,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Cron/VaccineReminderCron.php' ) ) req
 // 6.11. VACCINATION TRACKER DATABASE SCHEMA (NEW)
 if ( file_exists( KG_CORE_PATH . 'includes/Database/VaccinationSchema.php' ) ) require_once KG_CORE_PATH . 'includes/Database/VaccinationSchema.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Database/ChildProfileSchema.php' ) ) require_once KG_CORE_PATH . 'includes/Database/ChildProfileSchema.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Database/UserConsentSchema.php' ) ) require_once KG_CORE_PATH . 'includes/Database/UserConsentSchema.php';
 
 // 6.11.5. COMMUNITY DATABASE SCHEMAS (NEW)
 if ( file_exists( KG_CORE_PATH . 'includes/Database/VotingSchema.php' ) ) require_once KG_CORE_PATH . 'includes/Database/VotingSchema.php';
@@ -837,6 +843,11 @@ register_activation_hook( __FILE__, function() {
         // Create child profiles database table
         if ( class_exists( '\KG_Core\Database\ChildProfileSchema' ) ) {
             \KG_Core\Database\ChildProfileSchema::create_table();
+        }
+        
+        // Create user consents database table (KVKK/ETK compliance)
+        if ( class_exists( '\KG_Core\Database\UserConsentSchema' ) ) {
+            \KG_Core\Database\UserConsentSchema::create_table();
         }
         
         // Create community voting database table

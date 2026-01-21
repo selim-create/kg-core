@@ -6,6 +6,7 @@ use KG_Core\Auth\GoogleAuth;
 use KG_Core\Utils\PrivacyHelper;
 use KG_Core\Health\VaccineRecordManager;
 use KG_Core\Services\ChildAvatarService;
+use KG_Core\Models\UserConsent;
 
 class UserController {
 
@@ -247,6 +248,32 @@ class UserController {
                 ],
             ],
         ]);
+
+        // Consent management endpoints
+        register_rest_route( 'kg/v1', '/user/consents', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'get_user_consents' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+        ]);
+
+        register_rest_route( 'kg/v1', '/user/consents/(?P<type>terms|marketing|sensitive_data)', [
+            'methods'  => 'PUT',
+            'callback' => [ $this, 'update_user_consent' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+            'args' => [
+                'type' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'enum' => [ 'terms', 'marketing', 'sensitive_data' ],
+                    'description' => 'Consent type',
+                ],
+                'consented' => [
+                    'required' => true,
+                    'type' => 'boolean',
+                    'description' => 'Consent status',
+                ],
+            ],
+        ]);
     }
 
     /**
@@ -339,6 +366,43 @@ class UserController {
             return new \WP_Error( 'weak_password', 'Password must be at least 6 characters long', [ 'status' => 400 ] );
         }
 
+        // Consent validation
+        $consents_data = $request->get_param( 'consents' );
+        if ( ! empty( $consents_data ) ) {
+            if ( ! is_array( $consents_data ) ) {
+                return new \WP_Error( 'invalid_consents', 'Consents must be an array', [ 'status' => 400 ] );
+            }
+            
+            // Terms acceptance is required
+            if ( ! isset( $consents_data['terms_accepted'] ) || ! $consents_data['terms_accepted'] ) {
+                return new \WP_Error( 'terms_required', 'Terms and conditions must be accepted', [ 'status' => 400 ] );
+            }
+            
+            // Validate terms_accepted_at if provided
+            if ( ! empty( $consents_data['terms_accepted_at'] ) ) {
+                $terms_date = strtotime( $consents_data['terms_accepted_at'] );
+                if ( ! $terms_date ) {
+                    return new \WP_Error( 'invalid_date', 'Invalid terms acceptance date format', [ 'status' => 400 ] );
+                }
+            }
+            
+            // Validate marketing_consent_at if provided
+            if ( ! empty( $consents_data['marketing_consent_at'] ) ) {
+                $marketing_date = strtotime( $consents_data['marketing_consent_at'] );
+                if ( ! $marketing_date ) {
+                    return new \WP_Error( 'invalid_date', 'Invalid marketing consent date format', [ 'status' => 400 ] );
+                }
+            }
+            
+            // Validate sensitive_data_consent_at if provided
+            if ( ! empty( $consents_data['sensitive_data_consent_at'] ) ) {
+                $sensitive_date = strtotime( $consents_data['sensitive_data_consent_at'] );
+                if ( ! $sensitive_date ) {
+                    return new \WP_Error( 'invalid_date', 'Invalid sensitive data consent date format', [ 'status' => 400 ] );
+                }
+            }
+        }
+
         if ( email_exists( $email ) ) {
             return new \WP_Error( 'email_exists', 'Email already registered', [ 'status' => 409 ] );
         }
@@ -412,6 +476,48 @@ class UserController {
                     $this->assign_default_circle( $user_id, $child_birth_date );
                 }
             }
+        }
+
+        // Handle user consents (KVKK and ETK compliance)
+        $consents_data = $request->get_param( 'consents' );
+        if ( ! empty( $consents_data ) && is_array( $consents_data ) ) {
+            $ip_address = $request->get_header( 'X-Forwarded-For' ) ?: $request->get_header( 'X-Real-IP' ) ?: $_SERVER['REMOTE_ADDR'] ?? null;
+            $user_agent = $request->get_header( 'User-Agent' );
+            
+            // Terms consent (required)
+            if ( ! empty( $consents_data['terms_accepted'] ) ) {
+                UserConsent::create( [
+                    'user_id' => $user_id,
+                    'consent_type' => 'terms',
+                    'consented' => true,
+                    'consented_at' => $consents_data['terms_accepted_at'] ?? current_time( 'mysql' ),
+                    'ip_address' => $ip_address,
+                    'user_agent' => $user_agent,
+                    'version' => '1.0',
+                ] );
+            }
+            
+            // Marketing consent (optional)
+            $marketing_consented = isset( $consents_data['marketing_consent'] ) && $consents_data['marketing_consent'];
+            UserConsent::create( [
+                'user_id' => $user_id,
+                'consent_type' => 'marketing',
+                'consented' => $marketing_consented,
+                'consented_at' => $marketing_consented ? ( $consents_data['marketing_consent_at'] ?? current_time( 'mysql' ) ) : null,
+                'ip_address' => $ip_address,
+                'user_agent' => $user_agent,
+            ] );
+            
+            // Sensitive data consent (optional)
+            $sensitive_consented = isset( $consents_data['sensitive_data_consent'] ) && $consents_data['sensitive_data_consent'];
+            UserConsent::create( [
+                'user_id' => $user_id,
+                'consent_type' => 'sensitive_data',
+                'consented' => $sensitive_consented,
+                'consented_at' => $sensitive_consented ? ( $consents_data['sensitive_data_consent_at'] ?? current_time( 'mysql' ) ) : null,
+                'ip_address' => $ip_address,
+                'user_agent' => $user_agent,
+            ] );
         }
 
         $token = JWTHandler::generate_token( $user_id );
@@ -2608,5 +2714,96 @@ class UserController {
         }
         
         return new \WP_REST_Response( $dashboard, 200 );
+    }
+
+    /**
+     * Get user's consent records
+     * GET /kg/v1/user/consents
+     */
+    public function get_user_consents( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+        
+        $consents = UserConsent::get_by_user_id( $user_id );
+        
+        $formatted = [];
+        foreach ( $consents as $consent ) {
+            $formatted[] = UserConsent::format_for_api( $consent );
+        }
+        
+        return new \WP_REST_Response( $formatted, 200 );
+    }
+
+    /**
+     * Update user's consent for a specific type
+     * PUT /kg/v1/user/consents/{type}
+     */
+    public function update_user_consent( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+        $type = $request->get_param( 'type' );
+        $consented = $request->get_param( 'consented' );
+        
+        if ( empty( $type ) || ! in_array( $type, [ 'terms', 'marketing', 'sensitive_data' ], true ) ) {
+            return new \WP_Error( 'invalid_type', 'Invalid consent type', [ 'status' => 400 ] );
+        }
+        
+        if ( ! isset( $consented ) || ! is_bool( $consented ) ) {
+            return new \WP_Error( 'missing_consented', 'Consented field is required and must be boolean', [ 'status' => 400 ] );
+        }
+        
+        // Get IP address and user agent for audit trail
+        $ip_address = $request->get_header( 'X-Forwarded-For' ) ?: $request->get_header( 'X-Real-IP' ) ?: $_SERVER['REMOTE_ADDR'] ?? null;
+        $user_agent = $request->get_header( 'User-Agent' );
+        
+        // Get existing consent
+        $existing = UserConsent::get_by_user_and_type( $user_id, $type );
+        
+        if ( $consented ) {
+            // Granting consent
+            if ( $existing ) {
+                // Update existing record
+                UserConsent::update( $existing->id, [
+                    'consented' => true,
+                    'consented_at' => current_time( 'mysql' ),
+                    'revoked_at' => null,
+                    'ip_address' => $ip_address,
+                    'user_agent' => $user_agent,
+                ] );
+            } else {
+                // Create new consent record
+                UserConsent::create( [
+                    'user_id' => $user_id,
+                    'consent_type' => $type,
+                    'consented' => true,
+                    'consented_at' => current_time( 'mysql' ),
+                    'ip_address' => $ip_address,
+                    'user_agent' => $user_agent,
+                ] );
+            }
+        } else {
+            // Revoking consent
+            if ( $existing ) {
+                UserConsent::update( $existing->id, [
+                    'consented' => false,
+                    'revoked_at' => current_time( 'mysql' ),
+                ] );
+            } else {
+                // Create a revoked consent record
+                UserConsent::create( [
+                    'user_id' => $user_id,
+                    'consent_type' => $type,
+                    'consented' => false,
+                    'revoked_at' => current_time( 'mysql' ),
+                    'ip_address' => $ip_address,
+                    'user_agent' => $user_agent,
+                ] );
+            }
+        }
+        
+        return new \WP_REST_Response( [
+            'success' => true,
+            'message' => 'Consent updated successfully',
+            'consent_type' => $type,
+            'consented' => $consented,
+        ], 200 );
     }
 }
