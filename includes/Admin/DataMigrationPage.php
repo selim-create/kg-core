@@ -179,7 +179,7 @@ class DataMigrationPage {
                         <button type="button" class="button button-primary kg-migrate-btn" data-type="recipes">
                             Tarifleri Migrate Et
                         </button>
-                        <button type="button" class="button button-secondary kg-force-migrate-btn" data-type="recipe" style="margin-top: 10px; display: block;">
+                        <button type="button" class="button button-secondary kg-force-migrate-btn" data-type="recipe">
                             🔧 Eksikleri Zorla Migrate Et
                         </button>
                     </div>
@@ -190,7 +190,7 @@ class DataMigrationPage {
                         <button type="button" class="button button-primary kg-migrate-btn" data-type="ingredients">
                             Malzemeleri Migrate Et
                         </button>
-                        <button type="button" class="button button-secondary kg-force-migrate-btn" data-type="ingredient" style="margin-top: 10px; display: block;">
+                        <button type="button" class="button button-secondary kg-force-migrate-btn" data-type="ingredient">
                             🔧 Eksikleri Zorla Migrate Et
                         </button>
                     </div>
@@ -201,7 +201,7 @@ class DataMigrationPage {
                         <button type="button" class="button button-primary kg-migrate-btn" data-type="posts">
                             Postları Migrate Et
                         </button>
-                        <button type="button" class="button button-secondary kg-force-migrate-btn" data-type="post" style="margin-top: 10px; display: block;">
+                        <button type="button" class="button button-secondary kg-force-migrate-btn" data-type="post">
                             🔧 Eksikleri Zorla Migrate Et
                         </button>
                     </div>
@@ -317,6 +317,10 @@ class DataMigrationPage {
             
             .kg-action-card button {
                 margin-top: 10px;
+            }
+            
+            .kg-action-card .kg-force-migrate-btn {
+                display: block;
             }
             
             .kg-results-area,

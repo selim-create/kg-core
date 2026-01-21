@@ -858,17 +858,21 @@ class DataMigration {
             return ['error' => 'Invalid post type'];
         }
         
-        $table = $wpdb->prefix . $table_map[$post_type];
+        // Table name is from a whitelist, safe to use
+        $table_name = $table_map[$post_type];
+        $table = $wpdb->prefix . $table_name;
         
-        // Find missing post IDs
-        $missing_ids = $wpdb->get_col($wpdb->prepare("
+        // Find missing post IDs - using esc_sql for table name even though it's from whitelist
+        $sql = $wpdb->prepare("
             SELECT p.ID 
             FROM {$wpdb->posts} p
-            LEFT JOIN {$table} m ON p.ID = m.post_id
+            LEFT JOIN " . esc_sql($table) . " m ON p.ID = m.post_id
             WHERE p.post_type = %s 
             AND p.post_status != 'trash'
             AND m.post_id IS NULL
-        ", $post_type));
+        ", $post_type);
+        
+        $missing_ids = $wpdb->get_col($sql);
         
         if (empty($missing_ids)) {
             return [

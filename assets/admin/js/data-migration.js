@@ -138,7 +138,7 @@ jQuery(document).ready(function($) {
         const type = $btn.data('type');
         const originalText = $btn.text();
         
-        if (!confirm('Eksik ' + type + ' kayıtlarını zorla migrate etmek istiyor musunuz?')) {
+        if (!confirm(`Eksik ${type} kayıtlarını zorla migrate etmek istiyor musunuz?`)) {
             return;
         }
         
@@ -158,21 +158,21 @@ jQuery(document).ready(function($) {
                     const data = response.data;
                     let html = '<div class="success-message">✓ Force migration tamamlandı!</div>';
                     html += '<ul>';
-                    html += '<li>Toplam: <strong>' + data.total + '</strong></li>';
-                    html += '<li>Migrate Edilen: <strong>' + data.migrated + '</strong></li>';
-                    html += '<li>Hata: <strong>' + data.failed + '</strong></li>';
+                    html += `<li>Toplam: <strong>${data.total}</strong></li>`;
+                    html += `<li>Migrate Edilen: <strong>${data.migrated}</strong></li>`;
+                    html += `<li>Hata: <strong>${data.failed}</strong></li>`;
                     html += '</ul>';
                     
                     if (data.errors && data.errors.length > 0) {
                         html += '<h4>Hatalar:</h4><ul>';
                         data.errors.forEach(function(err) {
-                            html += '<li class="error-message">' + err + '</li>';
+                            html += `<li class="error-message">${err}</li>`;
                         });
                         html += '</ul>';
                     }
                     
                     if (data.message) {
-                        html += '<p class="info-message">' + data.message + '</p>';
+                        html += `<p class="info-message">${data.message}</p>`;
                     }
                     
                     $('#kg-results-content').html(html);
