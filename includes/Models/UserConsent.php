@@ -69,13 +69,13 @@ class UserConsent {
         global $wpdb;
         $table = $wpdb->prefix . 'kg_user_consents';
         
-        $count = $wpdb->get_var( $wpdb->prepare(
-            "SELECT COUNT(*) FROM $table WHERE user_id = %d AND consent_type = %s AND consented = 1 AND revoked_at IS NULL",
+        $exists = $wpdb->get_var( $wpdb->prepare(
+            "SELECT EXISTS(SELECT 1 FROM $table WHERE user_id = %d AND consent_type = %s AND consented = 1 AND revoked_at IS NULL LIMIT 1)",
             $user_id,
             $type
         ) );
         
-        return (int) $count > 0;
+        return (bool) $exists;
     }
     
     /**

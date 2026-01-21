@@ -481,7 +481,7 @@ class UserController {
         // Handle user consents (KVKK and ETK compliance)
         $consents_data = $request->get_param( 'consents' );
         if ( ! empty( $consents_data ) && is_array( $consents_data ) ) {
-            $ip_address = $request->get_header( 'X-Forwarded-For' ) ?: $request->get_header( 'X-Real-IP' ) ?: $_SERVER['REMOTE_ADDR'] ?? null;
+            $ip_address = $this->get_client_ip_address( $request );
             $user_agent = $request->get_header( 'User-Agent' );
             
             // Terms consent (required)
@@ -2751,7 +2751,7 @@ class UserController {
         }
         
         // Get IP address and user agent for audit trail
-        $ip_address = $request->get_header( 'X-Forwarded-For' ) ?: $request->get_header( 'X-Real-IP' ) ?: $_SERVER['REMOTE_ADDR'] ?? null;
+        $ip_address = $this->get_client_ip_address( $request );
         $user_agent = $request->get_header( 'User-Agent' );
         
         // Get existing consent
@@ -2780,11 +2780,13 @@ class UserController {
                 ] );
             }
         } else {
-            // Revoking consent
+            // Revoking consent - include IP and user agent for audit trail
             if ( $existing ) {
                 UserConsent::update( $existing->id, [
                     'consented' => false,
                     'revoked_at' => current_time( 'mysql' ),
+                    'ip_address' => $ip_address,
+                    'user_agent' => $user_agent,
                 ] );
             } else {
                 // Create a revoked consent record
@@ -2805,5 +2807,47 @@ class UserController {
             'consent_type' => $type,
             'consented' => $consented,
         ], 200 );
+    }
+
+    /**
+     * Get client IP address securely
+     * Validates IP format to prevent header injection
+     */
+    private function get_client_ip_address( $request ) {
+        // Try various headers in order of preference
+        $ip_headers = [
+            'X-Forwarded-For',
+            'X-Real-IP',
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_REAL_IP',
+        ];
+        
+        foreach ( $ip_headers as $header ) {
+            $ip = $request->get_header( $header );
+            if ( ! $ip && isset( $_SERVER[ $header ] ) ) {
+                $ip = $_SERVER[ $header ];
+            }
+            
+            if ( $ip ) {
+                // X-Forwarded-For can contain multiple IPs, get the first one
+                if ( strpos( $ip, ',' ) !== false ) {
+                    $ips = explode( ',', $ip );
+                    $ip = trim( $ips[0] );
+                }
+                
+                // Validate IP address format
+                if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+                    return $ip;
+                }
+            }
+        }
+        
+        // Fallback to REMOTE_ADDR
+        $remote_addr = $_SERVER['REMOTE_ADDR'] ?? null;
+        if ( $remote_addr && filter_var( $remote_addr, FILTER_VALIDATE_IP ) ) {
+            return $remote_addr;
+        }
+        
+        return null;
     }
 }
