@@ -52,22 +52,50 @@ class CacheWarmer {
      * Warm popular recipes cache
      */
     private function warm_popular_recipes() {
+        // Get top 20 popular recipes by rating * rating_count using WP_Query
+        // First, get all published recipes
+        $args = [
+            'post_type' => 'recipe',
+            'post_status' => 'publish',
+            'posts_per_page' => 100, // Get a larger set to sort
+            'fields' => 'ids',
+            'no_found_rows' => true,
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
+        ];
+        
+        $query = new \WP_Query($args);
+        $recipe_ids = $query->posts;
+        
+        if (empty($recipe_ids)) {
+            return;
+        }
+        
+        // Get popularity scores from custom table
         global $wpdb;
+        $table = $wpdb->prefix . 'kg_recipe_meta';
         
-        // Get top 20 popular recipes by rating * rating_count
-        $ids = $wpdb->get_col("
-            SELECT p.ID 
-            FROM {$wpdb->posts} p 
-            LEFT JOIN {$wpdb->prefix}kg_recipe_meta m ON p.ID = m.post_id 
-            WHERE p.post_type = 'recipe' 
-            AND p.post_status = 'publish' 
-            ORDER BY (COALESCE(m.rating, 0) * COALESCE(m.rating_count, 0)) DESC 
-            LIMIT 20
-        ");
+        // Check if custom table exists
+        if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table)) !== $table) {
+            return;
+        }
         
-        foreach ($ids as $id) {
+        // Get popularity scores for these recipes
+        $ids_placeholder = implode(',', array_fill(0, count($recipe_ids), '%d'));
+        $scores = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT post_id, (COALESCE(rating, 0) * COALESCE(rating_count, 0)) as score 
+                FROM {$table} 
+                WHERE post_id IN ({$ids_placeholder}) 
+                ORDER BY score DESC 
+                LIMIT 20",
+                ...$recipe_ids
+            )
+        );
+        
+        foreach ($scores as $score) {
             // Check if recipe is already cached
-            if (CacheService::get_recipe($id) === null) {
+            if (CacheService::get_recipe($score->post_id) === null) {
                 // Recipe will be cached on next request
                 // We don't fetch here to avoid expensive operations
             }

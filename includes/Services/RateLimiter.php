@@ -99,14 +99,27 @@ class RateLimiter {
             return 'user_' . get_current_user_id();
         }
         
-        $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        // Safely get IP address
+        $ip = '';
+        if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $ip = sanitize_text_field(wp_unslash($_SERVER['HTTP_X_FORWARDED_FOR']));
+        } elseif (isset($_SERVER['REMOTE_ADDR'])) {
+            $ip = sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR']));
+        } else {
+            $ip = 'unknown';
+        }
         
         // Handle proxy headers (take first IP)
         if (strpos($ip, ',') !== false) {
             $ip = trim(explode(',', $ip)[0]);
         }
         
-        return 'ip_' . $ip;
+        // Validate IP address format
+        if (filter_var($ip, FILTER_VALIDATE_IP)) {
+            return 'ip_' . $ip;
+        }
+        
+        return 'ip_unknown';
     }
     
     /**

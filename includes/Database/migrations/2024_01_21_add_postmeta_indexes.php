@@ -19,6 +19,9 @@ class AddPostmetaIndexes {
         $existing_indexes = $wpdb->get_results("SHOW INDEX FROM {$wpdb->postmeta}");
         $index_names = array_column($existing_indexes, 'Key_name');
         
+        // Note: Index names and table names are hardcoded constants, not user input
+        // DDL statements (CREATE INDEX) don't support parameterized queries in MySQL
+        
         // Add meta_key + meta_value composite index
         if (!in_array('idx_kg_meta_key_value', $index_names)) {
             $wpdb->query("CREATE INDEX idx_kg_meta_key_value ON {$wpdb->postmeta} (meta_key, meta_value(191))");
@@ -37,6 +40,9 @@ class AddPostmetaIndexes {
      */
     public function down() {
         global $wpdb;
+        
+        // Note: Index names and table names are hardcoded constants, not user input
+        // DDL statements (DROP INDEX) don't support parameterized queries in MySQL
         
         // Drop indexes if they exist
         $wpdb->query("DROP INDEX IF EXISTS idx_kg_meta_key_value ON {$wpdb->postmeta}");
