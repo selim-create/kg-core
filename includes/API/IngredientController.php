@@ -222,7 +222,7 @@ class IngredientController {
             'slug'         => get_post_field( 'post_name', $post_id ),
             'description'  => get_the_excerpt( $post_id ),
             'image'        => get_the_post_thumbnail_url( $post_id, 'large' ),
-            'start_age'    => get_post_meta( $post_id, '_kg_start_age', true ),
+            'start_age'    => $start_age,
             'category'     => $category,
             'allergy_risk' => $allergy_risk ?: 'Düşük',
             'season'       => $season, // Now returns array
