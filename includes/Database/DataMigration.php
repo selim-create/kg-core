@@ -423,37 +423,62 @@ class DataMigration {
             return null;
         }
         
-        // Get field types from respective model
-        $field_types = [];
-        if ($post_type === 'recipe') {
-            $field_types = RecipeMeta::class::{'field_types'} ?? [];
-        } elseif ($post_type === 'ingredient') {
-            $field_types = IngredientMeta::class::{'field_types'} ?? [];
-        } elseif ($post_type === 'post') {
-            $field_types = PostMeta::class::{'field_types'} ?? [];
-        }
+        // Define field types for each post type
+        $type_mappings = [
+            'recipe' => [
+                'prep_time' => 'int',
+                'cook_time' => 'int',
+                'rating_count' => 'int',
+                'base_rating_count' => 'int',
+                'expert_user_id' => 'int',
+                'calories' => 'float',
+                'protein' => 'float',
+                'carbs' => 'float',
+                'fat' => 'float',
+                'fiber' => 'float',
+                'sugar' => 'float',
+                'sodium' => 'float',
+                'rating' => 'float',
+                'base_rating' => 'float',
+                'freezable' => 'boolean',
+                'is_featured' => 'boolean',
+                'expert_approved' => 'boolean',
+                'ingredients' => 'json',
+                'instructions' => 'json',
+                'substitutes' => 'json',
+                'cross_sell' => 'json',
+                'ratings_data' => 'json',
+            ],
+            'ingredient' => [
+                'start_age' => 'int',
+                'expert_user_id' => 'int',
+                'calories_100g' => 'float',
+                'protein_100g' => 'float',
+                'carbs_100g' => 'float',
+                'fat_100g' => 'float',
+                'fiber_100g' => 'float',
+                'sugar_100g' => 'float',
+                'is_featured' => 'boolean',
+                'expert_approved' => 'boolean',
+                'season' => 'json',
+                'prep_methods' => 'json',
+                'prep_by_age' => 'json',
+                'pairings' => 'json',
+                'faq' => 'json',
+            ],
+            'post' => [
+                'sponsor_logo_id' => 'int',
+                'sponsor_light_logo_id' => 'int',
+                'expert_user_id' => 'int',
+                'is_featured' => 'boolean',
+                'is_sponsored' => 'boolean',
+                'direct_redirect' => 'boolean',
+                'has_discount' => 'boolean',
+                'expert_approved' => 'boolean',
+            ],
+        ];
         
-        // Use reflection to get protected field_types
-        try {
-            $reflection = null;
-            if ($post_type === 'recipe') {
-                $reflection = new \ReflectionClass(RecipeMeta::class);
-            } elseif ($post_type === 'ingredient') {
-                $reflection = new \ReflectionClass(IngredientMeta::class);
-            } elseif ($post_type === 'post') {
-                $reflection = new \ReflectionClass(PostMeta::class);
-            }
-            
-            if ($reflection) {
-                $property = $reflection->getProperty('field_types');
-                $property->setAccessible(true);
-                $field_types = $property->getValue();
-            }
-        } catch (\Exception $e) {
-            // Fallback to manual type detection
-        }
-        
-        $type = $field_types[$field_name] ?? 'string';
+        $type = $type_mappings[$post_type][$field_name] ?? 'string';
         
         switch ($type) {
             case 'boolean':
