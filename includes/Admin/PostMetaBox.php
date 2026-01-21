@@ -311,5 +311,10 @@ class PostMetaBox {
         }
         $expert_approved = isset( $_POST['kg_expert_approved'] ) ? '1' : '0';
         update_post_meta( $post_id, '_kg_expert_approved', $expert_approved );
+        
+        // === DUAL-WRITE: Sync to custom table ===
+        if ( class_exists( '\KG_Core\Config\FeatureFlags' ) && \KG_Core\Config\FeatureFlags::useDualWrite() ) {
+            \KG_Core\Services\MetaSyncService::syncPost( $post_id );
+        }
     }
 }
