@@ -82,6 +82,12 @@ class CacheWarmer {
         
         // Get popularity scores for these recipes
         $ids_placeholder = implode(',', array_fill(0, count($recipe_ids), '%d'));
+        
+        // Check if we have any recipe IDs to prevent SQL errors
+        if (empty($recipe_ids)) {
+            return;
+        }
+        
         $scores = $wpdb->get_results(
             $wpdb->prepare(
                 "SELECT post_id, (COALESCE(rating, 0) * COALESCE(rating_count, 0)) as score 

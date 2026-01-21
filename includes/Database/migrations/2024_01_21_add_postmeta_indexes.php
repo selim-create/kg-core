@@ -24,12 +24,18 @@ class AddPostmetaIndexes {
         
         // Add meta_key + meta_value composite index
         if (!in_array('idx_kg_meta_key_value', $index_names)) {
-            $wpdb->query("CREATE INDEX idx_kg_meta_key_value ON {$wpdb->postmeta} (meta_key, meta_value(191))");
+            $result = $wpdb->query("CREATE INDEX idx_kg_meta_key_value ON {$wpdb->postmeta} (meta_key, meta_value(191))");
+            if ($result === false) {
+                error_log('Failed to create index idx_kg_meta_key_value: ' . $wpdb->last_error);
+            }
         }
         
         // Add meta_key + post_id composite index
         if (!in_array('idx_kg_meta_key_post', $index_names)) {
-            $wpdb->query("CREATE INDEX idx_kg_meta_key_post ON {$wpdb->postmeta} (meta_key, post_id)");
+            $result = $wpdb->query("CREATE INDEX idx_kg_meta_key_post ON {$wpdb->postmeta} (meta_key, post_id)");
+            if ($result === false) {
+                error_log('Failed to create index idx_kg_meta_key_post: ' . $wpdb->last_error);
+            }
         }
         
         return true;

@@ -48,7 +48,7 @@ class RateLimiter {
         
         if ($data['count'] >= $limits['requests']) {
             return new \WP_Error('rate_limit_exceeded', 
-                sprintf(__('Çok fazla istek. %d saniye bekleyin.', 'kg-core'), $data['reset'] - time()),
+                sprintf(__('Too many requests. Please wait %d seconds.', 'kg-core'), $data['reset'] - time()),
                 ['status' => 429, 'retry_after' => $data['reset'] - time()]
             );
         }
