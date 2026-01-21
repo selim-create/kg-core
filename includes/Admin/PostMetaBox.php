@@ -32,6 +32,13 @@ class PostMetaBox {
         $gam_click_url = get_post_meta( $post->ID, '_kg_gam_click_url', true );
         $has_discount = get_post_meta( $post->ID, '_kg_has_discount', true );
         $discount_text = get_post_meta( $post->ID, '_kg_discount_text', true );
+        
+        // Expert fields
+        $expert_user_id = get_post_meta( $post->ID, '_kg_expert_user_id', true );
+        $expert_name = get_post_meta( $post->ID, '_kg_expert_name', true );
+        $expert_title = get_post_meta( $post->ID, '_kg_expert_title', true );
+        $expert_note = get_post_meta( $post->ID, '_kg_expert_note', true );
+        $expert_approved = get_post_meta( $post->ID, '_kg_expert_approved', true );
 
         // Security nonce
         wp_nonce_field( 'kg_sponsor_save', 'kg_sponsor_nonce' );
@@ -140,6 +147,63 @@ class PostMetaBox {
                     <small>İndirim varsa gösterilecek metin</small>
                 </p>
             </div>
+
+            <hr>
+
+            <!-- Kayıtlı Uzman Seçici -->
+            <h3>Uzman Onayı</h3>
+            <p>
+                <label for="kg_expert_user_id"><strong>Kayıtlı Uzman Seç:</strong></label><br>
+                <select id="kg_expert_user_id" name="kg_expert_user_id" style="width:100%;">
+                    <option value="">-- Kayıtlı uzman seçin veya manuel girin --</option>
+                    <?php
+                    $experts = get_users([
+                        'role' => 'kg_expert',
+                        'orderby' => 'display_name',
+                        'order' => 'ASC'
+                    ]);
+                    foreach ($experts as $expert):
+                    ?>
+                        <option value="<?php echo $expert->ID; ?>" <?php selected($expert_user_id, $expert->ID); ?>>
+                            <?php echo esc_html($expert->display_name); ?> (ID: <?php echo $expert->ID; ?>)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <small>Kayıtlı uzman seçilirse, ad ve ünvan otomatik doldurulur. Profil fotoğrafı ve link frontend'de gösterilir.</small>
+            </p>
+
+            <p>
+                <label for="kg_expert_name"><strong>Uzman Adı:</strong></label><br>
+                <input type="text" id="kg_expert_name" name="kg_expert_name" value="<?php echo esc_attr( $expert_name ); ?>" style="width:100%;">
+                <small>Kayıtlı uzman seçilirse otomatik dolar. Kayıtsız uzman için manuel girin.</small>
+            </p>
+            <p>
+                <label for="kg_expert_title"><strong>Uzman Ünvanı:</strong></label><br>
+                <input type="text" id="kg_expert_title" name="kg_expert_title" value="<?php echo esc_attr( $expert_title ); ?>" style="width:100%;">
+            </p>
+            <p>
+                <label for="kg_expert_note"><strong>Uzman Notu:</strong></label><br>
+                <textarea id="kg_expert_note" name="kg_expert_note" rows="3" style="width:100%;"><?php echo esc_textarea( $expert_note ); ?></textarea>
+            </p>
+            <p>
+                <label for="kg_expert_approved">
+                    <input type="checkbox" id="kg_expert_approved" name="kg_expert_approved" value="1" <?php checked( $expert_approved, '1' ); ?>>
+                    <strong>Uzman Onaylı</strong>
+                </label>
+            </p>
+
+            <script>
+            jQuery(document).ready(function($) {
+                $('#kg_expert_user_id').on('change', function() {
+                    const selectedOption = $(this).find('option:selected');
+                    if (this.value) {
+                        const fullText = selectedOption.text();
+                        const name = fullText.split(' (ID:')[0];
+                        $('#kg_expert_name').val(name);
+                    }
+                });
+            });
+            </script>
         </div>
         <?php
     }
@@ -222,5 +286,30 @@ class PostMetaBox {
             delete_post_meta( $post_id, '_kg_has_discount' );
             delete_post_meta( $post_id, '_kg_discount_text' );
         }
+
+        // Expert information
+        if ( isset( $_POST['kg_expert_user_id'] ) ) {
+            $expert_user_id = intval( $_POST['kg_expert_user_id'] );
+            update_post_meta( $post_id, '_kg_expert_user_id', $expert_user_id );
+            
+            if ( $expert_user_id > 0 ) {
+                $expert_user = get_user_by( 'ID', $expert_user_id );
+                if ( $expert_user ) {
+                    update_post_meta( $post_id, '_kg_expert_name', $expert_user->display_name );
+                }
+            }
+        }
+
+        if ( isset( $_POST['kg_expert_name'] ) ) {
+            update_post_meta( $post_id, '_kg_expert_name', sanitize_text_field( $_POST['kg_expert_name'] ) );
+        }
+        if ( isset( $_POST['kg_expert_title'] ) ) {
+            update_post_meta( $post_id, '_kg_expert_title', sanitize_text_field( $_POST['kg_expert_title'] ) );
+        }
+        if ( isset( $_POST['kg_expert_note'] ) ) {
+            update_post_meta( $post_id, '_kg_expert_note', sanitize_textarea_field( $_POST['kg_expert_note'] ) );
+        }
+        $expert_approved = isset( $_POST['kg_expert_approved'] ) ? '1' : '0';
+        update_post_meta( $post_id, '_kg_expert_approved', $expert_approved );
     }
 }
