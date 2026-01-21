@@ -144,6 +144,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php' ) ) req
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/ChildProfileMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/ChildProfileMigrator.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Migration/StainMigration.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/StainMigration.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Migration/ExpertMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/ExpertMigrator.php';
 
 // 5.7. SHORTCODE SINIFLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php' ) ) require_once KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php';
@@ -318,6 +319,9 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\StainMigrationPage' ) ) {
         new \KG_Core\Admin\StainMigrationPage();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Migration\ExpertMigrator' ) ) {
+        new \KG_Core\Migration\ExpertMigrator();
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\ToolSeeder' ) ) {
         new \KG_Core\Admin\ToolSeeder();
