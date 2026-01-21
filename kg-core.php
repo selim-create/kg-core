@@ -17,6 +17,15 @@ define( 'KG_CORE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'KG_CORE_URL', plugin_dir_url( __FILE__ ) );
 define( 'KG_CORE_VERSION', '1.0.0' );
 
+// 1.5. DATABASE CLASSES (Schema & Migration)
+// Include database classes early for activation hooks
+if ( file_exists( KG_CORE_PATH . 'includes/Database/Schema.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/Database/Schema.php';
+}
+if ( file_exists( KG_CORE_PATH . 'includes/Database/MigrationRunner.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/Database/MigrationRunner.php';
+}
+
 // 2. YARDIMCI SINIFLARI DAHİL ET (Utils)
 // Dosya var mı kontrolü eklenerek hata önleniyor.
 if ( file_exists( KG_CORE_PATH . 'includes/Utils/Helper.php' ) ) {
@@ -719,6 +728,23 @@ add_filter( 'rest_prepare_diet-type', 'kg_decode_taxonomy_response', 10, 2 );
 add_filter( 'rest_prepare_special-condition', 'kg_decode_taxonomy_response', 10, 2 );
 add_filter( 'rest_prepare_category', 'kg_decode_taxonomy_response', 10, 2 );
 
+// 9.5. Check and update database version on admin_init
+add_action( 'admin_init', 'kg_core_check_db_version' );
+
+function kg_core_check_db_version() {
+    if ( ! is_admin() ) {
+        return;
+    }
+    
+    if ( class_exists( '\KG_Core\Database\Schema' ) ) {
+        $db_version = get_option( \KG_Core\Database\Schema::DB_VERSION_OPTION );
+        
+        if ( $db_version !== \KG_Core\Database\Schema::DB_VERSION ) {
+            \KG_Core\Database\Schema::activate();
+        }
+    }
+}
+
 // 10. ACTIVATION HOOK - Seed tools on plugin activation
 register_activation_hook( __FILE__, function() {
     // Start output buffering - guarantee no output is produced
@@ -757,6 +783,11 @@ register_activation_hook( __FILE__, function() {
         // Create community reports database table
         if ( class_exists( '\KG_Core\Database\ReportSchema' ) ) {
             \KG_Core\Database\ReportSchema::create_table();
+        }
+        
+        // Create custom meta tables (Phase 1)
+        if ( class_exists( '\KG_Core\Database\Schema' ) ) {
+            \KG_Core\Database\Schema::activate();
         }
         
         // Load vaccine master data from JSON
