@@ -115,7 +115,7 @@ class PostMeta extends BaseModel {
     public static function getSponsorData($post_id) {
         $meta = static::getWithCache($post_id);
         
-        if (!$meta || !$meta['is_sponsored']) {
+        if (!$meta || !($meta['is_sponsored'] ?? false)) {
             return null;
         }
         
@@ -123,15 +123,15 @@ class PostMeta extends BaseModel {
         $sponsor_light_logo_url = $meta['sponsor_light_logo_id'] ? wp_get_attachment_url($meta['sponsor_light_logo_id']) : null;
         
         return [
-            'name' => $meta['sponsor_name'],
-            'url' => $meta['sponsor_url'],
+            'name' => $meta['sponsor_name'] ?? null,
+            'url' => $meta['sponsor_url'] ?? null,
             'logo' => $sponsor_logo_url,
             'light_logo' => $sponsor_light_logo_url,
-            'direct_redirect' => $meta['direct_redirect'],
-            'has_discount' => $meta['has_discount'],
-            'discount_text' => $meta['discount_text'],
-            'gam_impression_url' => $meta['gam_impression_url'],
-            'gam_click_url' => $meta['gam_click_url'],
+            'direct_redirect' => $meta['direct_redirect'] ?? false,
+            'has_discount' => $meta['has_discount'] ?? false,
+            'discount_text' => $meta['discount_text'] ?? null,
+            'gam_impression_url' => $meta['gam_impression_url'] ?? null,
+            'gam_click_url' => $meta['gam_click_url'] ?? null,
         ];
     }
 }
