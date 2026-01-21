@@ -181,6 +181,9 @@ class IngredientController {
      * Prepare ingredient data for API response
      */
     private function prepare_ingredient_data( $post_id, $full_detail = false ) {
+        // Try to get data from custom table first
+        $ingredient_meta = \KG_Core\Models\IngredientMeta::get($post_id);
+        
         // Use Helper class for HTML entity decoding
         $name = \KG_Core\Utils\Helper::decode_html_entities( get_the_title( $post_id ) );
         
@@ -191,17 +194,25 @@ class IngredientController {
             $category = \KG_Core\Utils\Helper::decode_html_entities( $category_terms[0]->name );
         }
         
-        // Get allergy_risk and season for both list and detail views
-        $allergy_risk = get_post_meta( $post_id, '_kg_allergy_risk', true );
-        $season = get_post_meta( $post_id, '_kg_season', true );
-        
-        // Ensure season is always an array
-        if ( ! is_array( $season ) ) {
-            if ( ! empty( $season ) ) {
-                // Convert old string format to array
-                $season = array_filter( array_map( 'trim', explode( ',', $season ) ) );
-            } else {
-                $season = [];
+        // Get allergy_risk and season - prefer custom table
+        if ($ingredient_meta) {
+            $allergy_risk = $ingredient_meta['allergy_risk_display'] ?? $ingredient_meta['allergy_risk'];
+            $season = json_decode($ingredient_meta['season'] ?? '[]', true) ?: [];
+            $start_age = \KG_Core\Models\IngredientMeta::formatStartAge($ingredient_meta['start_age']);
+        } else {
+            // Fallback to wp_postmeta
+            $allergy_risk = get_post_meta( $post_id, '_kg_allergy_risk', true );
+            $season = get_post_meta( $post_id, '_kg_season', true );
+            $start_age = get_post_meta( $post_id, '_kg_start_age', true );
+            
+            // Ensure season is always an array
+            if ( ! is_array( $season ) ) {
+                if ( ! empty( $season ) ) {
+                    // Convert old string format to array
+                    $season = array_filter( array_map( 'trim', explode( ',', $season ) ) );
+                } else {
+                    $season = [];
+                }
             }
         }
         
@@ -211,7 +222,7 @@ class IngredientController {
             'slug'         => get_post_field( 'post_name', $post_id ),
             'description'  => get_the_excerpt( $post_id ),
             'image'        => get_the_post_thumbnail_url( $post_id, 'large' ),
-            'start_age'    => get_post_meta( $post_id, '_kg_start_age', true ),
+            'start_age'    => $start_age,
             'category'     => $category,
             'allergy_risk' => $allergy_risk ?: 'Düşük',
             'season'       => $season, // Now returns array
@@ -241,17 +252,32 @@ class IngredientController {
             $data['preparation_tips'] = get_post_meta( $post_id, '_kg_preparation_tips', true );
             $data['storage_tips'] = get_post_meta( $post_id, '_kg_storage_tips', true );
             
-            // Consolidated Nutrition data (100g per serving - primary source)
-            $data['nutrition'] = [
-                'calories' => get_post_meta( $post_id, '_kg_ing_calories_100g', true ),
-                'protein' => get_post_meta( $post_id, '_kg_ing_protein_100g', true ),
-                'carbs' => get_post_meta( $post_id, '_kg_ing_carbs_100g', true ),
-                'fat' => get_post_meta( $post_id, '_kg_ing_fat_100g', true ),
-                'fiber' => get_post_meta( $post_id, '_kg_ing_fiber_100g', true ),
-                'sugar' => get_post_meta( $post_id, '_kg_ing_sugar_100g', true ),
-                'vitamins' => get_post_meta( $post_id, '_kg_ing_vitamins', true ),
-                'minerals' => get_post_meta( $post_id, '_kg_ing_minerals', true ),
-            ];
+            // Consolidated Nutrition data (100g per serving)
+            if ($ingredient_meta) {
+                // Use custom table with formatting
+                $data['nutrition'] = [
+                    'calories' => \KG_Core\Models\IngredientMeta::formatNutritionPer100g($ingredient_meta['calories_100g'], 'kcal'),
+                    'protein' => \KG_Core\Models\IngredientMeta::formatNutritionPer100g($ingredient_meta['protein_100g'], 'g'),
+                    'carbs' => \KG_Core\Models\IngredientMeta::formatNutritionPer100g($ingredient_meta['carbs_100g'], 'g'),
+                    'fat' => \KG_Core\Models\IngredientMeta::formatNutritionPer100g($ingredient_meta['fat_100g'], 'g'),
+                    'fiber' => \KG_Core\Models\IngredientMeta::formatNutritionPer100g($ingredient_meta['fiber_100g'], 'g'),
+                    'sugar' => \KG_Core\Models\IngredientMeta::formatNutritionPer100g($ingredient_meta['sugar_100g'], 'g'),
+                    'vitamins' => $ingredient_meta['vitamins'] ?? '',
+                    'minerals' => $ingredient_meta['minerals'] ?? '',
+                ];
+            } else {
+                // Fallback to wp_postmeta
+                $data['nutrition'] = [
+                    'calories' => get_post_meta( $post_id, '_kg_ing_calories_100g', true ),
+                    'protein' => get_post_meta( $post_id, '_kg_ing_protein_100g', true ),
+                    'carbs' => get_post_meta( $post_id, '_kg_ing_carbs_100g', true ),
+                    'fat' => get_post_meta( $post_id, '_kg_ing_fat_100g', true ),
+                    'fiber' => get_post_meta( $post_id, '_kg_ing_fiber_100g', true ),
+                    'sugar' => get_post_meta( $post_id, '_kg_ing_sugar_100g', true ),
+                    'vitamins' => get_post_meta( $post_id, '_kg_ing_vitamins', true ),
+                    'minerals' => get_post_meta( $post_id, '_kg_ing_minerals', true ),
+                ];
+            }
             
             // Allergen info (simplified - taxonomy-based)
             $data['allergen_info'] = [

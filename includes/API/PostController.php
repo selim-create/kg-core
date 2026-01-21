@@ -90,6 +90,9 @@ class PostController {
     private function prepare_post_data( $post_id, $full_detail = false ) {
         $post = get_post( $post_id );
         
+        // Try to get data from custom table first
+        $post_meta = \KG_Core\Models\PostMeta::get($post_id);
+        
         // Get author info
         $author = get_userdata( $post->post_author );
         $author_data = null;
@@ -136,8 +139,8 @@ class PostController {
             'category' => $category_data,
             'read_time' => $read_time,
             'expert' => $expert_data,
-            'is_featured' => get_post_meta( $post_id, '_kg_is_featured', true ) === '1',
-            'is_sponsored' => get_post_meta( $post_id, '_kg_is_sponsored', true ) === '1',
+            'is_featured' => $post_meta ? ($post_meta['is_featured'] ?? false) : (get_post_meta( $post_id, '_kg_is_featured', true ) === '1'),
+            'is_sponsored' => $post_meta ? ($post_meta['is_sponsored'] ?? false) : (get_post_meta( $post_id, '_kg_is_sponsored', true ) === '1'),
         ];
         
         // Add full details if requested
@@ -146,17 +149,33 @@ class PostController {
             
             // Sponsor data
             if ( $data['is_sponsored'] ) {
-                $data['sponsor'] = [
-                    'name' => get_post_meta( $post_id, '_kg_sponsor_name', true ),
-                    'url' => get_post_meta( $post_id, '_kg_sponsor_url', true ),
-                    'logo' => wp_get_attachment_url( get_post_meta( $post_id, '_kg_sponsor_logo', true ) ),
-                    'light_logo' => wp_get_attachment_url( get_post_meta( $post_id, '_kg_sponsor_light_logo', true ) ),
-                    'direct_redirect' => get_post_meta( $post_id, '_kg_direct_redirect', true ) === '1',
-                    'gam_impression_url' => get_post_meta( $post_id, '_kg_gam_impression_url', true ),
-                    'gam_click_url' => get_post_meta( $post_id, '_kg_gam_click_url', true ),
-                    'has_discount' => get_post_meta( $post_id, '_kg_has_discount', true ) === '1',
-                    'discount_text' => get_post_meta( $post_id, '_kg_discount_text', true ),
-                ];
+                if ($post_meta) {
+                    // Use custom table
+                    $data['sponsor'] = [
+                        'name' => $post_meta['sponsor_name'] ?? '',
+                        'url' => $post_meta['sponsor_url'] ?? '',
+                        'logo' => $post_meta['sponsor_logo_id'] ? wp_get_attachment_url( $post_meta['sponsor_logo_id'] ) : null,
+                        'light_logo' => $post_meta['sponsor_light_logo_id'] ? wp_get_attachment_url( $post_meta['sponsor_light_logo_id'] ) : null,
+                        'direct_redirect' => $post_meta['direct_redirect'] ?? false,
+                        'gam_impression_url' => $post_meta['gam_impression_url'] ?? '',
+                        'gam_click_url' => $post_meta['gam_click_url'] ?? '',
+                        'has_discount' => $post_meta['has_discount'] ?? false,
+                        'discount_text' => $post_meta['discount_text'] ?? '',
+                    ];
+                } else {
+                    // Fallback to wp_postmeta
+                    $data['sponsor'] = [
+                        'name' => get_post_meta( $post_id, '_kg_sponsor_name', true ),
+                        'url' => get_post_meta( $post_id, '_kg_sponsor_url', true ),
+                        'logo' => wp_get_attachment_url( get_post_meta( $post_id, '_kg_sponsor_logo', true ) ),
+                        'light_logo' => wp_get_attachment_url( get_post_meta( $post_id, '_kg_sponsor_light_logo', true ) ),
+                        'direct_redirect' => get_post_meta( $post_id, '_kg_direct_redirect', true ) === '1',
+                        'gam_impression_url' => get_post_meta( $post_id, '_kg_gam_impression_url', true ),
+                        'gam_click_url' => get_post_meta( $post_id, '_kg_gam_click_url', true ),
+                        'has_discount' => get_post_meta( $post_id, '_kg_has_discount', true ) === '1',
+                        'discount_text' => get_post_meta( $post_id, '_kg_discount_text', true ),
+                    ];
+                }
             }
         }
         

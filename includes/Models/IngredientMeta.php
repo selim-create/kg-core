@@ -185,4 +185,56 @@ class IngredientMeta extends BaseModel {
             'order' => 'ASC',
         ]);
     }
+    
+    /**
+     * Format start_age for display
+     * @param int|null $months
+     * @return string|null "6 ay", "12 ay", etc.
+     */
+    public static function formatStartAge($months) {
+        if ($months === null || $months === '') {
+            return null;
+        }
+        return "{$months} ay";
+    }
+    
+    /**
+     * Format nutrition per 100g with unit
+     */
+    public static function formatNutritionPer100g($value, $unit = 'g') {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        $formatted = rtrim(rtrim(number_format($value, 2, ',', ''), '0'), ',');
+        return "{$formatted} {$unit}";
+    }
+    
+    /**
+     * Get all nutrition values formatted (per 100g)
+     */
+    public static function formatNutrition($meta) {
+        return [
+            'calories_100g' => self::formatNutritionPer100g($meta['calories_100g'] ?? null, 'kcal'),
+            'protein_100g' => self::formatNutritionPer100g($meta['protein_100g'] ?? null, 'g'),
+            'carbs_100g' => self::formatNutritionPer100g($meta['carbs_100g'] ?? null, 'g'),
+            'fat_100g' => self::formatNutritionPer100g($meta['fat_100g'] ?? null, 'g'),
+            'fiber_100g' => self::formatNutritionPer100g($meta['fiber_100g'] ?? null, 'g'),
+            'sugar_100g' => self::formatNutritionPer100g($meta['sugar_100g'] ?? null, 'g'),
+        ];
+    }
+    
+    /**
+     * Get full formatted ingredient data
+     */
+    public static function getFormatted($post_id) {
+        $meta = self::get($post_id);
+        if (!$meta) {
+            return null;
+        }
+        
+        $meta['start_age_formatted'] = self::formatStartAge($meta['start_age']);
+        $meta['nutrition_formatted'] = self::formatNutrition($meta);
+        
+        return $meta;
+    }
 }

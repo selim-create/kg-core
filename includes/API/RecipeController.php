@@ -153,16 +153,26 @@ class RecipeController {
 
     // Helper to format data for Next.js (ACF'siz)
     private function prepare_recipe_data( $post_id, $full_detail = false ) {
-        // Standart WP fonksiyonları ile meta verisini çek
-        $prep_time = get_post_meta($post_id, '_kg_prep_time', true);
+        // Try to get data from custom table first
+        $recipe_meta = \KG_Core\Models\RecipeMeta::get($post_id);
         
-        // Malzemeler genellikle JSON string veya serialized array olarak saklanır
-        $ingredients_raw = get_post_meta($post_id, '_kg_ingredients', true);
-        $ingredients = !empty($ingredients_raw) ? maybe_unserialize($ingredients_raw) : [];
+        // If custom table data exists, use it with formatting
+        if ($recipe_meta) {
+            $prep_time = \KG_Core\Models\RecipeMeta::formatPrepTime($recipe_meta['prep_time']);
+            $ingredients = json_decode($recipe_meta['ingredients'] ?? '[]', true) ?: [];
+            $instructions = json_decode($recipe_meta['instructions'] ?? '[]', true) ?: [];
+        } else {
+            // Fallback to wp_postmeta for backward compatibility
+            $prep_time = get_post_meta($post_id, '_kg_prep_time', true);
+            
+            // Malzemeler genellikle JSON string veya serialized array olarak saklanır
+            $ingredients_raw = get_post_meta($post_id, '_kg_ingredients', true);
+            $ingredients = !empty($ingredients_raw) ? maybe_unserialize($ingredients_raw) : [];
 
-        // Adımlar
-        $instructions_raw = get_post_meta($post_id, '_kg_instructions', true);
-        $instructions = !empty($instructions_raw) ? maybe_unserialize($instructions_raw) : [];
+            // Adımlar
+            $instructions_raw = get_post_meta($post_id, '_kg_instructions', true);
+            $instructions = !empty($instructions_raw) ? maybe_unserialize($instructions_raw) : [];
+        }
         
         // Use Helper class for HTML entity decoding
         $title = \KG_Core\Utils\Helper::decode_html_entities( get_the_title( $post_id ) );
@@ -213,10 +223,19 @@ class RecipeController {
         
         
         // Get rating data with base rating fallback
-        $real_rating = get_post_meta( $post_id, '_kg_rating', true );
-        $real_count = get_post_meta( $post_id, '_kg_rating_count', true );
-        $base_rating = $this->get_base_rating( $post_id );
-        $base_count = $this->get_base_rating_count( $post_id );
+        if ($recipe_meta) {
+            // Use custom table data
+            $real_rating = $recipe_meta['rating'];
+            $real_count = $recipe_meta['rating_count'];
+            $base_rating = $recipe_meta['base_rating'] ?: $this->get_base_rating( $post_id );
+            $base_count = $recipe_meta['base_rating_count'] ?: $this->get_base_rating_count( $post_id );
+        } else {
+            // Fallback to wp_postmeta
+            $real_rating = get_post_meta( $post_id, '_kg_rating', true );
+            $real_count = get_post_meta( $post_id, '_kg_rating_count', true );
+            $base_rating = $this->get_base_rating( $post_id );
+            $base_count = $this->get_base_rating_count( $post_id );
+        }
         
         // Use real rating if exists, otherwise use base
         $display_rating = ! empty( $real_rating ) ? $real_rating : $base_rating;
@@ -247,7 +266,7 @@ class RecipeController {
             // Mevcut alanlar
             'age_groups'      => wp_get_post_terms( $post_id, 'age-group', ['fields' => 'names'] ),
             'allergens'       => wp_get_post_terms( $post_id, 'allergen', ['fields' => 'names'] ),
-            'is_featured'     => get_post_meta( $post_id, '_kg_is_featured', true ) === '1',
+            'is_featured'     => $recipe_meta ? ($recipe_meta['is_featured'] ?? false) : (get_post_meta( $post_id, '_kg_is_featured', true ) === '1'),
         ];
 
         // Add full details if requested
@@ -255,36 +274,60 @@ class RecipeController {
             $data['content'] = get_the_content( null, false, $post_id );
             
             // Extended nutrition data
-            $data['nutrition'] = [
-                'calories' => get_post_meta( $post_id, '_kg_calories', true ),
-                'protein'  => get_post_meta( $post_id, '_kg_protein', true ),
-                'carbs'    => get_post_meta( $post_id, '_kg_carbs', true ),
-                'fat'      => get_post_meta( $post_id, '_kg_fat', true ),
-                'fiber'    => get_post_meta( $post_id, '_kg_fiber', true ),
-                'sugar'    => get_post_meta( $post_id, '_kg_sugar', true ),
-                'sodium'   => get_post_meta( $post_id, '_kg_sodium', true ),
-                'vitamins' => get_post_meta( $post_id, '_kg_vitamins', true ),
-                'minerals' => get_post_meta( $post_id, '_kg_minerals', true ),
-            ];
+            if ($recipe_meta) {
+                // Use custom table with formatting
+                $data['nutrition'] = [
+                    'calories' => \KG_Core\Models\RecipeMeta::formatNutritionValue($recipe_meta['calories'], 'kcal'),
+                    'protein'  => \KG_Core\Models\RecipeMeta::formatNutritionValue($recipe_meta['protein'], 'g'),
+                    'carbs'    => \KG_Core\Models\RecipeMeta::formatNutritionValue($recipe_meta['carbs'], 'g'),
+                    'fat'      => \KG_Core\Models\RecipeMeta::formatNutritionValue($recipe_meta['fat'], 'g'),
+                    'fiber'    => \KG_Core\Models\RecipeMeta::formatNutritionValue($recipe_meta['fiber'], 'g'),
+                    'sugar'    => \KG_Core\Models\RecipeMeta::formatNutritionValue($recipe_meta['sugar'], 'g'),
+                    'sodium'   => \KG_Core\Models\RecipeMeta::formatNutritionValue($recipe_meta['sodium'], 'mg'),
+                    'vitamins' => $recipe_meta['vitamins'] ?? '',
+                    'minerals' => $recipe_meta['minerals'] ?? '',
+                ];
+                
+                // New fields from custom table
+                $data['cook_time'] = \KG_Core\Models\RecipeMeta::formatCookTime($recipe_meta['cook_time']);
+                $data['serving_size'] = $recipe_meta['serving_size'] ?? '';
+                $data['difficulty'] = \KG_Core\Models\RecipeMeta::formatDifficulty($recipe_meta['difficulty']);
+                $data['freezable'] = $recipe_meta['freezable'] ?? false;
+                $data['storage_info'] = $recipe_meta['storage_info'] ?? '';
+                $data['video_url'] = $recipe_meta['video_url'] ?? '';
+                $data['special_notes'] = $recipe_meta['special_notes'] ?? '';
+                
+                $substitutes = json_decode($recipe_meta['substitutes'] ?? '[]', true) ?: [];
+                $data['substitutes'] = $substitutes;
+            } else {
+                // Fallback to wp_postmeta
+                $data['nutrition'] = [
+                    'calories' => get_post_meta( $post_id, '_kg_calories', true ),
+                    'protein'  => get_post_meta( $post_id, '_kg_protein', true ),
+                    'carbs'    => get_post_meta( $post_id, '_kg_carbs', true ),
+                    'fat'      => get_post_meta( $post_id, '_kg_fat', true ),
+                    'fiber'    => get_post_meta( $post_id, '_kg_fiber', true ),
+                    'sugar'    => get_post_meta( $post_id, '_kg_sugar', true ),
+                    'sodium'   => get_post_meta( $post_id, '_kg_sodium', true ),
+                    'vitamins' => get_post_meta( $post_id, '_kg_vitamins', true ),
+                    'minerals' => get_post_meta( $post_id, '_kg_minerals', true ),
+                ];
+                
+                // New fields as per requirements
+                $data['cook_time'] = get_post_meta( $post_id, '_kg_cook_time', true );
+                $data['serving_size'] = get_post_meta( $post_id, '_kg_serving_size', true );
+                $data['difficulty'] = get_post_meta( $post_id, '_kg_difficulty', true );
+                $data['freezable'] = get_post_meta( $post_id, '_kg_freezable', true ) === '1';
+                $data['storage_info'] = get_post_meta( $post_id, '_kg_storage_info', true );
+                $data['video_url'] = get_post_meta( $post_id, '_kg_video_url', true );
+                $data['special_notes'] = get_post_meta( $post_id, '_kg_special_notes', true );
+                
+                $substitutes_raw = get_post_meta( $post_id, '_kg_substitutes', true );
+                $data['substitutes'] = !empty($substitutes_raw) ? maybe_unserialize($substitutes_raw) : [];
+            }
             
-            // New fields as per requirements
-            $data['cook_time'] = get_post_meta( $post_id, '_kg_cook_time', true );
-            $data['serving_size'] = get_post_meta( $post_id, '_kg_serving_size', true );
-            $data['difficulty'] = get_post_meta( $post_id, '_kg_difficulty', true );
-            $data['freezable'] = get_post_meta( $post_id, '_kg_freezable', true ) === '1';
-            $data['storage_info'] = get_post_meta( $post_id, '_kg_storage_info', true );
-            
-            $data['video_url'] = get_post_meta( $post_id, '_kg_video_url', true );
-            
-            // Special Notes
-            $data['special_notes'] = get_post_meta( $post_id, '_kg_special_notes', true );
-            
-            // Extended expert data with note and image
+            // Extended expert data with note and image (common for both paths)
             $data['expert'] = $this->get_expert_data( $post_id, true );
-            
-            
-            $substitutes_raw = get_post_meta( $post_id, '_kg_substitutes', true );
-            $data['substitutes'] = !empty($substitutes_raw) ? maybe_unserialize($substitutes_raw) : [];
             
             $data['related_recipes'] = $this->get_related_recipes( $post_id );
             $data['cross_sell'] = $this->get_cross_sell_suggestion( $post_id );
