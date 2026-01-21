@@ -32,6 +32,7 @@ class RecipeMetaBox {
         $fiber = get_post_meta( $post->ID, '_kg_fiber', true );
         $vitamins = get_post_meta( $post->ID, '_kg_vitamins', true );
         $video_url = get_post_meta( $post->ID, '_kg_video_url', true );
+        $expert_user_id = get_post_meta( $post->ID, '_kg_expert_user_id', true );
         $expert_name = get_post_meta( $post->ID, '_kg_expert_name', true );
         $expert_title = get_post_meta( $post->ID, '_kg_expert_title', true );
         $expert_note = get_post_meta( $post->ID, '_kg_expert_note', true );
@@ -203,9 +204,32 @@ class RecipeMetaBox {
             </p>
 
             <h3>Uzman Onayı</h3>
+            
+            <!-- Kayıtlı Uzman Seçici -->
+            <p>
+                <label for="kg_expert_user_id"><strong>Kayıtlı Uzman Seç:</strong></label><br>
+                <select id="kg_expert_user_id" name="kg_expert_user_id" style="width:100%;">
+                    <option value="">-- Kayıtlı uzman seçin veya manuel girin --</option>
+                    <?php
+                    $experts = get_users([
+                        'role' => 'kg_expert',
+                        'orderby' => 'display_name',
+                        'order' => 'ASC'
+                    ]);
+                    foreach ($experts as $expert):
+                    ?>
+                        <option value="<?php echo $expert->ID; ?>" <?php selected($expert_user_id, $expert->ID); ?>>
+                            <?php echo esc_html($expert->display_name); ?> (ID: <?php echo $expert->ID; ?>)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <small>Kayıtlı uzman seçilirse, ad ve ünvan otomatik doldurulur. Profil fotoğrafı ve link frontend'de gösterilir.</small>
+            </p>
+            
             <p>
                 <label for="kg_expert_name"><strong>Uzman Adı:</strong></label><br>
                 <input type="text" id="kg_expert_name" name="kg_expert_name" value="<?php echo esc_attr( $expert_name ); ?>" style="width:100%;">
+                <small>Kayıtlı uzman seçilirse otomatik dolar. Kayıtsız uzman için manuel girin.</small>
             </p>
             <p>
                 <label for="kg_expert_title"><strong>Uzman Ünvanı:</strong></label><br>
@@ -292,6 +316,21 @@ class RecipeMetaBox {
                 <input type="hidden" name="kg_cross_sell_selected_image" id="kg_cross_sell_selected_image" value="">
             </div>
         </div>
+        
+        <script>
+        jQuery(document).ready(function($) {
+            // Uzman seçildiğinde ad alanını doldur
+            $('#kg_expert_user_id').on('change', function() {
+                const selectedOption = $(this).find('option:selected');
+                if (this.value) {
+                    // Display name'den ünvanı ve adı ayır (basit yaklaşım)
+                    const fullText = selectedOption.text();
+                    const name = fullText.split(' (ID:')[0];
+                    $('#kg_expert_name').val(name);
+                }
+            });
+        });
+        </script>
         <?php
     }
 
@@ -530,6 +569,19 @@ class RecipeMetaBox {
         }
 
         // Expert information
+        if ( isset( $_POST['kg_expert_user_id'] ) ) {
+            $expert_user_id = intval( $_POST['kg_expert_user_id'] );
+            update_post_meta( $post_id, '_kg_expert_user_id', $expert_user_id );
+            
+            // Kayıtlı uzman seçildiyse, display_name'i de güncelle
+            if ( $expert_user_id > 0 ) {
+                $expert_user = get_user_by( 'ID', $expert_user_id );
+                if ( $expert_user ) {
+                    update_post_meta( $post_id, '_kg_expert_name', $expert_user->display_name );
+                }
+            }
+        }
+        
         if ( isset( $_POST['kg_expert_name'] ) ) {
             update_post_meta( $post_id, '_kg_expert_name', sanitize_text_field( $_POST['kg_expert_name'] ) );
         }

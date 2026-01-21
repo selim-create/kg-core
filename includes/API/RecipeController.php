@@ -193,11 +193,8 @@ class RecipeController {
         }
         
         // Expert bilgisi (her zaman döndür, sadece full_detail'de değil)
-        $expert_data = [
-            'name' => get_post_meta( $post_id, '_kg_expert_name', true ),
-            'title' => get_post_meta( $post_id, '_kg_expert_title', true ),
-            'approved' => get_post_meta( $post_id, '_kg_expert_approved', true ) === '1',
-        ];
+        $expert_data = $this->get_expert_data( $post_id, false );
+        
         
         // Get rating data with base rating fallback
         $real_rating = get_post_meta( $post_id, '_kg_rating', true );
@@ -267,28 +264,8 @@ class RecipeController {
             $data['special_notes'] = get_post_meta( $post_id, '_kg_special_notes', true );
             
             // Extended expert data with note and image
-            $expert_note = get_post_meta( $post_id, '_kg_expert_note', true );
-            $expert_image = '';
-            $expert_name = get_post_meta( $post_id, '_kg_expert_name', true );
-            if ( ! empty( $expert_name ) ) {
-                // Try to find user by multiple methods for avatar
-                $expert_user = get_user_by( 'login', $expert_name );
-                if ( ! $expert_user ) {
-                    $expert_user = get_user_by( 'slug', sanitize_title( $expert_name ) );
-                }
-                if ( $expert_user ) {
-                    $expert_image = get_avatar_url( $expert_user->ID, ['size' => 96] );
-                }
-            }
+            $data['expert'] = $this->get_expert_data( $post_id, true );
             
-            // Update expert data with additional fields
-            $data['expert'] = [
-                'name' => $expert_name,
-                'title' => get_post_meta( $post_id, '_kg_expert_title', true ),
-                'note' => $expert_note,
-                'image' => $expert_image,
-                'approved' => get_post_meta( $post_id, '_kg_expert_approved', true ) === '1',
-            ];
             
             $substitutes_raw = get_post_meta( $post_id, '_kg_substitutes', true );
             $data['substitutes'] = !empty($substitutes_raw) ? maybe_unserialize($substitutes_raw) : [];
@@ -781,6 +758,49 @@ class RecipeController {
         }
         
         return $seo_data;
+    }
+    
+    /**
+     * Get expert data with user information
+     * Helper method to avoid code duplication
+     * 
+     * @param int $post_id Recipe post ID
+     * @param bool $include_note Whether to include expert note (for full_detail)
+     * @return array Expert data
+     */
+    private function get_expert_data( $post_id, $include_note = false ) {
+        $expert_user_id = get_post_meta( $post_id, '_kg_expert_user_id', true );
+        $expert_name = get_post_meta( $post_id, '_kg_expert_name', true );
+        $expert_title = get_post_meta( $post_id, '_kg_expert_title', true );
+        $expert_slug = '';
+        $expert_image = '';
+        
+        if ( ! empty( $expert_user_id ) ) {
+            $expert_user = get_user_by( 'ID', $expert_user_id );
+            if ( $expert_user ) {
+                $expert_slug = $expert_user->user_nicename;
+                $expert_image = \KG_Core\Utils\Helper::get_user_avatar_url( $expert_user_id );
+                // Eğer name boşsa user'dan al
+                if ( empty( $expert_name ) ) {
+                    $expert_name = $expert_user->display_name;
+                }
+            }
+        }
+        
+        $data = [
+            'name' => $expert_name,
+            'title' => $expert_title,
+            'approved' => get_post_meta( $post_id, '_kg_expert_approved', true ) === '1',
+            'slug' => $expert_slug,
+            'image' => $expert_image,
+            'user_id' => $expert_user_id ? intval( $expert_user_id ) : null,
+        ];
+        
+        if ( $include_note ) {
+            $data['note'] = get_post_meta( $post_id, '_kg_expert_note', true );
+        }
+        
+        return $data;
     }
     
     /**
