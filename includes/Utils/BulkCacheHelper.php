@@ -10,7 +10,7 @@ namespace KG_Core\Utils;
 class BulkCacheHelper {
     
     /**
-     * Recipe listesi için cache'leri prime et
+     * Prime caches for recipe list
      * 
      * @param array $posts Array of WP_Post objects
      */
@@ -38,7 +38,7 @@ class BulkCacheHelper {
     }
     
     /**
-     * Post/Blog listesi için cache'leri prime et
+     * Prime caches for post/blog list
      * 
      * @param array $posts Array of WP_Post objects
      */
@@ -63,7 +63,7 @@ class BulkCacheHelper {
     }
     
     /**
-     * Ingredient listesi için cache'leri prime et
+     * Prime caches for ingredient list
      * 
      * @param array $posts Array of WP_Post objects
      */
@@ -82,7 +82,7 @@ class BulkCacheHelper {
     }
     
     /**
-     * Discussion listesi için cache'leri prime et
+     * Prime caches for discussion list
      * 
      * @param array $posts Array of WP_Post objects
      */
@@ -110,7 +110,7 @@ class BulkCacheHelper {
     }
     
     /**
-     * Search sonuçları için cache'leri prime et (mixed content)
+     * Prime caches for search results (mixed content)
      * 
      * @param array $posts Array of WP_Post objects
      */
@@ -156,7 +156,7 @@ class BulkCacheHelper {
     }
     
     /**
-     * Term meta cache'ini prime et (örn: renk kodları, ikonlar)
+     * Prime term meta cache (e.g., color codes, icons)
      * 
      * @param array $posts Array of WP_Post objects
      * @param string $taxonomy Taxonomy name
