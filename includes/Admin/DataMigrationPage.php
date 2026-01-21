@@ -72,10 +72,14 @@ class DataMigrationPage {
     public function renderPage() {
         $tableStatus = Schema::getTableStatus();
         
-        // Get post counts
-        $recipesCount = wp_count_posts('recipe')->publish + wp_count_posts('recipe')->draft;
-        $ingredientsCount = wp_count_posts('ingredient')->publish + wp_count_posts('ingredient')->draft;
-        $postsCount = wp_count_posts('post')->publish + wp_count_posts('post')->draft;
+        // Get post counts efficiently
+        $recipeCounts = wp_count_posts('recipe');
+        $ingredientCounts = wp_count_posts('ingredient');
+        $postCounts = wp_count_posts('post');
+        
+        $recipesCount = ($recipeCounts->publish ?? 0) + ($recipeCounts->draft ?? 0);
+        $ingredientsCount = ($ingredientCounts->publish ?? 0) + ($ingredientCounts->draft ?? 0);
+        $postsCount = ($postCounts->publish ?? 0) + ($postCounts->draft ?? 0);
         
         ?>
         <div class="wrap kg-data-migration-page">

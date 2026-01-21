@@ -132,6 +132,63 @@ class DataMigration {
     ];
     
     /**
+     * Type mappings for field conversion
+     */
+    private static $type_mappings = [
+        'recipe' => [
+            'prep_time' => 'int',
+            'cook_time' => 'int',
+            'rating_count' => 'int',
+            'base_rating_count' => 'int',
+            'expert_user_id' => 'int',
+            'calories' => 'float',
+            'protein' => 'float',
+            'carbs' => 'float',
+            'fat' => 'float',
+            'fiber' => 'float',
+            'sugar' => 'float',
+            'sodium' => 'float',
+            'rating' => 'float',
+            'base_rating' => 'float',
+            'freezable' => 'boolean',
+            'is_featured' => 'boolean',
+            'expert_approved' => 'boolean',
+            'ingredients' => 'json',
+            'instructions' => 'json',
+            'substitutes' => 'json',
+            'cross_sell' => 'json',
+            'ratings_data' => 'json',
+        ],
+        'ingredient' => [
+            'start_age' => 'int',
+            'expert_user_id' => 'int',
+            'calories_100g' => 'float',
+            'protein_100g' => 'float',
+            'carbs_100g' => 'float',
+            'fat_100g' => 'float',
+            'fiber_100g' => 'float',
+            'sugar_100g' => 'float',
+            'is_featured' => 'boolean',
+            'expert_approved' => 'boolean',
+            'season' => 'json',
+            'prep_methods' => 'json',
+            'prep_by_age' => 'json',
+            'pairings' => 'json',
+            'faq' => 'json',
+        ],
+        'post' => [
+            'sponsor_logo_id' => 'int',
+            'sponsor_light_logo_id' => 'int',
+            'expert_user_id' => 'int',
+            'is_featured' => 'boolean',
+            'is_sponsored' => 'boolean',
+            'direct_redirect' => 'boolean',
+            'has_discount' => 'boolean',
+            'expert_approved' => 'boolean',
+        ],
+    ];
+    
+    /**
      * Migrate all post types
      */
     public static function migrateAll() {
@@ -423,62 +480,8 @@ class DataMigration {
             return null;
         }
         
-        // Define field types for each post type
-        $type_mappings = [
-            'recipe' => [
-                'prep_time' => 'int',
-                'cook_time' => 'int',
-                'rating_count' => 'int',
-                'base_rating_count' => 'int',
-                'expert_user_id' => 'int',
-                'calories' => 'float',
-                'protein' => 'float',
-                'carbs' => 'float',
-                'fat' => 'float',
-                'fiber' => 'float',
-                'sugar' => 'float',
-                'sodium' => 'float',
-                'rating' => 'float',
-                'base_rating' => 'float',
-                'freezable' => 'boolean',
-                'is_featured' => 'boolean',
-                'expert_approved' => 'boolean',
-                'ingredients' => 'json',
-                'instructions' => 'json',
-                'substitutes' => 'json',
-                'cross_sell' => 'json',
-                'ratings_data' => 'json',
-            ],
-            'ingredient' => [
-                'start_age' => 'int',
-                'expert_user_id' => 'int',
-                'calories_100g' => 'float',
-                'protein_100g' => 'float',
-                'carbs_100g' => 'float',
-                'fat_100g' => 'float',
-                'fiber_100g' => 'float',
-                'sugar_100g' => 'float',
-                'is_featured' => 'boolean',
-                'expert_approved' => 'boolean',
-                'season' => 'json',
-                'prep_methods' => 'json',
-                'prep_by_age' => 'json',
-                'pairings' => 'json',
-                'faq' => 'json',
-            ],
-            'post' => [
-                'sponsor_logo_id' => 'int',
-                'sponsor_light_logo_id' => 'int',
-                'expert_user_id' => 'int',
-                'is_featured' => 'boolean',
-                'is_sponsored' => 'boolean',
-                'direct_redirect' => 'boolean',
-                'has_discount' => 'boolean',
-                'expert_approved' => 'boolean',
-            ],
-        ];
-        
-        $type = $type_mappings[$post_type][$field_name] ?? 'string';
+        // Use class property for type mappings
+        $type = self::$type_mappings[$post_type][$field_name] ?? 'string';
         
         switch ($type) {
             case 'boolean':
@@ -520,63 +523,63 @@ class DataMigration {
      * Verify recipes
      */
     private static function verifyRecipes() {
-        $recipes = get_posts([
-            'post_type' => 'recipe',
-            'post_status' => 'any',
-            'posts_per_page' => -1,
-            'fields' => 'ids',
-        ]);
+        global $wpdb;
         
-        $missing = [];
-        foreach ($recipes as $post_id) {
-            if (!RecipeMeta::exists($post_id)) {
-                $missing[] = $post_id;
-            }
-        }
+        // Get post IDs that exist but don't have custom meta
+        $sql = "
+            SELECT p.ID 
+            FROM {$wpdb->posts} p 
+            LEFT JOIN {$wpdb->prefix}kg_recipe_meta m ON p.ID = m.post_id 
+            WHERE p.post_type = 'recipe' 
+            AND p.post_status != 'trash'
+            AND m.post_id IS NULL
+        ";
         
-        return $missing;
+        $results = $wpdb->get_col($sql);
+        
+        return array_map('intval', $results);
     }
     
     /**
      * Verify ingredients
      */
     private static function verifyIngredients() {
-        $ingredients = get_posts([
-            'post_type' => 'ingredient',
-            'post_status' => 'any',
-            'posts_per_page' => -1,
-            'fields' => 'ids',
-        ]);
+        global $wpdb;
         
-        $missing = [];
-        foreach ($ingredients as $post_id) {
-            if (!IngredientMeta::exists($post_id)) {
-                $missing[] = $post_id;
-            }
-        }
+        // Get post IDs that exist but don't have custom meta
+        $sql = "
+            SELECT p.ID 
+            FROM {$wpdb->posts} p 
+            LEFT JOIN {$wpdb->prefix}kg_ingredient_meta m ON p.ID = m.post_id 
+            WHERE p.post_type = 'ingredient' 
+            AND p.post_status != 'trash'
+            AND m.post_id IS NULL
+        ";
         
-        return $missing;
+        $results = $wpdb->get_col($sql);
+        
+        return array_map('intval', $results);
     }
     
     /**
      * Verify posts
      */
     private static function verifyPosts() {
-        $posts = get_posts([
-            'post_type' => 'post',
-            'post_status' => 'any',
-            'posts_per_page' => -1,
-            'fields' => 'ids',
-        ]);
+        global $wpdb;
         
-        $missing = [];
-        foreach ($posts as $post_id) {
-            if (!PostMeta::exists($post_id)) {
-                $missing[] = $post_id;
-            }
-        }
+        // Get post IDs that exist but don't have custom meta
+        $sql = "
+            SELECT p.ID 
+            FROM {$wpdb->posts} p 
+            LEFT JOIN {$wpdb->prefix}kg_post_meta m ON p.ID = m.post_id 
+            WHERE p.post_type = 'post' 
+            AND p.post_status != 'trash'
+            AND m.post_id IS NULL
+        ";
         
-        return $missing;
+        $results = $wpdb->get_col($sql);
+        
+        return array_map('intval', $results);
     }
     
     /**
