@@ -127,6 +127,57 @@ class KGCoreAdminMenu {
                     </p>
                     <p style="color: #666; margin: 5px 0 0 0;">Tamamlanan</p>
                 </div>
+                
+                <!-- Custom Tables Status -->
+                <?php 
+                $table_status = [];
+                $db_version = 'N/A';
+                
+                if ( class_exists( '\KG_Core\Database\Schema' ) ) {
+                    $table_status = \KG_Core\Database\Schema::getTableStatus();
+                    $db_version = get_option( \KG_Core\Database\Schema::DB_VERSION_OPTION, 'Not Set' );
+                }
+                
+                $all_tables_exist = !empty($table_status) && count(array_filter($table_status, function($t) { 
+                    return $t['exists']; 
+                })) === count($table_status);
+                ?>
+                <div style="background: white; padding: 20px; border-left: 4px solid #00BCD4; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <h3 style="margin: 0 0 15px 0; color: #00BCD4;">🗄️ Custom Tables</h3>
+                    
+                    <?php if ( $all_tables_exist ): ?>
+                        <p style="font-size: 24px; font-weight: bold; margin: 0; color: #4CAF50;">
+                            ✅ Aktif
+                        </p>
+                        <p style="color: #666; margin: 5px 0 15px 0;">Tüm tablolar mevcut</p>
+                    <?php else: ?>
+                        <p style="font-size: 24px; font-weight: bold; margin: 0; color: #f44336;">
+                            ❌ Eksik
+                        </p>
+                        <p style="color: #666; margin: 5px 0 15px 0;">Bazı tablolar eksik</p>
+                    <?php endif; ?>
+                    
+                    <div style="font-size: 12px; color: #666;">
+                        <?php foreach ( $table_status as $table_name => $status ): ?>
+                            <div style="margin: 5px 0; display: flex; justify-content: space-between; align-items: center;">
+                                <span>
+                                    <?php echo $status['exists'] ? '✅' : '❌'; ?>
+                                    <strong><?php echo esc_html( $table_name ); ?></strong>
+                                </span>
+                                <?php if ( $status['exists'] ): ?>
+                                    <span style="background: #e3f2fd; padding: 2px 8px; border-radius: 3px;">
+                                        <?php echo number_format( $status['row_count'] ); ?> satır
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                        
+                        <hr style="margin: 10px 0; border: none; border-top: 1px solid #eee;">
+                        <p style="margin: 5px 0;">
+                            <strong>DB Version:</strong> <?php echo esc_html( $db_version ); ?>
+                        </p>
+                    </div>
+                </div>
             </div>
             
             <!-- Quick Links -->
