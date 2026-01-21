@@ -25,6 +25,9 @@ if ( file_exists( KG_CORE_PATH . 'includes/Database/Schema.php' ) ) {
 if ( file_exists( KG_CORE_PATH . 'includes/Database/MigrationRunner.php' ) ) {
     require_once KG_CORE_PATH . 'includes/Database/MigrationRunner.php';
 }
+if ( file_exists( KG_CORE_PATH . 'includes/Database/DataMigration.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/Database/DataMigration.php';
+}
 
 // 2. YARDIMCI SINIFLARI DAHİL ET (Utils)
 // Dosya var mı kontrolü eklenerek hata önleniyor.
@@ -149,6 +152,10 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php' ) ) r
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientEnricher.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/IngredientEnricher.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/MigrationPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/MigrationPage.php';
+if ( is_admin() && file_exists( KG_CORE_PATH . 'includes/Admin/DataMigrationPage.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/Admin/DataMigrationPage.php';
+    new \KG_Core\Admin\DataMigrationPage();
+}
 // Tool Seeder (Araç Oluşturma Sayfası)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/ToolSeeder.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/ToolSeeder.php';
 // Discussion Admin (Moderasyon Sayfası)
