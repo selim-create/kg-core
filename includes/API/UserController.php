@@ -256,7 +256,7 @@ class UserController {
             'permission_callback' => [ $this, 'check_authentication' ],
         ]);
 
-        register_rest_route( 'kg/v1', '/user/consents/(?P<type>terms|marketing|sensitive_data)', [
+        register_rest_route( 'kg/v1', '/user/consents/(?P<type>terms|marketing|sensitive_data|guardian_declaration)', [
             'methods'  => 'PUT',
             'callback' => [ $this, 'update_user_consent' ],
             'permission_callback' => [ $this, 'check_authentication' ],
@@ -264,7 +264,7 @@ class UserController {
                 'type' => [
                     'required' => true,
                     'type' => 'string',
-                    'enum' => [ 'terms', 'marketing', 'sensitive_data' ],
+                    'enum' => [ 'terms', 'marketing', 'sensitive_data', 'guardian_declaration' ],
                     'description' => 'Consent type',
                 ],
                 'consented' => [
@@ -401,6 +401,21 @@ class UserController {
                     return new \WP_Error( 'invalid_date', 'Invalid sensitive data consent date format', [ 'status' => 400 ] );
                 }
             }
+            
+            // Validate guardian_declaration_at if provided
+            if ( ! empty( $consents_data['guardian_declaration_at'] ) ) {
+                $guardian_date = strtotime( $consents_data['guardian_declaration_at'] );
+                if ( ! $guardian_date ) {
+                    return new \WP_Error( 'invalid_date', 'Invalid guardian declaration date format', [ 'status' => 400 ] );
+                }
+            }
+            
+            // Guardian declaration is required if child profile is provided
+            if ( ! empty( $child_data ) && is_array( $child_data ) ) {
+                if ( ! isset( $consents_data['guardian_declaration'] ) || ! $consents_data['guardian_declaration'] ) {
+                    return new \WP_Error( 'guardian_declaration_required', 'Çocuk profili eklemek için veli/vasi beyanını onaylamanız gerekmektedir.', [ 'status' => 400 ] );
+                }
+            }
         }
 
         if ( email_exists( $email ) ) {
@@ -518,6 +533,19 @@ class UserController {
                 'ip_address' => $ip_address,
                 'user_agent' => $user_agent,
             ] );
+            
+            // Guardian declaration consent (optional, but required when child profile is added)
+            $guardian_consented = isset( $consents_data['guardian_declaration'] ) && $consents_data['guardian_declaration'];
+            if ( $guardian_consented ) {
+                UserConsent::create( [
+                    'user_id' => $user_id,
+                    'consent_type' => 'guardian_declaration',
+                    'consented' => true,
+                    'consented_at' => $consents_data['guardian_declaration_at'] ?? current_time( 'mysql' ),
+                    'ip_address' => $ip_address,
+                    'user_agent' => $user_agent,
+                ] );
+            }
         }
 
         $token = JWTHandler::generate_token( $user_id );

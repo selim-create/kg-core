@@ -47,6 +47,27 @@ This document provides examples of how to use the new user consent management AP
 }
 ```
 
+#### Registration with Child Profile (Guardian Declaration Required)
+```json
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "name": "User Name",
+  "child": {
+    "name": "Child Name",
+    "birth_date": "2023-01-15"
+  },
+  "consents": {
+    "terms_accepted": true,
+    "terms_accepted_at": "2026-01-21T10:30:00.000Z",
+    "guardian_declaration": true,
+    "guardian_declaration_at": "2026-01-21T10:30:00.000Z",
+    "marketing_consent": false,
+    "sensitive_data_consent": false
+  }
+}
+```
+
 #### Registration with Some Consents Declined
 ```json
 {
@@ -131,6 +152,8 @@ The following validation rules apply to the consents:
 - `consents.marketing_consent_at` - Optional, must be a valid ISO 8601 date if provided
 - `consents.sensitive_data_consent` - Optional, boolean
 - `consents.sensitive_data_consent_at` - Optional, must be a valid ISO 8601 date if provided
+- `consents.guardian_declaration` - **Required when adding a child profile**, boolean
+- `consents.guardian_declaration_at` - Optional, must be a valid ISO 8601 date if provided
 
 ### Error Responses
 
@@ -150,6 +173,17 @@ The following validation rules apply to the consents:
 {
   "code": "invalid_date",
   "message": "Invalid terms acceptance date format",
+  "data": {
+    "status": 400
+  }
+}
+```
+
+#### Missing Guardian Declaration (when adding child profile)
+```json
+{
+  "code": "guardian_declaration_required",
+  "message": "Çocuk profili eklemek için veli/vasi beyanını onaylamanız gerekmektedir.",
   "data": {
     "status": 400
   }
@@ -206,6 +240,16 @@ curl -X GET https://yoursite.com/wp-json/kg/v1/user/consents \
     "version": null,
     "created_at": "2026-01-21 10:30:00",
     "updated_at": "2026-01-21 10:30:00"
+  },
+  {
+    "id": 4,
+    "consent_type": "guardian_declaration",
+    "consented": true,
+    "consented_at": "2026-01-21 10:30:00",
+    "revoked_at": null,
+    "version": null,
+    "created_at": "2026-01-21 10:30:00",
+    "updated_at": "2026-01-21 10:30:00"
   }
 ]
 ```
@@ -235,6 +279,7 @@ Where `{type}` is one of:
 - `terms`
 - `marketing`
 - `sensitive_data`
+- `guardian_declaration`
 
 ### Authentication
 Requires JWT token in Authorization header.
@@ -368,6 +413,12 @@ if ( UserConsentHelper::has_sensitive_data_consent( $user_id ) ) {
     process_health_data( $user_id );
 }
 
+// Check if user has guardian declaration consent
+if ( UserConsentHelper::has_guardian_declaration( $user_id ) ) {
+    // Allow child data processing
+    process_child_data( $user_id );
+}
+
 // Get all consent statuses
 $status = UserConsentHelper::get_consent_status( $user_id );
 /*
@@ -388,6 +439,12 @@ Array:
     'sensitive_data' => [
         'consented' => false,
         'consented_at' => null,
+        'revoked_at' => null,
+        'version' => null
+    ],
+    'guardian_declaration' => [
+        'consented' => true,
+        'consented_at' => '2026-01-21 10:30:00',
         'revoked_at' => null,
         'version' => null
     ]
@@ -425,6 +482,9 @@ $active_consents = UserConsent::get_active_by_user_id( $user_id );
 | `terms` | Terms & Conditions / User Agreement | Yes | Must be accepted during registration (KVKK) |
 | `marketing` | Commercial Communications Consent | No | ETK compliance for marketing emails/SMS |
 | `sensitive_data` | Sensitive Personal Data (Health) | No | KVKK compliance for processing health data |
+| `guardian_declaration` | Guardian/Legal Representative Declaration | Yes* | KVKK compliance for processing child data |
+
+*Required when adding a child profile
 
 ---
 
@@ -605,7 +665,7 @@ For reference, the `user_consents` table structure:
 CREATE TABLE wp_kg_user_consents (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL,
-    consent_type ENUM('terms', 'marketing', 'sensitive_data') NOT NULL,
+    consent_type ENUM('terms', 'marketing', 'sensitive_data', 'guardian_declaration') NOT NULL,
     consented BOOLEAN NOT NULL DEFAULT FALSE,
     consented_at TIMESTAMP NULL,
     revoked_at TIMESTAMP NULL,
