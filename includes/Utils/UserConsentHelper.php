@@ -40,6 +40,16 @@ class UserConsentHelper {
     }
     
     /**
+     * Check if user has guardian declaration consent
+     * 
+     * @param int $user_id User ID
+     * @return bool True if user has guardian declaration consent
+     */
+    public static function has_guardian_declaration( $user_id ) {
+        return self::has_active_consent( $user_id, 'guardian_declaration' );
+    }
+    
+    /**
      * Get all consents for a user formatted for API
      * 
      * @param int $user_id User ID
@@ -63,7 +73,7 @@ class UserConsentHelper {
      * @return array Consent status by type
      */
     public static function get_consent_status( $user_id ) {
-        $types = [ 'terms', 'marketing', 'sensitive_data' ];
+        $types = [ 'terms', 'marketing', 'sensitive_data', 'guardian_declaration' ];
         $status = [];
         
         foreach ( $types as $type ) {

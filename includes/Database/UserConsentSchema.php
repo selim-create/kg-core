@@ -24,7 +24,7 @@ class UserConsentSchema {
             $sql_user_consents = "CREATE TABLE {$prefix}kg_user_consents (
                 id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                 user_id BIGINT UNSIGNED NOT NULL,
-                consent_type ENUM('terms', 'marketing', 'sensitive_data') NOT NULL,
+                consent_type ENUM('terms', 'marketing', 'sensitive_data', 'guardian_declaration') NOT NULL,
                 consented BOOLEAN NOT NULL DEFAULT FALSE,
                 consented_at TIMESTAMP NULL,
                 revoked_at TIMESTAMP NULL,
