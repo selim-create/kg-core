@@ -17,8 +17,14 @@ class AddGuardianDeclarationConsent {
         
         $table_name = $wpdb->prefix . 'kg_user_consents';
         
+        // Validate table name format for security
+        if ( ! preg_match( '/^' . preg_quote( $wpdb->prefix, '/' ) . 'kg_user_consents$/', $table_name ) ) {
+            error_log( 'Migration: Invalid table name format' );
+            return false;
+        }
+        
         // Check if table exists
-        $table_exists = $wpdb->get_var( "SHOW TABLES LIKE '$table_name'" ) === $table_name;
+        $table_exists = $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table_name ) ) === $table_name;
         
         if ( ! $table_exists ) {
             error_log( "Migration: Table $table_name does not exist. Skipping migration." );
@@ -26,7 +32,7 @@ class AddGuardianDeclarationConsent {
         }
         
         // Check current ENUM values
-        $columns = $wpdb->get_results( "SHOW COLUMNS FROM $table_name WHERE Field = 'consent_type'" );
+        $columns = $wpdb->get_results( $wpdb->prepare( "SHOW COLUMNS FROM `{$table_name}` WHERE Field = %s", 'consent_type' ) );
         
         if ( empty( $columns ) ) {
             error_log( 'Migration: consent_type column not found' );
@@ -41,11 +47,11 @@ class AddGuardianDeclarationConsent {
             return true;
         }
         
-        // Note: Table and column names are hardcoded constants, not user input
-        // DDL statements (ALTER TABLE) don't support parameterized queries in MySQL
+        // Note: DDL statements cannot use prepare() - table/column names must be validated instead
+        // We've validated the table name format above
         
         // Alter the ENUM to include guardian_declaration
-        $sql = "ALTER TABLE $table_name 
+        $sql = "ALTER TABLE `{$table_name}` 
                 MODIFY COLUMN consent_type ENUM('terms', 'marketing', 'sensitive_data', 'guardian_declaration') NOT NULL";
         
         $result = $wpdb->query( $sql );
@@ -73,21 +79,27 @@ class AddGuardianDeclarationConsent {
         
         $table_name = $wpdb->prefix . 'kg_user_consents';
         
+        // Validate table name format for security
+        if ( ! preg_match( '/^' . preg_quote( $wpdb->prefix, '/' ) . 'kg_user_consents$/', $table_name ) ) {
+            error_log( 'Migration: Invalid table name format' );
+            return false;
+        }
+        
         // Check if table exists
-        $table_exists = $wpdb->get_var( "SHOW TABLES LIKE '$table_name'" ) === $table_name;
+        $table_exists = $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table_name ) ) === $table_name;
         
         if ( ! $table_exists ) {
             return false;
         }
         
-        // Note: Table and column names are hardcoded constants, not user input
-        // DDL statements (ALTER TABLE) don't support parameterized queries in MySQL
-        
         // Delete any guardian_declaration consents first
         $wpdb->delete( $table_name, [ 'consent_type' => 'guardian_declaration' ] );
         
+        // Note: DDL statements cannot use prepare() - table/column names must be validated instead
+        // We've validated the table name format above
+        
         // Revert ENUM to original values
-        $sql = "ALTER TABLE $table_name 
+        $sql = "ALTER TABLE `{$table_name}` 
                 MODIFY COLUMN consent_type ENUM('terms', 'marketing', 'sensitive_data') NOT NULL";
         
         $result = $wpdb->query( $sql );
