@@ -341,7 +341,7 @@ class RecipeController {
             // Extended expert data with note and image (common for both paths)
             $data['expert'] = $this->get_expert_data( $post_id, true );
             
-            $data['related_recipes'] = $this->get_related_recipes( $post_id );
+            $data['related_recipes'] = $this->get_related_recipes($post_id, 5);
             $data['cross_sell'] = $this->get_cross_sell_suggestion( $post_id );
             
             // Add SEO data
@@ -615,12 +615,12 @@ class RecipeController {
      * Get related recipes based on shared taxonomies
      * Can be called as REST endpoint or as internal method
      */
-    public function get_related_recipes( $request_or_id, $limit = 3 ) {
+    public function get_related_recipes( $request_or_id, $limit = 4 ) {
         // Handle both REST request and direct ID calls
         if ( $request_or_id instanceof \WP_REST_Request ) {
             // Called as REST endpoint
             $recipe_id = $request_or_id->get_param( 'id' );
-            $limit = $request_or_id->get_param( 'limit' ) ?: 4;
+            $limit = $request_or_id->get_param( 'limit' ) ?: 5;
             $is_rest_call = true;
         } else {
             // Called internally
