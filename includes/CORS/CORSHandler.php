@@ -26,15 +26,13 @@ class CORSHandler {
      */
     private function get_allowed_origins() {
         $default_origins = [
-            'http://localhost:3000',
-            'http://localhost:3001',
-            'http://localhost:3002',
+            'http://192.168.48.43:3000',
             'https://kidsgourmet.com.tr',
             'https://www.kidsgourmet.com.tr',
             'https://api.kidsgourmet.com.tr',
+            'https://studio.kidsgourmet.com.tr',
             'https://kidsgourmet-web.vercel.app',
         ];
-        
         // Allow filtering for environment-specific configuration
         return apply_filters('kg_core_allowed_origins', $default_origins);
     }
