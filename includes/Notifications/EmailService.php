@@ -117,6 +117,56 @@ class EmailService {
 	}
 
 	/**
+	 * Send email using template (for non-user recipients like newsletter)
+	 *
+	 * @param string $to            Recipient email address.
+	 * @param string $template_key  Template identifier.
+	 * @param array  $placeholders  Placeholder values.
+	 * @return bool|WP_Error True on success, WP_Error on failure.
+	 */
+	public function send_template_email( $to, $template_key, $placeholders = array() ) {
+		if ( empty( $to ) || ! is_email( $to ) ) {
+			return new WP_Error( 'invalid_email', 'Invalid recipient email address' );
+		}
+
+		$rendered = $this->template_engine->render( $template_key, $placeholders );
+
+		if ( is_wp_error( $rendered ) ) {
+			$this->log_email(
+				0, // No user_id for newsletter subscribers
+				$template_key,
+				$to,
+				'',
+				'failed',
+				array( 'error' => $rendered->get_error_message() )
+			);
+			return $rendered;
+		}
+
+		$result = $this->send(
+			$to,
+			$rendered['subject'],
+			$rendered['body_html'],
+			$rendered['body_text'],
+			$rendered['category']
+		);
+
+		$status = is_wp_error( $result ) ? 'failed' : 'sent';
+		$metadata = is_wp_error( $result ) ? array( 'error' => $result->get_error_message() ) : array();
+
+		$this->log_email(
+			0, // No user_id for newsletter subscribers
+			$template_key,
+			$to,
+			$rendered['subject'],
+			$status,
+			$metadata
+		);
+
+		return $result;
+	}
+
+	/**
 	 * Log email to database
 	 *
 	 * @param int    $user_id       User ID.
