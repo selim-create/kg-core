@@ -562,7 +562,7 @@ class ToolController {
                     'id' => 'q1_sitting',
                     'category' => 'physical_readiness',
                     'question' => 'Bebeğiniz desteksiz oturabiliyor mu?',
-                    'description' => 'Bebeğin sırtı dik ve baş kontrolü tam olmalı',
+                    'description' => 'Bebeğin sırtı dik ve baş kontrolü tam olmalı.',
                     'icon' => 'fa-baby',
                     'weight' => 80,
                     'options' => [
@@ -593,8 +593,8 @@ class ToolController {
                     'id' => 'q2_head_control',
                     'category' => 'physical_readiness',
                     'question' => 'Bebeğinizin baş kontrolü tam mı?',
-                    'description' => 'Başını sağa sola çevirebilmeli',
-                    'icon' => 'fa-head-side',
+                    'description' => 'Başını sağa sola çevirebilmeli.',
+                    'icon' => 'fa-solid fa-child',
                     'weight' => 75,
                     'options' => [
                         [
@@ -686,7 +686,7 @@ class ToolController {
                     'id' => 'q5_grasp',
                     'category' => 'physical_readiness',
                     'question' => 'Bebeğiniz yiyecekleri tutup ağzına götürebiliyor mu?',
-                    'description' => 'El-göz-ağız koordinasyonu',
+                    'description' => 'El-Göz-Ağız koordinasyonunu sağlayabiliyor mu?',
                     'icon' => 'fa-hand-paper',
                     'weight' => 70,
                     'options' => [
@@ -718,7 +718,7 @@ class ToolController {
                     'id' => 'q6_age',
                     'category' => 'safety',
                     'question' => 'Bebeğiniz kaç aylık?',
-                    'description' => 'WHO 6 ay ve sonrasını öneriyor',
+                    'description' => 'WHO 6 ay ve sonrasını öneriyor.',
                     'icon' => 'fa-calendar',
                     'weight' => 50,
                     'options' => [
@@ -748,8 +748,8 @@ class ToolController {
                 [
                     'id' => 'q7_medical',
                     'category' => 'safety',
-                    'question' => 'Bebeğinizin ek gıdayı engelleyecek tıbbi durumu var mı?',
-                    'description' => 'Reflü, yutma güçlüğü, premature vb.',
+                    'question' => 'Bebeğinizin beslenme konusunda tıbbi bir sorunu var mı?',
+                    'description' => 'Reflü, yutma güçlüğü, prematüre doğum gibi konuları düşünerek cevaplayınız.',
                     'icon' => 'fa-stethoscope',
                     'weight' => 40,
                     'options' => [
@@ -779,8 +779,8 @@ class ToolController {
                 [
                     'id' => 'q8_first_aid',
                     'category' => 'safety',
-                    'question' => 'Bebek ilk yardım bilginiz var mı?',
-                    'description' => 'Boğulma durumunda Heimlich manevrası',
+                    'question' => 'Boğulma durumunda Heimlich Manevrası yapabilir misiniz?',
+                    'description' => 'Boğulma durumunda ne yapmanız gerektiğini biliyor musunuz?',
                     'icon' => 'fa-medkit',
                     'weight' => 35,
                     'options' => [
@@ -811,7 +811,7 @@ class ToolController {
                     'id' => 'q9_supervision',
                     'category' => 'safety',
                     'question' => 'Bebeği yemek sırasında sürekli gözetleyebilir misiniz?',
-                    'description' => 'Yanından ayrılmadan gözetim şart',
+                    'description' => 'Besleme sırasında yanından ayrılmadan gözetim sağlamanız gerekir.',
                     'icon' => 'fa-user-shield',
                     'weight' => 45,
                     'options' => [
@@ -843,7 +843,7 @@ class ToolController {
                     'id' => 'q10_highchair',
                     'category' => 'environment',
                     'question' => 'Uygun bir mama sandalyeniz var mı?',
-                    'description' => 'Bebek dik oturmalı, ayakları desteklenmeli',
+                    'description' => 'Bebek dik oturmalı, ayakları desteklenmeli.',
                     'icon' => 'fa-chair',
                     'weight' => 30,
                     'options' => [
