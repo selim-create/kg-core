@@ -18,7 +18,12 @@ $test_results = [];
 // TEST 1: Check that send_template_email method exists in EmailService
 echo "TEST 1: Checking send_template_email method exists\n";
 echo "-------------------------------------------------------------------\n";
-$service_file = file_get_contents(KG_CORE_PATH . 'includes/Notifications/EmailService.php');
+$service_file_path = KG_CORE_PATH . 'includes/Notifications/EmailService.php';
+if (!file_exists($service_file_path)) {
+    echo "❌ FAIL: EmailService.php file not found at $service_file_path\n";
+    exit(1);
+}
+$service_file = file_get_contents($service_file_path);
 
 if (strpos($service_file, 'public function send_template_email') !== false) {
     echo "✅ PASS: send_template_email method exists in EmailService\n";
@@ -148,7 +153,12 @@ echo "\n";
 echo "TEST 9: Checking NewsletterService uses send_template_email\n";
 echo "-------------------------------------------------------------------\n";
 
-$newsletter_file = file_get_contents(KG_CORE_PATH . 'includes/Newsletter/NewsletterService.php');
+$newsletter_file_path = KG_CORE_PATH . 'includes/Newsletter/NewsletterService.php';
+if (!file_exists($newsletter_file_path)) {
+    echo "❌ FAIL: NewsletterService.php file not found at $newsletter_file_path\n";
+    exit(1);
+}
+$newsletter_file = file_get_contents($newsletter_file_path);
 
 // Check sendConfirmationEmail calls send_template_email
 if (strpos($newsletter_file, 'send_template_email') !== false) {
