@@ -1286,13 +1286,14 @@ class UserController {
         }
 
         // Process consents after child is successfully created
+        // Get common values once for consent processing
+        $ip_address = $this->get_client_ip_address( $request );
+        $user_agent = $request->get_header( 'User-Agent' );
+        $consents_data = $request->get_param( 'consents' );
+        
         // Ensure guardian_declaration consent exists
         $existing_guardian = UserConsent::get_by_user_and_type( $user_id, 'guardian_declaration' );
         if ( ! $existing_guardian || ! $existing_guardian->consented ) {
-            $ip_address = $this->get_client_ip_address( $request );
-            $user_agent = $request->get_header( 'User-Agent' );
-            $consents_data = $request->get_param( 'consents' );
-            
             $guardian_consented_at = null;
             
             // Use timestamp from request if provided
@@ -1325,11 +1326,7 @@ class UserController {
         }
         
         // Handle sensitive_data consent if provided
-        $consents_data = $request->get_param( 'consents' );
         if ( isset( $consents_data['sensitive_data_consent'] ) ) {
-            $ip_address = $this->get_client_ip_address( $request );
-            $user_agent = $request->get_header( 'User-Agent' );
-            
             $sensitive_consented = (bool) $consents_data['sensitive_data_consent'];
             $sensitive_consented_at = $sensitive_consented 
                 ? ( $consents_data['sensitive_data_consent_at'] ?? current_time( 'mysql' ) )

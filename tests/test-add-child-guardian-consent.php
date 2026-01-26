@@ -185,9 +185,9 @@ if ($guardian_consent2) {
 echo "\n";
 
 // ===== CLEANUP =====
-echo "CLEANUP: Removing test users...\n";
+echo "CLEANUP: Removing test user...\n";
 wp_delete_user($user_id2);
-echo "✅ Test users cleaned up\n\n";
+echo "✅ Test user cleaned up\n\n";
 
 echo "=== ALL TESTS COMPLETED ===\n";
 echo "✅ Guardian declaration consent is automatically created when adding a child\n";
