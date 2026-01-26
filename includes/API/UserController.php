@@ -1285,6 +1285,77 @@ class UserController {
             error_log( 'Exception creating vaccine schedule for child ' . $uuid . ': ' . $e->getMessage() );
         }
 
+        // Process consents after child is successfully created
+        // Get common values once for consent processing
+        $ip_address = $this->get_client_ip_address( $request );
+        $user_agent = $request->get_header( 'User-Agent' );
+        $consents_data = $request->get_param( 'consents' );
+        
+        // Ensure guardian_declaration consent exists
+        $existing_guardian = UserConsent::get_by_user_and_type( $user_id, 'guardian_declaration' );
+        if ( ! $existing_guardian || ! $existing_guardian->consented ) {
+            $guardian_consented_at = null;
+            
+            // Use timestamp from request if provided
+            if ( ! empty( $consents_data['guardian_declaration_at'] ) ) {
+                $guardian_consented_at = $consents_data['guardian_declaration_at'];
+            } else {
+                $guardian_consented_at = current_time( 'mysql' );
+            }
+            
+            // Create or update guardian_declaration consent
+            if ( $existing_guardian ) {
+                // Update existing record
+                UserConsent::update( $existing_guardian->id, [
+                    'consented' => true,
+                    'consented_at' => $guardian_consented_at,
+                    'ip_address' => $ip_address,
+                    'user_agent' => $user_agent,
+                ] );
+            } else {
+                // Create new record
+                UserConsent::create( [
+                    'user_id' => $user_id,
+                    'consent_type' => 'guardian_declaration',
+                    'consented' => true,
+                    'consented_at' => $guardian_consented_at,
+                    'ip_address' => $ip_address,
+                    'user_agent' => $user_agent,
+                ] );
+            }
+        }
+        
+        // Handle sensitive_data consent if provided
+        if ( isset( $consents_data['sensitive_data_consent'] ) ) {
+            $sensitive_consented = (bool) $consents_data['sensitive_data_consent'];
+            $sensitive_consented_at = $sensitive_consented 
+                ? ( $consents_data['sensitive_data_consent_at'] ?? current_time( 'mysql' ) )
+                : null;
+            
+            $existing_sensitive = UserConsent::get_by_user_and_type( $user_id, 'sensitive_data' );
+            
+            if ( $existing_sensitive ) {
+                // Update existing record
+                UserConsent::update( $existing_sensitive->id, [
+                    'consented' => $sensitive_consented,
+                    'consented_at' => $sensitive_consented_at,
+                    'revoked_at' => $sensitive_consented ? null : current_time( 'mysql' ),
+                    'ip_address' => $ip_address,
+                    'user_agent' => $user_agent,
+                ] );
+            } else {
+                // Create new record
+                UserConsent::create( [
+                    'user_id' => $user_id,
+                    'consent_type' => 'sensitive_data',
+                    'consented' => $sensitive_consented,
+                    'consented_at' => $sensitive_consented_at,
+                    'ip_address' => $ip_address,
+                    'user_agent' => $user_agent,
+                ] );
+            }
+        }
+
         return new \WP_REST_Response( $child, 201 );
     }
 
