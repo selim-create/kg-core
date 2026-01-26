@@ -64,7 +64,6 @@ $response_2 = $controller->add_child($request_2);
 if (is_wp_error($response_2)) {
     echo "❌ FAILED: " . $response_2->get_error_message() . "\n";
     echo "   Error Code: " . $response_2->get_error_code() . "\n";
-    echo "   This is the MAIN BUG we're fixing!\n";
     exit(1);
 } else {
     echo "✅ SUCCESS: Child added with new consents.guardian_declaration format\n";
@@ -133,7 +132,7 @@ $request_4->set_param('gender', 'male');
 $request_4->set_param('kvkk_consent', true);
 $request_4->set_param('consents', [
     'guardian_declaration' => true,
-    'guardian_declaration_at' => current_time('mysql')
+    'guardian_declaration_at' => '2026-01-26T21:31:37.039Z'
 ]);
 
 $response_4 = $controller->add_child($request_4);
