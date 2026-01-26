@@ -1194,14 +1194,35 @@ class UserController {
             return new \WP_Error( 'missing_fields', 'Name and birth date are required', [ 'status' => 400 ] );
         }
 
-        // KVKK consent validation - more flexible control
-        if ( empty( $kvkk_consent ) || 
-             ( $kvkk_consent !== true && 
-               $kvkk_consent !== 'true' && 
-               $kvkk_consent !== 1 && 
-               $kvkk_consent !== '1' && 
-               $kvkk_consent !== 'on' ) ) {
-            return new \WP_Error( 'kvkk_consent_required', 'KVKK consent is required', [ 'status' => 400 ] );
+        // Get consents data from request
+        $consents_data = $request->get_param( 'consents' );
+
+        // KVKK/Guardian consent validation - accept both old and new format
+        $has_valid_consent = false;
+
+        // Check old format: kvkk_consent parameter
+        if ( ! empty( $kvkk_consent ) && 
+             ( $kvkk_consent === true || 
+               $kvkk_consent === 'true' || 
+               $kvkk_consent === 1 || 
+               $kvkk_consent === '1' || 
+               $kvkk_consent === 'on' ) ) {
+            $has_valid_consent = true;
+        }
+
+        // Check new format: consents.guardian_declaration
+        if ( ! empty( $consents_data ) && is_array( $consents_data ) ) {
+            if ( ! empty( $consents_data['guardian_declaration'] ) && 
+                 ( $consents_data['guardian_declaration'] === true || 
+                   $consents_data['guardian_declaration'] === 'true' || 
+                   $consents_data['guardian_declaration'] === 1 || 
+                   $consents_data['guardian_declaration'] === '1' ) ) {
+                $has_valid_consent = true;
+            }
+        }
+
+        if ( ! $has_valid_consent ) {
+            return new \WP_Error( 'kvkk_consent_required', 'KVKK/Guardian consent is required', [ 'status' => 400 ] );
         }
 
         // Birth date validation - cannot be in the future
@@ -1289,7 +1310,6 @@ class UserController {
         // Get common values once for consent processing
         $ip_address = $this->get_client_ip_address( $request );
         $user_agent = $request->get_header( 'User-Agent' );
-        $consents_data = $request->get_param( 'consents' );
         
         // Ensure guardian_declaration consent exists
         $existing_guardian = UserConsent::get_by_user_and_type( $user_id, 'guardian_declaration' );
