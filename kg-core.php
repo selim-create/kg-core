@@ -180,6 +180,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/SettingsPage.php' ) ) require_o
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientEnricher.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/IngredientEnricher.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/RecipeEnricher.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/RecipeEnricher.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/RecipeAIEnrichButton.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/RecipeAIEnrichButton.php';
 if ( is_admin() && file_exists( KG_CORE_PATH . 'includes/Admin/DataMigrationPage.php' ) ) {
     require_once KG_CORE_PATH . 'includes/Admin/DataMigrationPage.php';
     new \KG_Core\Admin\DataMigrationPage();
@@ -370,6 +372,12 @@ function kg_core_init() {
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\IngredientEnricher' ) ) {
         new \KG_Core\Admin\IngredientEnricher();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\RecipeEnricher' ) ) {
+        new \KG_Core\Admin\RecipeEnricher();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\RecipeAIEnrichButton' ) ) {
+        new \KG_Core\Admin\RecipeAIEnrichButton();
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\ToolSeeder' ) ) {
         new \KG_Core\Admin\ToolSeeder();

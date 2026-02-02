@@ -421,4 +421,188 @@ class AIService {
         
         return $data;
     }
+    
+    /**
+     * Generate recipe content using AI
+     * 
+     * @param array $recipe_data Recipe data containing title, content, ingredients, instructions
+     * @return array|WP_Error Parsed recipe data or error
+     */
+    public function generateRecipeContent($recipe_data) {
+        if (empty($this->api_key)) {
+            return new \WP_Error('no_api_key', 'AI API anahtarı ayarlanmamış.');
+        }
+        
+        $prompt = $this->buildRecipePrompt($recipe_data);
+        
+        try {
+            switch ($this->provider) {
+                case 'openai':
+                    $response = $this->callOpenAI($prompt);
+                    break;
+                case 'anthropic':
+                    $response = $this->callAnthropic($prompt);
+                    break;
+                case 'gemini':
+                    $response = $this->callGemini($prompt);
+                    break;
+                default:
+                    return new \WP_Error('invalid_provider', 'Geçersiz AI sağlayıcı.');
+            }
+            
+            if (is_wp_error($response)) {
+                return $response;
+            }
+            
+            return $this->parseRecipeResponse($response);
+            
+        } catch (\Exception $e) {
+            error_log('KG Core AI Recipe Error: ' . $e->getMessage());
+            return new \WP_Error('ai_error', 'AI yanıt hatası: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Build prompt for recipe content generation
+     * 
+     * @param array $recipe_data Recipe data
+     * @return string Formatted prompt
+     */
+    private function buildRecipePrompt($recipe_data) {
+        $title = $recipe_data['title'] ?? '';
+        $content = $recipe_data['content'] ?? '';
+        $ingredients = $recipe_data['ingredients'] ?? [];
+        $instructions = $recipe_data['instructions'] ?? [];
+        
+        $ingredients_list = is_array($ingredients) ? implode("\n", array_map(function($ing) {
+            if (is_array($ing)) {
+                return "- " . ($ing['item'] ?? $ing['name'] ?? '');
+            }
+            return "- " . $ing;
+        }, $ingredients)) : $ingredients;
+        
+        $instructions_list = is_array($instructions) ? implode("\n", array_map(function($inst, $idx) {
+            if (is_array($inst)) {
+                return ($idx + 1) . ". " . ($inst['step'] ?? $inst['text'] ?? '');
+            }
+            return ($idx + 1) . ". " . $inst;
+        }, $instructions, array_keys($instructions))) : $instructions;
+        
+        $prompt = "Sen bebek ve çocuk beslenmesi konusunda uzman bir diyetisyen ve pediatristsin.\n";
+        $prompt .= "Aşağıdaki tarif bilgilerine göre eksik alanları Türkçe olarak doldur.\n\n";
+        $prompt .= "Tarif Adı: {$title}\n";
+        $prompt .= "Mevcut Açıklama: {$content}\n";
+        $prompt .= "Malzemeler:\n{$ingredients_list}\n\n";
+        $prompt .= "Hazırlanış:\n{$instructions_list}\n\n";
+        $prompt .= "Lütfen SADECE aşağıdaki JSON formatında yanıt ver (başka açıklama ekleme):\n\n";
+        
+        $json_template = [
+            'prep_time' => 'Hazırlama süresi dakika cinsinden (örn: "15 dakika", "100 dakika") - saat değil',
+            'cook_time' => 'Pişirme süresi dakika cinsinden (örn: "30 dakika")',
+            'serving_size' => 'Porsiyon bilgisi (örn: "4 porsiyon", "2 kişilik")',
+            'difficulty' => 'Sadece: "Kolay", "Orta", "Zor"',
+            'freezable' => true,
+            'storage_info' => 'Saklama bilgisi (örn: "Buzdolabında 2 gün saklanabilir")',
+            'substitutes' => [
+                ['original' => 'Süt', 'substitute' => 'Badem sütü', 'note' => 'Laktoz intoleransı için']
+            ],
+            'nutrition' => [
+                'calories' => '250 kcal',
+                'protein' => '8g',
+                'carbs' => '30g',
+                'fat' => '12g',
+                'fiber' => '4g',
+                'sugar' => '6g',
+                'sodium' => '150mg',
+                'vitamins' => 'A, C, D, E',
+                'minerals' => 'Kalsiyum, Demir, Çinko'
+            ],
+            'special_notes' => 'Süt: Anne sütü veya formül ile...\nNot: İlk denemede...\nİpucu: Pürüzsüz kıvam için...',
+            'age_groups' => ['Mevcut taxonomy sluglarından seçilecek - yeni eklenmeyecek'],
+            'allergens' => ['Mevcut listeden veya yeni (baş harfi büyük Türkçe)'],
+            'diet_types' => ['Mevcut taxonomy sluglarından seçilecek'],
+            'meal_types' => ['Mevcut taxonomy sluglarından seçilecek'],
+            'special_conditions' => ['Gerekirse yeni eklenebilir'],
+            'seo' => [
+                'focus_keyword' => 'Ana anahtar kelime',
+                'title' => 'Max 60 karakter, çekici ve bilgilendirici',
+                'description' => '150-160 karakter, call-to-action içermeli'
+            ],
+            'content' => '1 paragraf açıklama (sadece mevcut content boşsa doldurulacak)'
+        ];
+        
+        $prompt .= json_encode($json_template, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        
+        $prompt .= "\n\n⚠️ ÖNEMLİ KURALLAR:\n";
+        $prompt .= "1. Mevcut veriler DEĞİŞTİRİLMEYECEK, sadece BOŞ alanlar doldurulacak\n";
+        $prompt .= "2. Hazırlama ve pişirme süreleri DAKİKA cinsinden (saat değil)\n";
+        $prompt .= "3. Zorluk seviyesi sadece: Kolay, Orta, Zor\n";
+        $prompt .= "4. Dondurulabilir mi: true veya false\n";
+        $prompt .= "5. İkame malzemeler array formatında\n";
+        $prompt .= "6. Beslenme değerleri porsiyon başına\n";
+        $prompt .= "7. SEO title max 60 karakter\n";
+        $prompt .= "8. SEO description 150-160 karakter\n";
+        $prompt .= "9. Content sadece mevcut content boşsa doldurulacak (1 paragraf)\n\n";
+        
+        $prompt .= "TAXONOMY KURALLARI:\n\n";
+        $prompt .= "Yaş Grupları (age-group) - Sadece mevcut sluglardan seçilecek:\n";
+        $prompt .= "- hazirlk-evresi-0-6-ay (Hazırlık Evresi 0-6 Ay)\n";
+        $prompt .= "- baslangic-tadim-6-8-ay (Başlangıç & Tadım 6-8 Ay)\n";
+        $prompt .= "- kesif-puturlye-gecis-9-11-ay (Keşif & Pütürlüye Geçiş 9-11 Ay)\n";
+        $prompt .= "- aile-sofrasina-gecis-12-24-ay (Aile Sofrasına Geçiş 12-24 Ay)\n";
+        $prompt .= "- cocuk-gurme-2-yas (Çocuk Gurme 2+ Yaş)\n\n";
+        
+        $prompt .= "Alerjenler (allergen) - Mevcut liste (yoksa baş harfi büyük Türkçe formatında yeni eklenebilir):\n";
+        $prompt .= "Ağaç yemişleri, Antep fıstığı, Badem, Baharatlar, Bal, Balık, Balık proteini, Buğday, Buğday (gluten), ";
+        $prompt .= "Ceviz, Çilek, Çörekotu, Damla Sakızı Reçinesi, Deniz ürünleri, Domates, Et, Et proteinleri, Fındık, ";
+        $prompt .= "Fındık proteini, Fındıkgiller, Fıstık, Gluten, Hardal, Kabuklu Deniz Ürünleri, Kakao, Kazein, Kestane, ";
+        $prompt .= "Keten Tohumu, Kuruyemiş, Laktoz, Lektin, Mahlep Tohumları, Mısır, Pirinç, Polen, Sığır eti, Sirke, Soya, ";
+        $prompt .= "Soya Lesitini, Susam, Süt, Süt Proteini, Tahin, Tavuk, Yer Fıstığı, Yumurta, Yumurta Akı\n\n";
+        
+        $prompt .= "Diet Type (diet-type) - Sadece mevcut sluglardan seçilecek:\n";
+        $prompt .= "baby-led-weaning, dusuk-yag, etcil, glutensiz, laktozsuz, pesketaryen, rafine-sekersiz, ";
+        $prompt .= "sekersiz, tuzsuz, vegan, vejetaryen, yuksek-protein\n\n";
+        
+        $prompt .= "Meal Type (meal-type) - Sadece mevcut sluglardan seçilecek:\n";
+        $prompt .= "aksam-yemegi, ara-ogun-ikindi, ara-ogun-kusluk, atistirmalik, beslenme-cantasi, corba, ";
+        $prompt .= "icecek, kahvalti, meze, ogle-yemegi, salata, sos, tatli\n\n";
+        
+        $prompt .= "Özel Durumlar (special-condition) - Gerekirse yeni eklenebilir:\n";
+        $prompt .= "Alerjik Bebek, Bağışıklık Dostu, Diş Çıkarma Dönemi, Kabızlık Giderici\n\n";
+        
+        $prompt .= "DİĞER ÖNEMLİ NOTLAR:\n";
+        $prompt .= "- Tüm içerik Türkçe olmalı\n";
+        $prompt .= "- Bilimsel ve güvenilir bilgiler ver\n";
+        $prompt .= "- Malzeme listesine göre alerjenleri belirle\n";
+        $prompt .= "- İkame malzemelerde alerjik malzemeler için alternatif öner\n";
+        $prompt .= "- Beslenme değerleri gerçekçi olmalı\n";
+        
+        return $prompt;
+    }
+    
+    /**
+     * Parse AI response to extract recipe data
+     * 
+     * @param string $response Raw AI response
+     * @return array|WP_Error Parsed data or error
+     */
+    private function parseRecipeResponse($response) {
+        // Remove markdown code blocks if present
+        $response = preg_replace('/```json\s*/', '', $response);
+        $response = preg_replace('/```\s*/', '', $response);
+        $response = trim($response);
+        
+        $data = json_decode($response, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return new \WP_Error('json_parse_error', 'AI yanıtı JSON olarak ayrıştırılamadı: ' . json_last_error_msg());
+        }
+        
+        // Debug log
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('KG Core AI Recipe Response: ' . print_r($data, true));
+        }
+        
+        return $data;
+    }
 }
