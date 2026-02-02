@@ -196,9 +196,6 @@ class KGCoreAdminMenu {
                     <a href="<?php echo admin_url('admin.php?page=kg-bulk-seeder'); ?>" class="button button-secondary button-large" style="text-align: center;">
                         ⚡ Toplu AI Oluştur
                     </a>
-                    <a href="<?php echo admin_url('admin.php?page=kg-recipe-migration'); ?>" class="button button-secondary button-large" style="text-align: center;">
-                        🔄 Tarif Migration
-                    </a>
                 </div>
             </div>
             
