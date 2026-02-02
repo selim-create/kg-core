@@ -180,7 +180,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/SettingsPage.php' ) ) require_o
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientEnricher.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/IngredientEnricher.php';
-if ( file_exists( KG_CORE_PATH . 'includes/Admin/MigrationPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/MigrationPage.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/RecipeEnricher.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/RecipeEnricher.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/RecipeAIEnrichButton.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/RecipeAIEnrichButton.php';
 if ( is_admin() && file_exists( KG_CORE_PATH . 'includes/Admin/DataMigrationPage.php' ) ) {
     require_once KG_CORE_PATH . 'includes/Admin/DataMigrationPage.php';
     new \KG_Core\Admin\DataMigrationPage();
@@ -202,19 +203,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/EmailTemplateAdminPage.php' ) )
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/NotificationLogAdminPage.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/NotificationLogAdminPage.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/SocialMediaSettings.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/SocialMediaSettings.php';
 
-// 5.6. MIGRATION SINIFLARINI DAHİL ET
-if ( file_exists( KG_CORE_PATH . 'includes/Migration/FieldConsolidation.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/FieldConsolidation.php';
-if ( file_exists( KG_CORE_PATH . 'includes/Migration/ContentParser.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/ContentParser.php';
-if ( file_exists( KG_CORE_PATH . 'includes/Migration/IngredientParser.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/IngredientParser.php';
-if ( file_exists( KG_CORE_PATH . 'includes/Migration/AgeGroupMapper.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/AgeGroupMapper.php';
-if ( file_exists( KG_CORE_PATH . 'includes/Migration/AIEnhancer.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/AIEnhancer.php';
-if ( file_exists( KG_CORE_PATH . 'includes/Migration/SEOHandler.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/SEOHandler.php';
-if ( file_exists( KG_CORE_PATH . 'includes/Migration/MigrationLogger.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/MigrationLogger.php';
-if ( file_exists( KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/RecipeMigrator.php';
-if ( file_exists( KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/AIRecipeMigrator.php';
-if ( file_exists( KG_CORE_PATH . 'includes/Migration/ChildProfileMigrator.php' ) ) require_once KG_CORE_PATH . 'includes/Migration/ChildProfileMigrator.php';
-
-// 5.7. SHORTCODE SINIFLARINI DAHİL ET
+// 5.6. SHORTCODE SINIFLARINI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php' ) ) require_once KG_CORE_PATH . 'includes/Shortcodes/ContentEmbed.php';
 
 // 5.8. BLOCK SINIFLARINI DAHİL ET
@@ -384,8 +373,11 @@ function kg_core_init() {
     if ( is_admin() && class_exists( '\KG_Core\Admin\IngredientEnricher' ) ) {
         new \KG_Core\Admin\IngredientEnricher();
     }
-    if ( is_admin() && class_exists( '\KG_Core\Admin\MigrationPage' ) ) {
-        new \KG_Core\Admin\MigrationPage();
+    if ( is_admin() && class_exists( '\KG_Core\Admin\RecipeEnricher' ) ) {
+        new \KG_Core\Admin\RecipeEnricher();
+    }
+    if ( is_admin() && class_exists( '\KG_Core\Admin\RecipeAIEnrichButton' ) ) {
+        new \KG_Core\Admin\RecipeAIEnrichButton();
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\ToolSeeder' ) ) {
         new \KG_Core\Admin\ToolSeeder();
