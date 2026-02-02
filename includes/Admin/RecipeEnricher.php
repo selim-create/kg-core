@@ -329,9 +329,9 @@ class RecipeEnricher {
         // Use inline script to inject kgRecipeEnricher object with nonce and post data
         wp_enqueue_script('jquery');
         
-        // Inject kgRecipeEnricher object for JavaScript
+        // Inject kgRecipeEnrich object for JavaScript (consistent with RecipeAIEnrichButton)
         wp_add_inline_script('jquery', 
-            'var kgRecipeEnricher = ' . json_encode([
+            'var kgRecipeEnrich = ' . json_encode([
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('kg_enrich_recipe'),
                 'postId' => $post ? $post->ID : 0
@@ -351,12 +351,12 @@ class RecipeEnricher {
                     statusDiv.html('<span style=\"color: #2271b1;\">⏳ Eksik alanlar AI ile doldruluyor...</span>');
                     
                     $.ajax({
-                        url: kgRecipeEnricher.ajaxUrl,
+                        url: kgRecipeEnrich.ajaxUrl,
                         type: 'POST',
                         data: {
                             action: 'kg_enrich_recipe',
-                            nonce: kgRecipeEnricher.nonce,
-                            post_id: kgRecipeEnricher.postId
+                            nonce: kgRecipeEnrich.nonce,
+                            post_id: kgRecipeEnrich.postId
                         },
                         success: function(response) {
                             if (response && response.success && response.data) {
