@@ -154,7 +154,7 @@ class FrontendRedirect {
         // 4. Discussion
         $discussion = get_page_by_path($slug, OBJECT, 'discussion');
         if ($discussion && $discussion->post_status === 'publish') {
-            return $this->frontend_url . '/topluluk/soru/' . $discussion->post_name;
+            return $this->frontend_url . '/topluluk/' . $discussion->post_name;
         }
         
         // 5. Kategori

@@ -405,6 +405,7 @@ class DiscussionController {
      */
     public function get_discussions( $request ) {
         $circle_id = $request->get_param( 'circle_id' );
+        $slug = $request->get_param( 'slug' );
         $page = absint( $request->get_param( 'page' ) ) ?: 1;
         $per_page = absint( $request->get_param( 'per_page' ) ) ?: 10;
         $featured_only = (bool) $request->get_param( 'featured_only' );
@@ -418,6 +419,12 @@ class DiscussionController {
             'orderby' => 'date',
             'order' => 'DESC',
         ];
+
+        // Filter by slug
+        if ( $slug ) {
+            $args['name'] = sanitize_title( $slug );
+            $args['posts_per_page'] = 1;
+        }
 
         // Filter by circle
         if ( $circle_id ) {

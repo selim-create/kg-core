@@ -252,7 +252,7 @@ $expected_prefixes = [
     'recipe' => '/tarifler',
     'post' => '/kesfet',
     'ingredient' => '/beslenme-rehberi',
-    'discussion' => '/topluluk/soru',
+    'discussion' => '/topluluk',
 ];
 
 $prefix_consistency_ok = true;
