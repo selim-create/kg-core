@@ -22,7 +22,7 @@ This implementation adds three new features to the KG-Core WordPress plugin:
 - `recipe` → `/tarifler/{slug}`
 - `post` → `/kesfet/{slug}`
 - `ingredient` → `/beslenme-rehberi/{slug}`
-- `discussion` → `/topluluk/soru/{slug}`
+- `discussion` → `/topluluk/{slug}`
 - `category` → `/kesfet/kategori/{slug}`
 - `post_tag` → `/etiket/{slug}`
 

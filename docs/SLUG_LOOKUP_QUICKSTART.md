@@ -56,7 +56,7 @@ curl "https://api.kidsgourmet.com.tr/wp-json/kg/v1/lookup?slug=brokoli-corbasi"
 | Recipe | `/tarifler/{slug}` |
 | Post | `/kesfet/{slug}` |
 | Ingredient | `/beslenme-rehberi/{slug}` |
-| Discussion | `/topluluk/soru/{slug}` |
+| Discussion | `/topluluk/{slug}` |
 | Category | `/kesfet/kategori/{slug}` |
 | Tag | `/etiket/{slug}` |
 

@@ -15,7 +15,7 @@ class FrontendViewLinks {
         'recipe'     => '/tarifler',
         'post'       => '/kesfet',
         'ingredient' => '/beslenme-rehberi',
-        'discussion' => '/topluluk/soru',
+        'discussion' => '/topluluk',
     ];
     
     public function __construct() {

@@ -409,6 +409,7 @@ class DiscussionController {
         $per_page = absint( $request->get_param( 'per_page' ) ) ?: 10;
         $featured_only = (bool) $request->get_param( 'featured_only' );
         $expert_answered = $request->get_param( 'expert_answered' );
+        $slug = $request->get_param( 'slug' );
 
         $args = [
             'post_type' => 'discussion',
@@ -418,6 +419,12 @@ class DiscussionController {
             'orderby' => 'date',
             'order' => 'DESC',
         ];
+
+        // Filter by slug (unique, so return single result)
+        if ( $slug ) {
+            $args['name'] = sanitize_title( $slug );
+            $args['posts_per_page'] = 1;
+        }
 
         // Filter by circle
         if ( $circle_id ) {
