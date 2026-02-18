@@ -15,7 +15,7 @@ class LookupController {
         'recipe'     => '/tarifler',
         'post'       => '/kesfet',
         'ingredient' => '/beslenme-rehberi',
-        'discussion' => '/topluluk/soru',
+        'discussion' => '/topluluk',
         'expert'     => '/uzman',
         'category'   => '/kesfet/kategori',
         'post_tag'   => '/etiket',
