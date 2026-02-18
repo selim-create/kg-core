@@ -420,10 +420,11 @@ class DiscussionController {
             'order' => 'DESC',
         ];
 
-        // Filter by slug (unique, so return single result)
+        // Filter by slug (unique, so override pagination and return single result)
+        // Slugs are unique identifiers, so when filtering by slug we only expect one result
         if ( $slug ) {
             $args['name'] = sanitize_title( $slug );
-            $args['posts_per_page'] = 1;
+            $args['posts_per_page'] = 1; // Override per_page since slug is unique
         }
 
         // Filter by circle
