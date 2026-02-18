@@ -26,7 +26,7 @@ class CORSHandler {
      */
     private function get_allowed_origins() {
         $default_origins = [
-            'http://192.168.48.43:3000',
+            'http://192.168.48.89:3000',
             'https://kidsgourmet.com.tr',
             'https://www.kidsgourmet.com.tr',
             'https://api.kidsgourmet.com.tr',
