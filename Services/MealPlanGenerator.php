@@ -1,0 +1,494 @@
+<?php
+namespace KG_Core\Services;
+
+/**
+ * Meal Plan Generator Service
+ * Generates weekly meal plans based on child's age, allergies, and preferences
+ */
+class MealPlanGenerator {
+
+    /**
+     * Slot types configuration
+     */
+    const SLOT_TYPES = [
+        'breakfast' => [
+            'label' => 'Kahvaltı',
+            'meal_type_slug' => 'kahvalti',
+            'color' => '#FFF9C4',
+            'time_range' => '07:00-09:00'
+        ],
+        'snack_morning' => [
+            'label' => 'Ara Öğün (Kuşluk)',
+            'meal_type_slug' => 'ara-ogun',
+            'fallback_slugs' => ['atistirmalik'],
+            'color' => '#E8F5E9',
+            'time_range' => '10:00-11:00'
+        ],
+        'lunch' => [
+            'label' => 'Öğle Yemeği',
+            'meal_type_slug' => 'ogle-yemegi',
+            'color' => '#DCEDC8',
+            'time_range' => '12:00-13:00'
+        ],
+        'snack_afternoon' => [
+            'label' => 'Ara Öğün (İkindi)',
+            'meal_type_slug' => 'atistirmalik',
+            'fallback_slugs' => ['ara-ogun'],
+            'color' => '#F3E5F5',
+            'time_range' => '15:00-16:00'
+        ],
+        'dinner' => [
+            'label' => 'Akşam Yemeği',
+            'meal_type_slug' => 'aksam-yemegi',
+            'color' => '#FFCC80',
+            'time_range' => '18:00-19:00'
+        ],
+    ];
+
+    /**
+     * Age group mapping
+     */
+    const AGE_GROUP_MAPPING = [
+        '0-6' => '0-6-ay-sadece-sut',
+        '6-8' => '6-8-ay-baslangic',
+        '9-11' => '9-11-ay-kesif',
+        '12-24' => '12-24-ay-gecis',
+        '24+' => '2-yas-ve-uzeri',
+    ];
+
+    /**
+     * Turkish day names
+     */
+    const DAY_NAMES = [
+        'Pazartesi',
+        'Salı',
+        'Çarşamba',
+        'Perşembe',
+        'Cuma',
+        'Cumartesi',
+        'Pazar'
+    ];
+
+    /**
+     * Generate meal plan
+     *
+     * @param array $child Child profile data
+     * @param string $week_start Week start date (Y-m-d format)
+     * @return array Generated meal plan
+     */
+    public function generate( $child, $week_start ) {
+        // 1. Profile Analysis
+        $age_in_months = $this->calculate_age_in_months( $child['birth_date'] );
+        $allergies = isset( $child['allergies'] ) ? $child['allergies'] : [];
+        
+        // 2. Determine slot strategy based on age
+        $slot_types = $this->get_slot_types_for_age( $age_in_months );
+        
+        // 3. Get suitable age group
+        $age_group = $this->get_age_group_for_months( $age_in_months );
+        
+        // 4. Generate plan structure
+        $plan = [
+            'id' => wp_generate_uuid4(),
+            'child_id' => $child['id'],
+            'week_start' => $week_start,
+            'week_end' => date( 'Y-m-d', strtotime( $week_start . ' +6 days' ) ),
+            'status' => 'active',
+            'days' => [],
+            'created_at' => current_time( 'c' ),
+            'updated_at' => current_time( 'c' ),
+        ];
+        
+        // 5. Generate days
+        for ( $i = 0; $i < 7; $i++ ) {
+            $day_date = date( 'Y-m-d', strtotime( $week_start . ' +' . $i . ' days' ) );
+            $day_name = self::DAY_NAMES[$i];
+            
+            $day = [
+                'date' => $day_date,
+                'day_name' => $day_name,
+                'slots' => [],
+            ];
+            
+            // 6. Generate slots for this day
+            foreach ( $slot_types as $slot_type ) {
+                $slot_config = self::SLOT_TYPES[$slot_type];
+                
+                // Get a recipe for this slot
+                $recipe = $this->get_recipe_for_slot(
+                    $slot_config['meal_type_slug'],
+                    $age_group,
+                    $allergies,
+                    $plan['days'], // Previously generated days for variety
+                    isset( $slot_config['fallback_slugs'] ) ? $slot_config['fallback_slugs'] : []
+                );
+                
+                $slot = [
+                    'id' => wp_generate_uuid4(),
+                    'slot_type' => $slot_type,
+                    'slot_label' => $slot_config['label'],
+                    'status' => $recipe ? 'filled' : 'empty',
+                    'recipe_id' => $recipe ? $recipe->ID : null,
+                    'skip_reason' => null,
+                    'time_range' => $slot_config['time_range'],
+                    'color_code' => $slot_config['color'],
+                ];
+                
+                $day['slots'][] = $slot;
+            }
+            
+            $plan['days'][] = $day;
+        }
+        
+        return $plan;
+    }
+
+    /**
+     * Calculate age in months from birth date
+     *
+     * @param string $birth_date Birth date (Y-m-d format)
+     * @return int Age in months
+     */
+    private function calculate_age_in_months( $birth_date ) {
+        $birth = new \DateTime( $birth_date );
+        $now = new \DateTime();
+        $interval = $birth->diff( $now );
+        
+        return ( $interval->y * 12 ) + $interval->m;
+    }
+
+    /**
+     * Get slot types based on age in months
+     *
+     * @param int $age_in_months Age in months
+     * @return array Slot types
+     */
+    private function get_slot_types_for_age( $age_in_months ) {
+        if ( $age_in_months >= 6 && $age_in_months <= 8 ) {
+            // 6-8 months: 2 meals (breakfast + dinner)
+            return [ 'breakfast', 'dinner' ];
+        } elseif ( $age_in_months >= 9 && $age_in_months <= 11 ) {
+            // 9-11 months: 3 meals (breakfast + lunch + dinner)
+            return [ 'breakfast', 'lunch', 'dinner' ];
+        } else {
+            // 12+ months: 5 meals (3 main + 2 snacks)
+            return [ 'breakfast', 'snack_morning', 'lunch', 'snack_afternoon', 'dinner' ];
+        }
+    }
+
+    /**
+     * Get age group taxonomy slug for months
+     *
+     * @param int $age_in_months Age in months
+     * @return string Age group slug
+     */
+    private function get_age_group_for_months( $age_in_months ) {
+        // Map months to age group slugs
+        if ( $age_in_months < 6 ) {
+            return '0-6-ay-sadece-sut';
+        } elseif ( $age_in_months >= 6 && $age_in_months <= 8 ) {
+            return '6-8-ay-baslangic';
+        } elseif ( $age_in_months >= 9 && $age_in_months <= 11 ) {
+            return '9-11-ay-kesif';
+        } elseif ( $age_in_months >= 12 && $age_in_months <= 24 ) {
+            return '12-24-ay-gecis';
+        } else {
+            return '2-yas-ve-uzeri';
+        }
+    }
+
+    /**
+     * Get a recipe for a specific slot
+     *
+     * @param string $meal_type_slug Meal type slug
+     * @param string $age_group Age group slug
+     * @param array $allergies Allergens to exclude
+     * @param array $previous_days Previously generated days for variety
+     * @param array $fallback_slugs Fallback meal type slugs to try if primary fails
+     * @return \WP_Post|null Recipe post or null
+     */
+    private function get_recipe_for_slot( $meal_type_slug, $age_group, $allergies, $previous_days, $fallback_slugs = [] ) {
+        // Get recently used recipe IDs for variety
+        $used_recipe_ids = $this->get_used_recipe_ids( $previous_days );
+        
+        // Try primary meal type slug first
+        $recipe = $this->query_recipe( $meal_type_slug, $age_group, $allergies, $used_recipe_ids );
+        
+        if ( $recipe ) {
+            return $recipe;
+        }
+        
+        // Try fallback slugs if primary failed
+        foreach ( $fallback_slugs as $fallback_slug ) {
+            $recipe = $this->query_recipe( $fallback_slug, $age_group, $allergies, $used_recipe_ids );
+            if ( $recipe ) {
+                return $recipe;
+            }
+        }
+        
+        // If still no recipe found, try primary without variety constraint
+        $recipe = $this->query_recipe( $meal_type_slug, $age_group, $allergies, [] );
+        
+        if ( $recipe ) {
+            return $recipe;
+        }
+        
+        // Try fallback slugs without variety constraint
+        foreach ( $fallback_slugs as $fallback_slug ) {
+            $recipe = $this->query_recipe( $fallback_slug, $age_group, $allergies, [] );
+            if ( $recipe ) {
+                return $recipe;
+            }
+        }
+        
+        // Last resort: get any recipe for the age group
+        $recipe = $this->query_recipe( null, $age_group, $allergies, [] );
+        
+        return $recipe;
+    }
+    
+    /**
+     * Helper: Query recipe with specific criteria
+     *
+     * @param string|null $meal_type_slug Meal type slug (null to skip meal type filter)
+     * @param string $age_group Age group slug
+     * @param array $allergies Allergens to exclude
+     * @param array $exclude_ids Recipe IDs to exclude
+     * @return \WP_Post|null Recipe post or null
+     */
+    private function query_recipe( $meal_type_slug, $age_group, $allergies, $exclude_ids ) {
+        $args = [
+            'post_type' => 'recipe',
+            'post_status' => 'publish',
+            'posts_per_page' => 20,
+            'orderby' => 'rand',
+            'tax_query' => [
+                'relation' => 'AND',
+                [
+                    'taxonomy' => 'age-group',
+                    'field' => 'slug',
+                    'terms' => $age_group,
+                ],
+            ],
+        ];
+        
+        // Add meal type filter if provided
+        if ( $meal_type_slug ) {
+            $args['tax_query'][] = [
+                'taxonomy' => 'meal-type',
+                'field' => 'slug',
+                'terms' => $meal_type_slug,
+            ];
+        }
+        
+        // Exclude allergens if specified
+        if ( ! empty( $allergies ) ) {
+            $args['tax_query'][] = [
+                'taxonomy' => 'allergen',
+                'field' => 'slug',
+                'terms' => $allergies,
+                'operator' => 'NOT IN',
+            ];
+        }
+        
+        // Exclude recently used recipes
+        if ( ! empty( $exclude_ids ) ) {
+            $args['post__not_in'] = $exclude_ids;
+        }
+        
+        $query = new \WP_Query( $args );
+        
+        if ( $query->have_posts() ) {
+            return $query->posts[0];
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get used recipe IDs from previous days
+     *
+     * @param array $previous_days Previously generated days
+     * @return array Recipe IDs
+     */
+    private function get_used_recipe_ids( $previous_days ) {
+        $recipe_ids = [];
+        
+        foreach ( $previous_days as $day ) {
+            foreach ( $day['slots'] as $slot ) {
+                if ( $slot['recipe_id'] ) {
+                    $recipe_ids[] = $slot['recipe_id'];
+                }
+            }
+        }
+        
+        return array_unique( $recipe_ids );
+    }
+
+    /**
+     * Refresh a slot with a new recipe
+     *
+     * @param string $slot_type Slot type
+     * @param string $age_group Age group slug
+     * @param array $allergies Allergens to exclude
+     * @param array $excluded_recipe_ids Recipe IDs to exclude
+     * @return \WP_Post|null Recipe post or null
+     */
+    public function refresh_slot_recipe( $slot_type, $age_group, $allergies, $excluded_recipe_ids = [] ) {
+        $slot_config = self::SLOT_TYPES[$slot_type];
+        
+        $args = [
+            'post_type' => 'recipe',
+            'post_status' => 'publish',
+            'posts_per_page' => 1,
+            'orderby' => 'rand',
+            'tax_query' => [
+                'relation' => 'AND',
+                [
+                    'taxonomy' => 'age-group',
+                    'field' => 'slug',
+                    'terms' => $age_group,
+                ],
+                [
+                    'taxonomy' => 'meal-type',
+                    'field' => 'slug',
+                    'terms' => $slot_config['meal_type_slug'],
+                ],
+            ],
+        ];
+        
+        // Exclude allergens
+        if ( ! empty( $allergies ) ) {
+            $args['tax_query'][] = [
+                'taxonomy' => 'allergen',
+                'field' => 'slug',
+                'terms' => $allergies,
+                'operator' => 'NOT IN',
+            ];
+        }
+        
+        // Exclude specific recipes
+        if ( ! empty( $excluded_recipe_ids ) ) {
+            $args['post__not_in'] = $excluded_recipe_ids;
+        }
+        
+        $query = new \WP_Query( $args );
+        
+        if ( $query->have_posts() ) {
+            return $query->posts[0];
+        }
+        
+        return null;
+    }
+
+    /**
+     * Calculate nutrition summary for a plan
+     *
+     * @param array $plan Meal plan
+     * @return array Nutrition summary
+     */
+    public function calculate_nutrition_summary( $plan ) {
+        $total_meals = 0;
+        $allergens_introduced = [];
+        $vegetables_servings = 0;
+        $protein_servings = 0;
+        $grains_servings = 0;
+        $fruit_servings = 0;
+        $dairy_servings = 0;
+        
+        foreach ( $plan['days'] as $day ) {
+            foreach ( $day['slots'] as $slot ) {
+                if ( $slot['status'] === 'filled' && $slot['recipe_id'] ) {
+                    $total_meals++;
+                    
+                    // Get recipe allergens
+                    $recipe_allergens = wp_get_post_terms( $slot['recipe_id'], 'allergen', [ 'fields' => 'slugs' ] );
+                    if ( ! is_wp_error( $recipe_allergens ) ) {
+                        $allergens_introduced = array_merge( $allergens_introduced, $recipe_allergens );
+                    }
+                    
+                    // Calculate nutrition from recipe ingredients
+                    $recipe_nutrition = $this->analyze_recipe_nutrition( $slot['recipe_id'] );
+                    $vegetables_servings += $recipe_nutrition['vegetable_servings'];
+                    $protein_servings += $recipe_nutrition['protein_servings'];
+                    $grains_servings += $recipe_nutrition['grains_servings'];
+                    $fruit_servings += $recipe_nutrition['fruit_servings'];
+                    $dairy_servings += $recipe_nutrition['dairy_servings'];
+                }
+            }
+        }
+        
+        return [
+            'total_meals' => $total_meals,
+            'vegetables_servings' => $vegetables_servings,
+            'protein_servings' => $protein_servings,
+            'grains_servings' => $grains_servings,
+            'fruit_servings' => $fruit_servings,
+            'dairy_servings' => $dairy_servings,
+            'new_allergens_introduced' => array_unique( $allergens_introduced ),
+        ];
+    }
+    
+    /**
+     * Analyze nutrition from recipe ingredients
+     *
+     * @param int $recipe_id Recipe post ID
+     * @return array Nutrition data
+     */
+    private function analyze_recipe_nutrition( $recipe_id ) {
+        $nutrition = [
+            'protein_servings' => 0,
+            'vegetable_servings' => 0,
+            'fruit_servings' => 0,
+            'grains_servings' => 0,
+            'dairy_servings' => 0,
+        ];
+        
+        // Get recipe ingredients using WordPress native meta (not ACF)
+        $ingredients = get_post_meta( $recipe_id, '_kg_ingredients', true );
+        
+        if ( empty( $ingredients ) || ! is_array( $ingredients ) ) {
+            return $nutrition;
+        }
+        
+        foreach ( $ingredients as $ingredient ) {
+            // Access ingredient post via ingredient_id
+            $ingredient_id = isset( $ingredient['ingredient_id'] ) ? intval( $ingredient['ingredient_id'] ) : 0;
+            
+            if ( ! $ingredient_id ) {
+                continue;
+            }
+            
+            // Get ingredient category - CORRECT taxonomy: "ingredient-category"
+            $categories = wp_get_post_terms( $ingredient_id, 'ingredient-category', [ 'fields' => 'slugs' ] );
+            
+            if ( empty( $categories ) || is_wp_error( $categories ) ) {
+                continue;
+            }
+            
+            // Increase nutritional values based on category
+            foreach ( $categories as $cat_slug ) {
+                switch ( $cat_slug ) {
+                    case 'proteinler':
+                    case 'baklagiller': // Legumes are also a protein source
+                        $nutrition['protein_servings']++;
+                        break;
+                    case 'sebzeler':
+                        $nutrition['vegetable_servings']++;
+                        break;
+                    case 'meyveler':
+                        $nutrition['fruit_servings']++;
+                        break;
+                    case 'tahillar':
+                        $nutrition['grains_servings']++;
+                        break;
+                    case 'sut-urunleri':
+                        $nutrition['dairy_servings']++;
+                        break;
+                }
+            }
+        }
+        
+        return $nutrition;
+    }
+}
