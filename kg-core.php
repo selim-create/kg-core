@@ -682,7 +682,8 @@ add_filter( 'rest_prepare_post', function( $response, $post, $request ) {
     $author = get_userdata( $post->post_author );
     $data['author_data'] = [
         'name' => $author ? $author->display_name : 'KidsGourmet Editörü',
-        'avatar' => get_avatar_url( $post->post_author, [ 'size' => 96 ] )
+        'avatar' => get_avatar_url( $post->post_author, [ 'size' => 96 ] ),
+        'biography' => $author ? get_user_meta( $post->post_author, '_kg_biography', true ) : '',
     ];
     
     // Add category data
