@@ -54,6 +54,12 @@ class RestApiFilters {
             $data['custom_avatar'] = $custom_avatar;
         }
         
+        // Inject _kg_biography into description so _embedded.author[0].description returns the real bio
+        $biography = get_user_meta($user->ID, '_kg_biography', true);
+        if (!empty($biography)) {
+            $data['description'] = $biography;
+        }
+        
         $response->set_data($data);
         return $response;
     }
