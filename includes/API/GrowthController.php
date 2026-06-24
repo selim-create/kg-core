@@ -10,6 +10,8 @@ use KG_Core\Tools\WHOGrowthData;
  * Endpoints:
  *   GET  /kg/v1/health/growth            - Büyüme kayıtlarını listele + persentil
  *   POST /kg/v1/health/growth            - Yeni büyüme ölçümü ekle
+ *   PUT  /kg/v1/health/growth/{id}       - Ölçüm kaydını güncelle
+ *   DELETE /kg/v1/health/growth/{id}     - Ölçüm kaydını sil
  *   GET  /kg/v1/health/growth/chart-data - Grafik verisi + WHO referans eğrileri
  */
 class GrowthController {
@@ -76,6 +78,54 @@ class GrowthController {
                     'type'              => 'string',
                     'sanitize_callback' => 'sanitize_text_field',
                     'default'           => '',
+                ],
+            ],
+        ] );
+
+        // PUT /kg/v1/health/growth/{id}
+        register_rest_route( 'kg/v1', '/health/growth/(?P<id>[a-zA-Z0-9-]+)', [
+            'methods'             => 'PUT',
+            'callback'            => [ $this, 'update_growth_record' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+            'args'                => [
+                'id' => [
+                    'required' => true,
+                    'type'     => 'string',
+                ],
+                'date' => [
+                    'required'          => false,
+                    'type'              => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'weight_kg' => [
+                    'required' => false,
+                    'type'     => 'number',
+                ],
+                'height_cm' => [
+                    'required' => false,
+                    'type'     => 'number',
+                ],
+                'head_circumference_cm' => [
+                    'required' => false,
+                    'type'     => 'number',
+                ],
+                'notes' => [
+                    'required'          => false,
+                    'type'              => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ] );
+
+        // DELETE /kg/v1/health/growth/{id}
+        register_rest_route( 'kg/v1', '/health/growth/(?P<id>[a-zA-Z0-9-]+)', [
+            'methods'             => 'DELETE',
+            'callback'            => [ $this, 'delete_growth_record' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+            'args'                => [
+                'id' => [
+                    'required' => true,
+                    'type'     => 'string',
                 ],
             ],
         ] );
@@ -185,6 +235,81 @@ class GrowthController {
             ],
             201
         );
+    }
+
+    /**
+     * PUT /kg/v1/health/growth/{id}
+     * Ölçüm kaydını güncelle
+     */
+    public function update_growth_record( $request ) {
+        $user_id   = $request->get_param( 'authenticated_user_id' );
+        $record_id = $request->get_param( 'id' );
+
+        $all_records = $this->get_user_growth_records( $user_id );
+        $found       = false;
+
+        foreach ( $all_records as &$record ) {
+            if ( isset( $record['id'] ) && $record['id'] === $record_id ) {
+                if ( null !== $request->get_param( 'date' ) ) {
+                    $record['date'] = $request->get_param( 'date' );
+                }
+                if ( null !== $request->get_param( 'weight_kg' ) ) {
+                    $record['weight_kg'] = (float) $request->get_param( 'weight_kg' );
+                }
+                if ( null !== $request->get_param( 'height_cm' ) ) {
+                    $record['height_cm'] = (float) $request->get_param( 'height_cm' );
+                }
+                if ( null !== $request->get_param( 'head_circumference_cm' ) ) {
+                    $record['head_circumference_cm'] = (float) $request->get_param( 'head_circumference_cm' );
+                }
+                if ( null !== $request->get_param( 'notes' ) ) {
+                    $record['notes'] = $request->get_param( 'notes' );
+                }
+                $found          = true;
+                $updated_record = $record;
+                break;
+            }
+        }
+        unset( $record );
+
+        if ( ! $found ) {
+            return new \WP_Error( 'record_not_found', 'Ölçüm kaydı bulunamadı.', [ 'status' => 404 ] );
+        }
+
+        update_user_meta( $user_id, '_kg_growth_records', $all_records );
+
+        return new \WP_REST_Response( [
+            'success' => true,
+            'record'  => $updated_record,
+            'message' => 'Ölçüm güncellendi.',
+        ], 200 );
+    }
+
+    /**
+     * DELETE /kg/v1/health/growth/{id}
+     * Ölçüm kaydını sil
+     */
+    public function delete_growth_record( $request ) {
+        $user_id   = $request->get_param( 'authenticated_user_id' );
+        $record_id = $request->get_param( 'id' );
+
+        $all_records   = $this->get_user_growth_records( $user_id );
+        $initial_count = count( $all_records );
+
+        $all_records = array_values( array_filter( $all_records, function ( $record ) use ( $record_id ) {
+            return ! isset( $record['id'] ) || $record['id'] !== $record_id;
+        } ) );
+
+        if ( count( $all_records ) === $initial_count ) {
+            return new \WP_Error( 'record_not_found', 'Ölçüm kaydı bulunamadı.', [ 'status' => 404 ] );
+        }
+
+        update_user_meta( $user_id, '_kg_growth_records', $all_records );
+
+        return new \WP_REST_Response( [
+            'success' => true,
+            'message' => 'Ölçüm silindi.',
+        ], 200 );
     }
 
     /**

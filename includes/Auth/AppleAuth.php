@@ -367,6 +367,72 @@ class AppleAuth {
     }
 
     /**
+     * Exchange authorization code to obtain Apple refresh token
+     *
+     * @param string $code Apple authorization_code
+     * @return array|\WP_Error Returns refresh/access/id token keys; keys may be empty strings if Apple omits them.
+     */
+    public function exchange_authorization_code( $code ) {
+        if ( empty( $code ) ) {
+            return new \WP_Error( 'missing_authorization_code', 'Apple authorization code gerekli.' );
+        }
+
+        $client_secret = $this->generate_client_secret();
+        if ( is_wp_error( $client_secret ) ) {
+            return $client_secret;
+        }
+
+        $response = wp_remote_post( 'https://appleid.apple.com/auth/token', [
+            'timeout' => 15,
+            'headers' => [
+                'Content-Type' => 'application/x-www-form-urlencoded',
+            ],
+            'body' => http_build_query( [
+                'grant_type'    => 'authorization_code',
+                'code'          => $code,
+                'client_id'     => $this->bundle_id ?: $this->service_id,
+                'client_secret' => $client_secret,
+            ] ),
+        ] );
+
+        if ( is_wp_error( $response ) ) {
+            return new \WP_Error(
+                'apple_token_exchange_error',
+                'Apple token exchange başarısız: ' . $response->get_error_message()
+            );
+        }
+
+        $status_code = (int) wp_remote_retrieve_response_code( $response );
+        $body_raw    = wp_remote_retrieve_body( $response );
+        $body        = json_decode( $body_raw, true );
+
+        if ( 200 !== $status_code ) {
+            $error_message = '';
+            if ( is_array( $body ) ) {
+                $error_message = $body['error_description'] ?? ( $body['error'] ?? '' );
+            }
+
+            return new \WP_Error(
+                'apple_token_exchange_error',
+                'Apple token exchange başarısız (HTTP ' . $status_code . ')' . ( $error_message ? ': ' . $error_message : '' )
+            );
+        }
+
+        if ( ! is_array( $body ) ) {
+            return new \WP_Error(
+                'apple_token_exchange_error',
+                'Apple token exchange yanıtı parse edilemedi.'
+            );
+        }
+
+        return [
+            'refresh_token' => $body['refresh_token'] ?? '',
+            'access_token'  => $body['access_token'] ?? '',
+            'id_token'      => $body['id_token'] ?? '',
+        ];
+    }
+
+    /**
      * Apple API için ES256-imzalı client secret JWT oluştur
      *
      * @return string|\WP_Error JWT string veya WP_Error

@@ -112,7 +112,65 @@ Adds a new growth measurement for a child.
 
 ---
 
-### 3. `GET /health/growth/chart-data`
+### 3. `PUT /health/growth/{id}`
+
+Updates an existing growth record. Only provided fields are updated.
+
+**Request Body (example):**
+
+```json
+{
+  "date": "2026-01-20",
+  "weight_kg": 9.8,
+  "notes": "Ev ölçümü"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "record": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "child_id": "abc123",
+    "date": "2026-01-20",
+    "weight_kg": 9.8,
+    "height_cm": 75.0,
+    "head_circumference_cm": 45.0,
+    "notes": "Ev ölçümü"
+  },
+  "message": "Ölçüm güncellendi."
+}
+```
+
+---
+
+### 4. `DELETE /health/growth/{id}`
+
+Deletes a growth record by `id`.
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "message": "Ölçüm silindi."
+}
+```
+
+If record does not exist:
+
+```json
+{
+  "code": "record_not_found",
+  "message": "Ölçüm kaydı bulunamadı."
+}
+```
+
+---
+
+### 5. `GET /health/growth/chart-data`
 
 Returns chart-ready data including the child's measurements with percentiles and WHO reference curves.
 
