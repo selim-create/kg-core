@@ -92,7 +92,8 @@ class AppleAuth {
             );
         }
 
-        $header = json_decode( $this->base64url_decode( $token_parts[0] ) );
+        $header_raw = $this->base64url_decode( $token_parts[0] );
+        $header     = $header_raw ? json_decode( $header_raw ) : null;
 
         if ( ! $header || empty( $header->kid ) ) {
             return new \WP_Error(
@@ -322,13 +323,13 @@ class AppleAuth {
      * Base64URL decode (RFC 4648)
      *
      * @param string $data Base64URL encoded string
-     * @return string Decoded string
+     * @return string|false Decoded string, or false on failure
      */
     private function base64url_decode( $data ) {
         $remainder = strlen( $data ) % 4;
         if ( $remainder ) {
             $data .= str_repeat( '=', 4 - $remainder );
         }
-        return base64_decode( strtr( $data, '-_', '+/' ) );
+        return base64_decode( strtr( $data, '-_', '+/' ), true );
     }
 }

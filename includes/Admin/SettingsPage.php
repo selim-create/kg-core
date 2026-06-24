@@ -242,10 +242,7 @@ class SettingsPage {
         $apple_service_id    = get_option('kg_apple_service_id', '');
         $apple_key_id        = get_option('kg_apple_key_id', '');
         $apple_private_key   = get_option('kg_apple_private_key', '');
-        // Özel anahtarı maskele — yalnızca son 20 karakteri göster
-        $apple_private_key_masked = ! empty( $apple_private_key )
-            ? str_repeat( '*', max( 0, strlen( $apple_private_key ) - 20 ) ) . substr( $apple_private_key, -20 )
-            : '';
+        $apple_private_key_configured = ! empty( $apple_private_key );
         
         ?>
         <div class="wrap">
@@ -462,10 +459,9 @@ class SettingsPage {
                         <tr>
                             <th scope="row">Private Key (.p8)</th>
                             <td>
-                                <?php if ( ! empty( $apple_private_key ) ) : ?>
-                                    <p style="color: #5F6368; margin-bottom: 8px;">
-                                        Mevcut anahtar: <code><?php echo esc_html( $apple_private_key_masked ); ?></code>
-                                        — Değiştirmek için aşağıya yeni .p8 içeriğini yapıştırın (boş bırakılırsa mevcut korunur).
+                                <?php if ( $apple_private_key_configured ) : ?>
+                                    <p style="color: #388E3C; margin-bottom: 8px;">
+                                        ✓ Anahtar yapılandırılmış. Değiştirmek için aşağıya yeni .p8 içeriğini yapıştırın (boş bırakılırsa mevcut korunur).
                                     </p>
                                 <?php endif; ?>
                                 <textarea name="kg_apple_private_key" rows="10" class="large-text code" autocomplete="off" placeholder="-----BEGIN PRIVATE KEY-----&#10;[YOUR_KEY_HERE]&#10;-----END PRIVATE KEY-----"></textarea>
