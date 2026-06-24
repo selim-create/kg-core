@@ -842,7 +842,7 @@ class UserController {
             JWTHandler::invalidate_token( $token );
         }
 
-        wp_mail(
+        $mail_sent = wp_mail(
             $user->user_email,
             'KidsGourmet — Hesabınız Silindi',
             "Merhaba {$user->display_name},\n\n"
@@ -850,6 +850,10 @@ class UserController {
             . "Bu tarihten sonra tüm verileriniz kalıcı olarak silinecektir.\n\n"
             . "KidsGourmet Ekibi"
         );
+
+        if ( ! $mail_sent ) {
+            error_log( 'Account deletion email could not be sent for user: ' . $user_id );
+        }
 
         return new \WP_REST_Response(
             [
@@ -1261,7 +1265,7 @@ class UserController {
         if ( ! empty( $scheduled ) && strtotime( $scheduled ) < time() ) {
             $deleted = $this->hard_delete_user( $user->ID );
             if ( ! $deleted ) {
-                return new \WP_Error( 'deletion_failed', 'Hesabınız silinemedi.', [ 'status' => 500 ] );
+                return new \WP_Error( 'deletion_failed', 'Hesabınız sistemde bulunamadı veya silinemedi.', [ 'status' => 500 ] );
             }
             return new \WP_Error( 'account_deleted', 'Hesabınız kalıcı olarak silinmiştir.', [ 'status' => 410 ] );
         }
