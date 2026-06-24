@@ -294,6 +294,21 @@ class UserController {
                 ],
             ],
         ]);
+
+        // Account deletion endpoint
+        register_rest_route( 'kg/v1', '/user/account', [
+            'methods'             => 'DELETE',
+            'callback'            => [ $this, 'delete_account' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
+            'args'                => [
+                'apple_refresh_token' => [
+                    'required'          => false,
+                    'type'              => 'string',
+                    'description'       => 'Apple refresh token for token revocation (Apple users only)',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ]);
     }
 
     /**
@@ -759,6 +774,86 @@ class UserController {
         JWTHandler::invalidate_token( $token );
 
         return new \WP_REST_Response( [ 'message' => 'Logged out successfully' ], 200 );
+    }
+
+    /**
+     * Delete user account permanently
+     * Implements App Store Review Guidelines §5.1.1.v (Apple token revocation)
+     */
+    public function delete_account( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+
+        if ( ! $user_id ) {
+            return new \WP_Error( 'unauthorized', 'Kimlik doğrulama gerekli.', [ 'status' => 401 ] );
+        }
+
+        $user = get_user_by( 'id', $user_id );
+
+        if ( ! $user ) {
+            return new \WP_Error( 'user_not_found', 'Kullanıcı bulunamadı.', [ 'status' => 404 ] );
+        }
+
+        // Apple token revocation (best-effort — hesap silme devam eder)
+        $registered_via      = get_user_meta( $user_id, 'registered_via', true );
+        $apple_refresh_token = $request->get_param( 'apple_refresh_token' );
+
+        if ( 'apple' === $registered_via && ! empty( $apple_refresh_token ) ) {
+            $apple_auth = new AppleAuth();
+            // Hata olsa bile hesap silmeye devam et
+            $apple_auth->revoke_token( $apple_refresh_token );
+        }
+
+        // Tüm _kg_* prefix'li meta'ları temizle
+        $kg_meta_keys = [
+            '_kg_children',
+            '_kg_collections',
+            '_kg_percentile_results',
+            '_kg_favorites',
+            '_kg_favorite_recipes',
+            '_kg_favorites_migrated',
+            '_kg_shopping_list',
+            '_kg_growth_records',
+        ];
+
+        foreach ( $kg_meta_keys as $meta_key ) {
+            delete_user_meta( $user_id, $meta_key );
+        }
+
+        // Diğer _kg_ prefix'li meta'ları temizle (genel tarama)
+        global $wpdb;
+        $wpdb->query(
+            $wpdb->prepare(
+                "DELETE FROM {$wpdb->usermeta} WHERE user_id = %d AND meta_key LIKE %s",
+                $user_id,
+                $wpdb->esc_like( '_kg_' ) . '%'
+            )
+        );
+
+        // JWT token'ı invalidate et
+        $token = JWTHandler::get_token_from_request();
+        if ( $token ) {
+            JWTHandler::invalidate_token( $token );
+        }
+
+        // WordPress kullanıcısını sil (post'ları da sil, reassign yok — null = kalıcı silme)
+        require_once ABSPATH . 'wp-admin/includes/user.php';
+        $deleted = wp_delete_user( $user_id, null );
+
+        if ( ! $deleted ) {
+            return new \WP_Error(
+                'deletion_failed',
+                'Hesap silinemedi.',
+                [ 'status' => 500 ]
+            );
+        }
+
+        return new \WP_REST_Response(
+            [
+                'success' => true,
+                'message' => 'Hesabınız başarıyla silindi.',
+            ],
+            200
+        );
     }
 
     /**

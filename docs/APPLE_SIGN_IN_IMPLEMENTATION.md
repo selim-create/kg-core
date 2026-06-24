@@ -242,13 +242,23 @@ After Apple Sign-In, the following user meta fields are set:
 
 ---
 
-## ⚠️ Token Revocation (TODO)
+## ✅ Token Revocation (Implemented)
 
-Apple's App Store guidelines require implementing token revocation. This is **out of scope for this PR** and will be addressed in a follow-up:
+Apple's App Store guidelines (§5.1.1.v) require implementing token revocation. This is implemented as follows:
 
-- Endpoint: `POST https://appleid.apple.com/auth/revoke`
-- Requires generating a **client secret JWT** signed with the `.p8` private key (Team ID + Key ID + Service ID)
-- Should be triggered on account deletion or explicit sign-out
+- `AppleAuth::revoke_token($refresh_token)` — calls `POST https://appleid.apple.com/auth/revoke`
+- `AppleAuth::generate_client_secret()` — generates an ES256-signed JWT using Team ID, Key ID, Bundle ID, and the stored `.p8` private key
+- Triggered from `DELETE /kg/v1/user/account` when `registered_via === 'apple'` and `apple_refresh_token` is provided
+- **Best-effort**: revocation failure does not block account deletion
+
+### Client Secret JWT Structure
+
+```
+Header:  { alg: "ES256", kid: "{key_id}" }
+Payload: { iss: "{team_id}", iat: now, exp: now+300, aud: "https://appleid.apple.com", sub: "{bundle_id}" }
+```
+
+The `.p8` private key is read from `kg_apple_private_key` WordPress option (configured in the admin panel).
 
 ---
 

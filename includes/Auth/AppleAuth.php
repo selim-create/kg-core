@@ -320,6 +320,120 @@ class AppleAuth {
     }
 
     /**
+     * Apple token'ı iptal et (hesap silme veya açık çıkış için)
+     * App Store Review Guidelines §5.1.1.v gereği zorunlu.
+     *
+     * @param string $refresh_token Apple refresh token
+     * @return true|\WP_Error Başarılı olursa true, hata olursa WP_Error
+     */
+    public function revoke_token( $refresh_token ) {
+        $client_secret = $this->generate_client_secret();
+
+        if ( is_wp_error( $client_secret ) ) {
+            return $client_secret;
+        }
+
+        $response = wp_remote_post( 'https://appleid.apple.com/auth/revoke', [
+            'timeout' => 15,
+            'headers' => [
+                'Content-Type' => 'application/x-www-form-urlencoded',
+            ],
+            'body' => http_build_query( [
+                'token'           => $refresh_token,
+                'token_type_hint' => 'refresh_token',
+                'client_id'       => $this->bundle_id ?: $this->service_id,
+                'client_secret'   => $client_secret,
+            ] ),
+        ] );
+
+        if ( is_wp_error( $response ) ) {
+            return new \WP_Error(
+                'apple_revoke_error',
+                'Apple token iptal isteği başarısız: ' . $response->get_error_message()
+            );
+        }
+
+        $status_code = (int) wp_remote_retrieve_response_code( $response );
+
+        if ( 200 !== $status_code ) {
+            $body = wp_remote_retrieve_body( $response );
+            return new \WP_Error(
+                'apple_revoke_error',
+                'Apple token iptal edilemedi (HTTP ' . $status_code . '): ' . $body
+            );
+        }
+
+        return true;
+    }
+
+    /**
+     * Apple API için ES256-imzalı client secret JWT oluştur
+     *
+     * @return string|\WP_Error JWT string veya WP_Error
+     */
+    public function generate_client_secret() {
+        $private_key_pem = get_option( 'kg_apple_private_key', '' );
+
+        if ( empty( $private_key_pem ) ) {
+            return new \WP_Error(
+                'config_error',
+                'Apple private key (.p8) yapılandırılmamış.'
+            );
+        }
+
+        if ( empty( $this->team_id ) ) {
+            return new \WP_Error(
+                'config_error',
+                'Apple Team ID yapılandırılmamış.'
+            );
+        }
+
+        if ( empty( $this->key_id ) ) {
+            return new \WP_Error(
+                'config_error',
+                'Apple Key ID yapılandırılmamış.'
+            );
+        }
+
+        $client_id = $this->bundle_id ?: $this->service_id;
+        if ( empty( $client_id ) ) {
+            return new \WP_Error(
+                'config_error',
+                'Apple Bundle ID veya Service ID yapılandırılmamış.'
+            );
+        }
+
+        $now = time();
+        $payload = [
+            'iss' => $this->team_id,
+            'iat' => $now,
+            'exp' => $now + 300,
+            'aud' => 'https://appleid.apple.com',
+            'sub' => $client_id,
+        ];
+
+        try {
+            $private_key = openssl_pkey_get_private( $private_key_pem );
+
+            if ( false === $private_key ) {
+                return new \WP_Error(
+                    'config_error',
+                    'Apple private key geçersiz veya parse edilemedi.'
+                );
+            }
+
+            $jwt = JWT::encode( $payload, $private_key, 'ES256', $this->key_id );
+        } catch ( \Exception $e ) {
+            return new \WP_Error(
+                'apple_jwt_error',
+                'Client secret JWT oluşturulamadı: ' . $e->getMessage()
+            );
+        }
+
+        return $jwt;
+    }
+
+    /**
      * Base64URL decode (RFC 4648)
      *
      * @param string $data Base64URL encoded string

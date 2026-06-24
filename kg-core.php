@@ -261,6 +261,8 @@ if ( file_exists( KG_CORE_PATH . 'includes/API/VaccineExportController.php' ) ) 
 if ( file_exists( KG_CORE_PATH . 'includes/API/PushNotificationController.php' ) ) require_once KG_CORE_PATH . 'includes/API/PushNotificationController.php';
 // Child Profile Avatar API Controller
 if ( file_exists( KG_CORE_PATH . 'includes/API/ChildProfileAvatarController.php' ) ) require_once KG_CORE_PATH . 'includes/API/ChildProfileAvatarController.php';
+// Growth Tracker API Controller
+if ( file_exists( KG_CORE_PATH . 'includes/API/GrowthController.php' ) ) require_once KG_CORE_PATH . 'includes/API/GrowthController.php';
 
 // 6.6. ADMIN SINIFLARI DAHİL ET (Frontend View Links)
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/FrontendViewLinks.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/FrontendViewLinks.php';
@@ -484,6 +486,9 @@ function kg_core_init() {
     
     // Child Profile Avatar API Controller
     if ( class_exists( '\KG_Core\API\ChildProfileAvatarController' ) ) new \KG_Core\API\ChildProfileAvatarController();
+    
+    // Growth Tracker API Controller
+    if ( class_exists( '\KG_Core\API\GrowthController' ) ) new \KG_Core\API\GrowthController();
     
     // Newsletter REST Controller
     if ( class_exists( '\KG_Core\Newsletter\NewsletterRESTController' ) ) {

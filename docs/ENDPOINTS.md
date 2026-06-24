@@ -48,6 +48,11 @@
 | GET | `/user/profile` | Get user profile |
 | PUT | `/user/profile` | Update user profile |
 
+### Account Management
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| DELETE | `/user/account` | Permanently delete user account (includes Apple token revocation) |
+
 ### Children Management
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -69,6 +74,13 @@
 | GET | `/user/shopping-list` | Get shopping list |
 | POST | `/user/shopping-list` | Add item to shopping list |
 | DELETE | `/user/shopping-list/{id}` | Remove item from shopping list |
+
+### Growth Tracking
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health/growth` | Get child growth records + latest + WHO percentiles |
+| POST | `/health/growth` | Add new growth measurement |
+| GET | `/health/growth/chart-data` | Get chart data with WHO reference curves |
 
 ## Query Parameters
 
