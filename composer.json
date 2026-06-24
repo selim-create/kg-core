@@ -5,7 +5,8 @@
     "require": {
         "php": ">=7.4",
         "minishlink/web-push": "^8.0",
-        "tecnickcom/tcpdf": "^6.6"
+        "tecnickcom/tcpdf": "^6.6",
+        "firebase/php-jwt": "^6.10"
     },
     "autoload": {
         "psr-4": {
