@@ -825,9 +825,11 @@ class UserController {
             }
         }
 
-        $deleted_at     = current_time( 'c' );
-        $scheduled_at   = date( 'c', strtotime( '+30 days' ) );
-        $restore_deadline = date_i18n( 'd.m.Y', strtotime( '+30 days' ) );
+        $deletion_base_ts = current_time( 'timestamp', true );
+        $deleted_at       = gmdate( 'c', $deletion_base_ts );
+        $scheduled_ts     = strtotime( '+30 days', $deletion_base_ts );
+        $scheduled_at     = gmdate( 'c', $scheduled_ts );
+        $restore_deadline = date_i18n( 'd.m.Y', $scheduled_ts );
 
         // Soft delete işaretleri
         update_user_meta( $user_id, 'kg_account_deleted_at', $deleted_at );
@@ -1241,7 +1243,10 @@ class UserController {
         foreach ( $users as $user ) {
             $scheduled = get_user_meta( $user->ID, 'kg_account_deletion_scheduled', true );
             if ( ! empty( $scheduled ) && strtotime( $scheduled ) < time() ) {
-                $this->hard_delete_user( $user->ID );
+                $deleted = $this->hard_delete_user( $user->ID );
+                if ( ! $deleted ) {
+                    error_log( 'Failed to hard delete expired account for user: ' . $user->ID );
+                }
             }
         }
     }
@@ -1254,7 +1259,10 @@ class UserController {
 
         $scheduled = get_user_meta( $user->ID, 'kg_account_deletion_scheduled', true );
         if ( ! empty( $scheduled ) && strtotime( $scheduled ) < time() ) {
-            $this->hard_delete_user( $user->ID );
+            $deleted = $this->hard_delete_user( $user->ID );
+            if ( ! $deleted ) {
+                return new \WP_Error( 'deletion_failed', 'Hesabınız silinemedi.', [ 'status' => 500 ] );
+            }
             return new \WP_Error( 'account_deleted', 'Hesabınız kalıcı olarak silinmiştir.', [ 'status' => 410 ] );
         }
 

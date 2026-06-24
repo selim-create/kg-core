@@ -367,7 +367,7 @@ class AppleAuth {
     }
 
     /**
-     * Authorization code exchange ile Apple refresh_token al
+     * Exchange authorization code to obtain Apple refresh token
      *
      * @param string $code Apple authorization_code
      * @return array|\WP_Error
