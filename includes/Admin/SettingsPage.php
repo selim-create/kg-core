@@ -96,6 +96,50 @@ class SettingsPage {
             'sanitize_callback' => 'rest_sanitize_boolean',
             'default' => false
         ]);
+
+        // === APPLE SIGN-IN AYARLARI ===
+        register_setting('kg_ai_settings', 'kg_apple_auth_enabled', [
+            'type' => 'boolean',
+            'sanitize_callback' => 'rest_sanitize_boolean',
+            'default' => false
+        ]);
+
+        register_setting('kg_ai_settings', 'kg_apple_team_id', [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ]);
+
+        register_setting('kg_ai_settings', 'kg_apple_bundle_id', [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ]);
+
+        register_setting('kg_ai_settings', 'kg_apple_service_id', [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ]);
+
+        register_setting('kg_ai_settings', 'kg_apple_key_id', [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ]);
+
+        register_setting('kg_ai_settings', 'kg_apple_private_key', [
+            'type' => 'string',
+            'sanitize_callback' => function( $value ) {
+                $cleaned = trim( wp_unslash( $value ) );
+                // Boş bırakıldıysa mevcut değeri koru
+                if ( empty( $cleaned ) ) {
+                    return get_option( 'kg_apple_private_key', '' );
+                }
+                return $cleaned;
+            },
+            'default' => ''
+        ]);
         
         // === OTOMASYON ===
         register_setting('kg_ai_settings', 'kg_auto_generate_on_missing', [
@@ -191,6 +235,17 @@ class SettingsPage {
         $google_auth_enabled = get_option('kg_google_auth_enabled', false);
         $google_client_id = get_option('kg_google_client_id', '');
         $google_client_secret = get_option('kg_google_client_secret', '');
+
+        $apple_auth_enabled  = get_option('kg_apple_auth_enabled', false);
+        $apple_team_id       = get_option('kg_apple_team_id', '');
+        $apple_bundle_id     = get_option('kg_apple_bundle_id', '');
+        $apple_service_id    = get_option('kg_apple_service_id', '');
+        $apple_key_id        = get_option('kg_apple_key_id', '');
+        $apple_private_key   = get_option('kg_apple_private_key', '');
+        // Özel anahtarı maskele — yalnızca son 20 karakteri göster
+        $apple_private_key_masked = ! empty( $apple_private_key )
+            ? str_repeat( '*', max( 0, strlen( $apple_private_key ) - 20 ) ) . substr( $apple_private_key, -20 )
+            : '';
         
         ?>
         <div class="wrap">
@@ -355,6 +410,80 @@ class SettingsPage {
                             <li>Authorized JavaScript origins: <code><?php echo home_url(); ?></code></li>
                             <li>Authorized redirect URIs: <code><?php echo home_url('/wp-json/kg/v1/auth/google/callback'); ?></code></li>
                             <li>Client ID ve Client Secret'ı yukarıya yapıştırın</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <!-- APPLE SIGN-IN -->
+                <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h2 style="margin-top: 0; border-bottom: 2px solid #000000; padding-bottom: 10px;">
+                        🍏 Apple Sign-In Ayarları
+                    </h2>
+                    
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">Apple ile Giriş</th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="kg_apple_auth_enabled" value="1" <?php checked($apple_auth_enabled, true); ?>>
+                                    Apple ile giriş özelliğini aktif et
+                                </label>
+                                <p class="description">Kullanıcıların Apple hesapları ile giriş yapmasına izin verir.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Team ID</th>
+                            <td>
+                                <input type="text" name="kg_apple_team_id" value="<?php echo esc_attr($apple_team_id); ?>" class="regular-text" placeholder="43VFS69JZG">
+                                <p class="description">Apple Developer hesabınızdaki Team ID</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Bundle ID</th>
+                            <td>
+                                <input type="text" name="kg_apple_bundle_id" value="<?php echo esc_attr($apple_bundle_id); ?>" class="regular-text" placeholder="com.kidsgourmet.mobile">
+                                <p class="description">iOS uygulaması için Bundle ID</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Service ID</th>
+                            <td>
+                                <input type="text" name="kg_apple_service_id" value="<?php echo esc_attr($apple_service_id); ?>" class="regular-text" placeholder="com.kidsgourmet.signin">
+                                <p class="description">Web Sign in with Apple için Services ID</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Key ID</th>
+                            <td>
+                                <input type="text" name="kg_apple_key_id" value="<?php echo esc_attr($apple_key_id); ?>" class="regular-text" placeholder="3V45N4F6K3">
+                                <p class="description">Apple Developer'da oluşturduğunuz Sign in with Apple Key ID</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Private Key (.p8)</th>
+                            <td>
+                                <?php if ( ! empty( $apple_private_key ) ) : ?>
+                                    <p style="color: #5F6368; margin-bottom: 8px;">
+                                        Mevcut anahtar: <code><?php echo esc_html( $apple_private_key_masked ); ?></code>
+                                        — Değiştirmek için aşağıya yeni .p8 içeriğini yapıştırın (boş bırakılırsa mevcut korunur).
+                                    </p>
+                                <?php endif; ?>
+                                <textarea name="kg_apple_private_key" rows="10" class="large-text code" autocomplete="off" placeholder="-----BEGIN PRIVATE KEY-----&#10;[YOUR_KEY_HERE]&#10;-----END PRIVATE KEY-----"></textarea>
+                                <p class="description" style="color: #D32F2F; font-weight: 600;">⚠️ Apple Developer'dan indirdiğiniz .p8 dosyasının tam içeriği. Bu sayfa dışında HİÇBİR YERE PAYLAŞMAYIN.</p>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <div style="background: #F5F5F5; padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #000;">
+                        <h4 style="margin: 0 0 10px 0; color: #1D1D1F;">📝 Apple Sign-In Kurulum Adımları:</h4>
+                        <ol style="margin: 0; padding-left: 20px; color: #5F6368;">
+                            <li>Apple Developer → Certificates, Identifiers &amp; Profiles → Identifiers</li>
+                            <li>App ID için "Sign in with Apple" capability'sini aktif edin (<code>com.kidsgourmet.mobile</code>)</li>
+                            <li>Yeni bir Services ID oluşturun (web için, örn. <code>com.kidsgourmet.signin</code>)</li>
+                            <li>Services ID için domains: <code>kidsgourmet.com.tr</code>, <code>api.kidsgourmet.com.tr</code>, <code>www.kidsgourmet.com.tr</code></li>
+                            <li>Return URL: <code><?php echo esc_html( home_url('/wp-json/kg/v1/auth/apple/callback') ); ?></code></li>
+                            <li>Keys → "+ Create Key" → Sign in with Apple → primary App ID seç → indir (.p8)</li>
+                            <li>Yukarıdaki alanları doldurun ve kaydedin</li>
                         </ol>
                     </div>
                 </div>

@@ -3,6 +3,7 @@ namespace KG_Core\API;
 
 use KG_Core\Auth\JWTHandler;
 use KG_Core\Auth\GoogleAuth;
+use KG_Core\Auth\AppleAuth;
 use KG_Core\Utils\PrivacyHelper;
 use KG_Core\Health\VaccineRecordManager;
 use KG_Core\Services\ChildAvatarService;
@@ -66,6 +67,25 @@ class UserController {
                     'required' => true,
                     'type' => 'string',
                     'description' => 'Google ID Token',
+                ],
+            ],
+        ]);
+
+        // Apple Sign-In endpoint
+        register_rest_route( 'kg/v1', '/auth/apple', [
+            'methods'  => 'POST',
+            'callback' => [ $this, 'apple_auth' ],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'identity_token' => [
+                    'required'    => true,
+                    'type'        => 'string',
+                    'description' => 'Apple Identity Token (ES256-signed JWT)',
+                ],
+                'name' => [
+                    'required'    => false,
+                    'type'        => 'object',
+                    'description' => 'Optional full name from Apple (only sent on first sign-in)',
                 ],
             ],
         ]);
@@ -982,8 +1002,93 @@ class UserController {
     }
 
     /**
-     * Kullanıcı verisini hazırla
+     * Apple ile giriş
+     * Frontend'den gelen Apple identity token ile kullanıcı girişi yapar
      */
+    public function apple_auth( $request ) {
+        // Apple Sign-In aktif mi kontrol et
+        if ( ! AppleAuth::is_enabled() ) {
+            return new \WP_Error(
+                'apple_auth_disabled',
+                'Apple ile giriş şu anda aktif değil.',
+                [ 'status' => 403 ]
+            );
+        }
+
+        $identity_token = $request->get_param( 'identity_token' );
+
+        if ( empty( $identity_token ) ) {
+            return new \WP_Error(
+                'missing_token',
+                'Apple identity token gerekli.',
+                [ 'status' => 400 ]
+            );
+        }
+
+        $apple_auth = new AppleAuth();
+
+        // Token'ı doğrula
+        $apple_data = $apple_auth->verify_identity_token( $identity_token );
+
+        if ( is_wp_error( $apple_data ) ) {
+            $error_code = $apple_data->get_error_code();
+
+            $status = 401;
+            if ( 'apple_jwks_error' === $error_code ) {
+                $status = 500;
+            } elseif ( 'config_error' === $error_code ) {
+                $status = 500;
+            } elseif ( 'missing_token' === $error_code ) {
+                $status = 400;
+            }
+
+            return new \WP_Error(
+                $error_code,
+                $apple_data->get_error_message(),
+                [ 'status' => $status ]
+            );
+        }
+
+        // İlk girişte client'ın gönderdiği isim bilgisi
+        $name = $request->get_param( 'name' );
+
+        // Kullanıcıyı bul veya oluştur
+        $user = $apple_auth->get_or_create_user( $apple_data, $name );
+
+        if ( is_wp_error( $user ) ) {
+            return new \WP_Error(
+                'user_creation_failed',
+                $user->get_error_message(),
+                [ 'status' => 500 ]
+            );
+        }
+
+        // İlk giriş bayrağını kontrol et ve kullanıcıya işaretle
+        $is_first_signin = (bool) get_user_meta( $user->ID, 'apple_first_signin', true );
+        if ( $is_first_signin ) {
+            // Bayrak kalıcı değil — bir kez okunup temizlenir
+            delete_user_meta( $user->ID, 'apple_first_signin' );
+        }
+
+        // JWT token oluştur
+        $token = JWTHandler::generate_token( $user->ID );
+
+        // Kullanıcı bilgilerini hazırla
+        $user_data = $this->prepare_user_data( $user );
+
+        $response = [
+            'success' => true,
+            'token'   => $token,
+            'user'    => $user_data,
+            'message' => 'Apple ile giriş başarılı.',
+        ];
+
+        if ( $is_first_signin ) {
+            $response['apple_first_signin'] = true;
+        }
+
+        return new \WP_REST_Response( $response, 200 );
+    }
     private function prepare_user_data( $user ) {
         // Google avatar varsa kullan, yoksa Gravatar
         $google_avatar = get_user_meta( $user->ID, 'google_avatar', true );

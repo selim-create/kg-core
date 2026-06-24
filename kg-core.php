@@ -17,6 +17,11 @@ define( 'KG_CORE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'KG_CORE_URL', plugin_dir_url( __FILE__ ) );
 define( 'KG_CORE_VERSION', '1.0.0' );
 
+// 1.1. COMPOSER AUTOLOADER (firebase/php-jwt ve diğer bağımlılıklar)
+if ( file_exists( KG_CORE_PATH . 'vendor/autoload.php' ) ) {
+    require_once KG_CORE_PATH . 'vendor/autoload.php';
+}
+
 // 1.5. DATABASE CLASSES (Schema & Migration)
 // Include database classes early for activation hooks
 if ( file_exists( KG_CORE_PATH . 'includes/Database/Schema.php' ) ) {
@@ -58,6 +63,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Utils/UserConsentHelper.php' ) ) {
 // 2.5. AUTH SINIFLARI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Auth/JWTHandler.php' ) ) require_once KG_CORE_PATH . 'includes/Auth/JWTHandler.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Auth/GoogleAuth.php' ) ) require_once KG_CORE_PATH . 'includes/Auth/GoogleAuth.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Auth/AppleAuth.php' ) ) require_once KG_CORE_PATH . 'includes/Auth/AppleAuth.php';
 
 // 2.5.1. ROL YÖNETİMİ SINIFLARI DAHİL ET
 if ( file_exists( KG_CORE_PATH . 'includes/Roles/RoleManager.php' ) ) require_once KG_CORE_PATH . 'includes/Roles/RoleManager.php';
