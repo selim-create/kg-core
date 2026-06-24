@@ -30,6 +30,7 @@ function assert_contains( $content, $needle, $label, &$passed, &$failed ) {
 foreach ( [ $user_controller, $apple_auth, $growth_ctrl, $core_file ] as $file ) {
     if ( ! file_exists( $file ) ) {
         echo "✗ Missing file: {$file}\n";
+        $failed++;
         exit( 1 );
     }
 }
