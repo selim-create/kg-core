@@ -464,7 +464,7 @@ class SettingsPage {
                                         ✓ Anahtar yapılandırılmış. Değiştirmek için aşağıya yeni .p8 içeriğini yapıştırın (boş bırakılırsa mevcut korunur).
                                     </p>
                                 <?php endif; ?>
-                                <textarea name="kg_apple_private_key" rows="10" class="large-text code" autocomplete="off" placeholder="-----BEGIN PRIVATE KEY-----&#10;[YOUR_KEY_HERE]&#10;-----END PRIVATE KEY-----"></textarea>
+                                <textarea name="kg_apple_private_key" rows="10" class="large-text code" autocomplete="new-password" spellcheck="false" placeholder="-----BEGIN PRIVATE KEY-----&#10;[YOUR_KEY_HERE]&#10;-----END PRIVATE KEY-----"></textarea>
                                 <p class="description" style="color: #D32F2F; font-weight: 600;">⚠️ Apple Developer'dan indirdiğiniz .p8 dosyasının tam içeriği. Bu sayfa dışında HİÇBİR YERE PAYLAŞMAYIN.</p>
                             </td>
                         </tr>
