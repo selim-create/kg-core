@@ -835,9 +835,9 @@ class UserController {
             JWTHandler::invalidate_token( $token );
         }
 
-        // WordPress kullanıcısını sil (post'ları da sil, reassign yok)
+        // WordPress kullanıcısını sil (post'ları da sil, reassign yok — null = kalıcı silme)
         require_once ABSPATH . 'wp-admin/includes/user.php';
-        $deleted = wp_delete_user( $user_id );
+        $deleted = wp_delete_user( $user_id, null );
 
         if ( ! $deleted ) {
             return new \WP_Error(

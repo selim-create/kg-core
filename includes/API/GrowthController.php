@@ -133,7 +133,7 @@ class GrowthController {
         $all_records = $this->get_user_growth_records( $user_id );
         $records     = $this->filter_records_by_child( $all_records, $child_id );
 
-        // Tarihe göre sırala (eskiden yenie)
+        // Tarihe göre sırala (eskiden yeniye)
         usort( $records, function ( $a, $b ) {
             return strcmp( $a['date'], $b['date'] );
         } );
@@ -477,11 +477,11 @@ class GrowthController {
 
         return sprintf(
             '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
-            mt_rand( 0, 0xffff ),
-            mt_rand( 0, 0x0fff ) | 0x4000,
-            mt_rand( 0, 0x3fff ) | 0x8000,
-            mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff )
+            random_int( 0, 0xffff ), random_int( 0, 0xffff ),
+            random_int( 0, 0xffff ),
+            random_int( 0, 0x0fff ) | 0x4000,
+            random_int( 0, 0x3fff ) | 0x8000,
+            random_int( 0, 0xffff ), random_int( 0, 0xffff ), random_int( 0, 0xffff )
         );
     }
 }
