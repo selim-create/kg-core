@@ -829,7 +829,7 @@ class UserController {
         $deleted_at       = gmdate( 'c', $deletion_base_ts );
         $scheduled_ts     = strtotime( '+30 days', $deletion_base_ts );
         $scheduled_at     = gmdate( 'c', $scheduled_ts );
-        $restore_deadline = date_i18n( 'd.m.Y', $scheduled_ts );
+        $restore_deadline = wp_date( 'd.m.Y', $scheduled_ts );
 
         // Soft delete işaretleri
         update_user_meta( $user_id, 'kg_account_deleted_at', $deleted_at );
