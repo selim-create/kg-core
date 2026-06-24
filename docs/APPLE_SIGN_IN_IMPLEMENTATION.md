@@ -66,6 +66,7 @@ POST /wp-json/kg/v1/auth/apple
 ```json
 {
   "identity_token": "******",
+  "authorization_code": "******",
   "name": {
     "given_name": "Selim",
     "family_name": "Altınkaynak"
@@ -74,6 +75,8 @@ POST /wp-json/kg/v1/auth/apple
 ```
 
 > **Note:** `name` is only sent by Apple on the **first sign-in**. Pass it through from your Apple authentication result. Subsequent sign-ins will not include it.
+>
+> **Note:** `authorization_code` is optional but strongly recommended on first sign-in. Backend exchanges it with Apple (`/auth/token`) and stores `refresh_token` as user meta for future revoke operations.
 
 ### Success Response (200)
 
@@ -239,6 +242,7 @@ After Apple Sign-In, the following user meta fields are set:
 | `apple_email_is_private` | `true` if using a private relay email            |
 | `registered_via`         | `"apple"` for users created via Apple Sign-In    |
 | `apple_first_signin`     | Temporary flag — deleted after first read        |
+| `apple_refresh_token`    | Stored after successful `authorization_code` exchange |
 
 ---
 
@@ -247,8 +251,10 @@ After Apple Sign-In, the following user meta fields are set:
 Apple's App Store guidelines (§5.1.1.v) require implementing token revocation. This is implemented as follows:
 
 - `AppleAuth::revoke_token($refresh_token)` — calls `POST https://appleid.apple.com/auth/revoke`
+- `AppleAuth::exchange_authorization_code($code)` — calls `POST https://appleid.apple.com/auth/token` and returns refresh/access/id tokens
 - `AppleAuth::generate_client_secret()` — generates an ES256-signed JWT using Team ID, Key ID, Bundle ID, and the stored `.p8` private key
-- Triggered from `DELETE /kg/v1/user/account` when `registered_via === 'apple'` and `apple_refresh_token` is provided
+- `apple_auth()` stores `apple_refresh_token` in user meta when exchange succeeds (best-effort; login still succeeds on exchange failure)
+- Triggered from `DELETE /kg/v1/user/account` when `registered_via === 'apple'` and refresh token exists (request param or stored meta)
 - **Best-effort**: revocation failure does not block account deletion
 
 ### Client Secret JWT Structure

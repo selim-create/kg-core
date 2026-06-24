@@ -13,6 +13,7 @@ class UserController {
 
     public function __construct() {
         add_action( 'rest_api_init', [ $this, 'register_routes' ] );
+        add_action( 'kg_cleanup_deleted_accounts', [ $this, 'cleanup_deleted_accounts' ] );
     }
 
     public function register_routes() {
@@ -86,6 +87,11 @@ class UserController {
                     'required'    => false,
                     'type'        => 'object',
                     'description' => 'Optional full name from Apple (only sent on first sign-in)',
+                ],
+                'authorization_code' => [
+                    'required'    => false,
+                    'type'        => 'string',
+                    'description' => 'Apple authorization code for token exchange',
                 ],
             ],
         ]);
@@ -308,6 +314,12 @@ class UserController {
                     'sanitize_callback' => 'sanitize_text_field',
                 ],
             ],
+        ]);
+
+        register_rest_route( 'kg/v1', '/user/account/cancel-deletion', [
+            'methods'             => 'POST',
+            'callback'            => [ $this, 'cancel_account_deletion' ],
+            'permission_callback' => [ $this, 'check_authentication' ],
         ]);
     }
 
@@ -743,6 +755,11 @@ class UserController {
             return new \WP_Error( 'invalid_credentials', 'Invalid email/username or password', [ 'status' => 401 ] );
         }
 
+        $soft_delete_response = $this->check_soft_delete_status( $user );
+        if ( $soft_delete_response ) {
+            return $soft_delete_response;
+        }
+
         $token = JWTHandler::generate_token( $user->ID );
 
         // Also return user role
@@ -777,8 +794,7 @@ class UserController {
     }
 
     /**
-     * Delete user account permanently
-     * Implements App Store Review Guidelines §5.1.1.v (Apple token revocation)
+     * Delete user account (soft delete + 30 days grace period)
      */
     public function delete_account( $request ) {
         $user_id = $this->get_authenticated_user_id( $request );
@@ -796,64 +812,74 @@ class UserController {
         // Apple token revocation (best-effort — hesap silme devam eder)
         $registered_via      = get_user_meta( $user_id, 'registered_via', true );
         $apple_refresh_token = $request->get_param( 'apple_refresh_token' );
+        if ( empty( $apple_refresh_token ) ) {
+            $apple_refresh_token = get_user_meta( $user_id, 'apple_refresh_token', true );
+        }
 
         if ( 'apple' === $registered_via && ! empty( $apple_refresh_token ) ) {
             $apple_auth = new AppleAuth();
             // Hata olsa bile hesap silmeye devam et
-            $apple_auth->revoke_token( $apple_refresh_token );
+            $revoke_result = $apple_auth->revoke_token( $apple_refresh_token );
+            if ( is_wp_error( $revoke_result ) ) {
+                error_log( 'Apple revoke failed for user ' . $user_id . ': ' . $revoke_result->get_error_message() );
+            }
         }
 
-        // Tüm _kg_* prefix'li meta'ları temizle
-        $kg_meta_keys = [
-            '_kg_children',
-            '_kg_collections',
-            '_kg_percentile_results',
-            '_kg_favorites',
-            '_kg_favorite_recipes',
-            '_kg_favorites_migrated',
-            '_kg_shopping_list',
-            '_kg_growth_records',
-        ];
+        $deleted_at     = current_time( 'c' );
+        $scheduled_at   = date( 'c', strtotime( '+30 days' ) );
+        $restore_deadline = date_i18n( 'd.m.Y', strtotime( '+30 days' ) );
 
-        foreach ( $kg_meta_keys as $meta_key ) {
-            delete_user_meta( $user_id, $meta_key );
-        }
+        // Soft delete işaretleri
+        update_user_meta( $user_id, 'kg_account_deleted_at', $deleted_at );
+        update_user_meta( $user_id, 'kg_account_deletion_scheduled', $scheduled_at );
+        update_user_meta( $user_id, 'kg_jwt_invalidated_at', $deleted_at );
 
-        // Diğer _kg_ prefix'li meta'ları temizle (genel tarama)
-        global $wpdb;
-        $wpdb->query(
-            $wpdb->prepare(
-                "DELETE FROM {$wpdb->usermeta} WHERE user_id = %d AND meta_key LIKE %s",
-                $user_id,
-                $wpdb->esc_like( '_kg_' ) . '%'
-            )
-        );
-
-        // JWT token'ı invalidate et
+        // Geçerli JWT token'ı invalidate et
         $token = JWTHandler::get_token_from_request();
         if ( $token ) {
             JWTHandler::invalidate_token( $token );
         }
 
-        // WordPress kullanıcısını sil (post'ları da sil, reassign yok — null = kalıcı silme)
-        require_once ABSPATH . 'wp-admin/includes/user.php';
-        $deleted = wp_delete_user( $user_id, null );
-
-        if ( ! $deleted ) {
-            return new \WP_Error(
-                'deletion_failed',
-                'Hesap silinemedi.',
-                [ 'status' => 500 ]
-            );
-        }
+        wp_mail(
+            $user->user_email,
+            'KidsGourmet — Hesabınız Silindi',
+            "Merhaba {$user->display_name},\n\n"
+            . "Hesabınız silme sürecine alınmıştır. {$restore_deadline} tarihine kadar giriş yaparak hesabınızı geri yükleyebilirsiniz.\n\n"
+            . "Bu tarihten sonra tüm verileriniz kalıcı olarak silinecektir.\n\n"
+            . "KidsGourmet Ekibi"
+        );
 
         return new \WP_REST_Response(
             [
                 'success' => true,
-                'message' => 'Hesabınız başarıyla silindi.',
+                'message' => 'Hesabınız silme sürecine alındı. 30 gün içinde geri yükleyebilirsiniz.',
+                'deletion_scheduled_at' => $scheduled_at,
             ],
             200
         );
+    }
+
+    public function cancel_account_deletion( $request ) {
+        $user_id = $this->get_authenticated_user_id( $request );
+
+        $deleted_at = get_user_meta( $user_id, 'kg_account_deleted_at', true );
+        if ( empty( $deleted_at ) ) {
+            return new \WP_Error( 'not_in_deletion', 'Hesabınız silme sürecinde değil.', [ 'status' => 400 ] );
+        }
+
+        $scheduled = get_user_meta( $user_id, 'kg_account_deletion_scheduled', true );
+        if ( ! empty( $scheduled ) && strtotime( $scheduled ) < time() ) {
+            return new \WP_Error( 'grace_period_expired', 'Geri yükleme süresi dolmuş.', [ 'status' => 410 ] );
+        }
+
+        delete_user_meta( $user_id, 'kg_account_deleted_at' );
+        delete_user_meta( $user_id, 'kg_account_deletion_scheduled' );
+        delete_user_meta( $user_id, 'kg_jwt_invalidated_at' );
+
+        return new \WP_REST_Response( [
+            'success' => true,
+            'message' => 'Hesabınız başarıyla geri yüklendi.',
+        ], 200 );
     }
 
     /**
@@ -1081,6 +1107,11 @@ class UserController {
                 [ 'status' => 500 ]
             );
         }
+
+        $soft_delete_response = $this->check_soft_delete_status( $user );
+        if ( $soft_delete_response ) {
+            return $soft_delete_response;
+        }
         
         // JWT token oluştur
         $token = JWTHandler::generate_token( $user->ID );
@@ -1165,6 +1196,21 @@ class UserController {
             delete_user_meta( $user->ID, 'apple_first_signin' );
         }
 
+        $authorization_code = sanitize_text_field( $request->get_param( 'authorization_code' ) );
+        if ( ! empty( $authorization_code ) ) {
+            $token_response = $apple_auth->exchange_authorization_code( $authorization_code );
+            if ( ! is_wp_error( $token_response ) && ! empty( $token_response['refresh_token'] ) ) {
+                update_user_meta( $user->ID, 'apple_refresh_token', $token_response['refresh_token'] );
+            } elseif ( is_wp_error( $token_response ) ) {
+                error_log( 'Apple authorization_code exchange failed for user ' . $user->ID . ': ' . $token_response->get_error_message() );
+            }
+        }
+
+        $soft_delete_response = $this->check_soft_delete_status( $user );
+        if ( $soft_delete_response ) {
+            return $soft_delete_response;
+        }
+
         // JWT token oluştur
         $token = JWTHandler::generate_token( $user->ID );
 
@@ -1183,6 +1229,76 @@ class UserController {
         }
 
         return new \WP_REST_Response( $response, 200 );
+    }
+
+    public function cleanup_deleted_accounts() {
+        $users = get_users( [
+            'meta_key'     => 'kg_account_deletion_scheduled',
+            'meta_compare' => '!=',
+            'meta_value'   => '',
+        ] );
+
+        foreach ( $users as $user ) {
+            $scheduled = get_user_meta( $user->ID, 'kg_account_deletion_scheduled', true );
+            if ( ! empty( $scheduled ) && strtotime( $scheduled ) < time() ) {
+                $this->hard_delete_user( $user->ID );
+            }
+        }
+    }
+
+    private function check_soft_delete_status( $user ) {
+        $deleted_at = get_user_meta( $user->ID, 'kg_account_deleted_at', true );
+        if ( empty( $deleted_at ) ) {
+            return null;
+        }
+
+        $scheduled = get_user_meta( $user->ID, 'kg_account_deletion_scheduled', true );
+        if ( ! empty( $scheduled ) && strtotime( $scheduled ) < time() ) {
+            $this->hard_delete_user( $user->ID );
+            return new \WP_Error( 'account_deleted', 'Hesabınız kalıcı olarak silinmiştir.', [ 'status' => 410 ] );
+        }
+
+        return new \WP_REST_Response( [
+            'success' => false,
+            'account_pending_deletion' => true,
+            'deleted_at' => $deleted_at,
+            'deletion_scheduled_at' => $scheduled,
+            'message' => 'Hesabınız silme sürecindedir. Geri yüklemek ister misiniz?',
+            'restore_endpoint' => '/kg/v1/user/account/cancel-deletion',
+            'token' => JWTHandler::generate_token( $user->ID ),
+        ], 200 );
+    }
+
+    private function hard_delete_user( $user_id ) {
+        $kg_meta_keys = [
+            '_kg_children',
+            '_kg_collections',
+            '_kg_percentile_results',
+            '_kg_favorites',
+            '_kg_favorite_recipes',
+            '_kg_favorites_migrated',
+            '_kg_shopping_list',
+            '_kg_growth_records',
+            'kg_account_deleted_at',
+            'kg_account_deletion_scheduled',
+            'kg_jwt_invalidated_at',
+        ];
+
+        foreach ( $kg_meta_keys as $meta_key ) {
+            delete_user_meta( $user_id, $meta_key );
+        }
+
+        global $wpdb;
+        $wpdb->query(
+            $wpdb->prepare(
+                "DELETE FROM {$wpdb->usermeta} WHERE user_id = %d AND meta_key LIKE %s",
+                $user_id,
+                $wpdb->esc_like( '_kg_' ) . '%'
+            )
+        );
+
+        require_once ABSPATH . 'wp-admin/includes/user.php';
+        return wp_delete_user( $user_id, null );
     }
     private function prepare_user_data( $user ) {
         // Google avatar varsa kullan, yoksa Gravatar

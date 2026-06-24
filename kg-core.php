@@ -514,6 +514,10 @@ function kg_core_init() {
     if ( class_exists( '\KG_Core\Cron\VaccineReminderCron' ) ) {
         new \KG_Core\Cron\VaccineReminderCron();
     }
+
+    if ( ! wp_next_scheduled( 'kg_cleanup_deleted_accounts' ) ) {
+        wp_schedule_event( time(), 'daily', 'kg_cleanup_deleted_accounts' );
+    }
 }
 add_action( 'plugins_loaded', 'kg_core_init' );
 
@@ -877,6 +881,11 @@ register_activation_hook( __FILE__, function() {
         
         // Flush rewrite rules
         flush_rewrite_rules();
+
+        // Schedule account cleanup cron (daily)
+        if ( ! wp_next_scheduled( 'kg_cleanup_deleted_accounts' ) ) {
+            wp_schedule_event( time(), 'daily', 'kg_cleanup_deleted_accounts' );
+        }
         
     } catch ( \Exception $e ) {
         error_log( 'KG Core Activation Error: ' . $e->getMessage() );
@@ -895,4 +904,7 @@ register_deactivation_hook( __FILE__, function() {
     if ( class_exists( '\KG_Core\Services\CacheWarmer' ) ) {
         \KG_Core\Services\CacheWarmer::deactivate();
     }
+
+    // Remove deleted account cleanup cron
+    wp_clear_scheduled_hook( 'kg_cleanup_deleted_accounts' );
 } );

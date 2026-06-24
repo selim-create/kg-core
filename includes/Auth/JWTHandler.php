@@ -84,6 +84,17 @@ class JWTHandler {
                 return false;
             }
 
+            // Global user-level JWT invalidation timestamp check
+            $invalidated_at = get_user_meta( $payload['user_id'], 'kg_jwt_invalidated_at', true );
+            if ( ! empty( $invalidated_at ) ) {
+                $invalidated_ts = strtotime( $invalidated_at );
+                $issued_at      = isset( $payload['iat'] ) ? (int) $payload['iat'] : 0;
+
+                if ( $invalidated_ts && $issued_at && $issued_at <= $invalidated_ts ) {
+                    return false;
+                }
+            }
+
             return $payload;
         } catch ( \Exception $e ) {
             return false;

@@ -51,7 +51,8 @@
 ### Account Management
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| DELETE | `/user/account` | Permanently delete user account (includes Apple token revocation) |
+| DELETE | `/user/account` | Start account deletion process (30-day restore window, Apple revoke best-effort) |
+| POST | `/user/account/cancel-deletion` | Cancel account deletion during grace period |
 
 ### Children Management
 | Method | Endpoint | Description |
@@ -80,6 +81,8 @@
 |--------|----------|-------------|
 | GET | `/health/growth` | Get child growth records + latest + WHO percentiles |
 | POST | `/health/growth` | Add new growth measurement |
+| PUT | `/health/growth/{id}` | Update growth measurement |
+| DELETE | `/health/growth/{id}` | Delete growth measurement |
 | GET | `/health/growth/chart-data` | Get chart data with WHO reference curves |
 
 ## Query Parameters
