@@ -324,6 +324,9 @@ if ( file_exists( KG_CORE_PATH . 'includes/Contact/ContactRESTController.php' ) 
 if ( file_exists( KG_CORE_PATH . 'includes/Redirect/FrontendRedirect.php' ) ) require_once KG_CORE_PATH . 'includes/Redirect/FrontendRedirect.php';
 
 // 7. SINIFLARI BAŞLAT (INIT HOOK)
+/**
+ * Schedule daily cron for hard-deleting expired soft-deleted accounts.
+ */
 function kg_schedule_deleted_account_cleanup_cron() {
     if ( ! wp_next_scheduled( 'kg_cleanup_deleted_accounts' ) ) {
         wp_schedule_event( time(), 'daily', 'kg_cleanup_deleted_accounts' );

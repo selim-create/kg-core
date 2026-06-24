@@ -865,6 +865,12 @@ class UserController {
         );
     }
 
+    /**
+     * Soft delete sürecindeki hesabı grace period içinde geri yükle.
+     *
+     * @param \WP_REST_Request $request
+     * @return \WP_REST_Response|\WP_Error
+     */
     public function cancel_account_deletion( $request ) {
         $user_id = $this->get_authenticated_user_id( $request );
 
@@ -1237,6 +1243,9 @@ class UserController {
         return new \WP_REST_Response( $response, 200 );
     }
 
+    /**
+     * Günlük cron callback'i: grace period süresi dolan hesapları kalıcı sil.
+     */
     public function cleanup_deleted_accounts() {
         $users = get_users( [
             'meta_key'     => 'kg_account_deletion_scheduled',
@@ -1255,6 +1264,12 @@ class UserController {
         }
     }
 
+    /**
+     * Kullanıcının soft delete durumunu kontrol eder.
+     *
+     * @param \WP_User $user
+     * @return null|\WP_Error|\WP_REST_Response
+     */
     private function check_soft_delete_status( $user ) {
         $deleted_at = get_user_meta( $user->ID, 'kg_account_deleted_at', true );
         if ( empty( $deleted_at ) ) {
@@ -1281,6 +1296,12 @@ class UserController {
         ], 200 );
     }
 
+    /**
+     * Kullanıcıyı ve KG ile ilgili user meta verilerini kalıcı olarak siler.
+     *
+     * @param int $user_id
+     * @return bool
+     */
     private function hard_delete_user( $user_id ) {
         $kg_meta_keys = [
             '_kg_children',

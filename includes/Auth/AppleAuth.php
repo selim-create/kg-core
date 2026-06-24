@@ -370,7 +370,7 @@ class AppleAuth {
      * Exchange authorization code to obtain Apple refresh token
      *
      * @param string $code Apple authorization_code
-     * @return array|\WP_Error
+     * @return array|\WP_Error Returns refresh/access/id token keys; keys may be empty strings if Apple omits them.
      */
     public function exchange_authorization_code( $code ) {
         if ( empty( $code ) ) {
