@@ -17,9 +17,9 @@ class ToolController {
             'permission_callback' => '__return_true',
         ]);
 
-        // Get single tool - exclude food-trials path (handled by FoodTrialController)
-        // Using negative lookahead to exclude paths that start with "food-trials"
-        register_rest_route( 'kg/v1', '/tools/(?P<slug>(?!food-trials)[a-zA-Z0-9_-]+)', [
+        // Get single tool - exclude reserved single-segment paths with dedicated handlers
+        // so they do not get captured by the generic slug route before their own callbacks.
+        register_rest_route( 'kg/v1', '/tools/(?P<slug>(?!food-trials|food-check|water-calculator)[a-zA-Z0-9_-]+)', [
             'methods'  => 'GET',
             'callback' => [ $this, 'get_tool' ],
             'permission_callback' => '__return_true',

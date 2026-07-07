@@ -1,8 +1,8 @@
 <?php
 /**
- * Static Code Analysis Test for Food Trials Routing Fix
+ * Static Code Analysis Test for Tool Route Reserved Slug Exclusions
  * 
- * This test verifies that ToolController excludes food-trials routes
+ * This test verifies that ToolController excludes reserved tool paths
  */
 
 echo "=== Food Trials Routing Fix Verification ===\n\n";
@@ -11,7 +11,7 @@ $baseDir = dirname(__DIR__);
 $passed = 0;
 $failed = 0;
 
-// Test 1: Check ToolController has negative lookahead for food-trials
+// Test 1: Check ToolController has negative lookahead for reserved single-segment routes
 echo "1. ToolController Route Pattern Check\n";
 $toolControllerFile = $baseDir . '/includes/API/ToolController.php';
 if (file_exists($toolControllerFile)) {
@@ -19,12 +19,12 @@ if (file_exists($toolControllerFile)) {
     $content = file_get_contents($toolControllerFile);
     
     // Check for negative lookahead pattern
-    if (preg_match('/\(\?!food-trials\)/', $content)) {
-        echo "   ✓ Negative lookahead pattern found for food-trials\n";
+    if (preg_match('/\(\?!food-trials\|food-check\|water-calculator\)/', $content)) {
+        echo "   ✓ Negative lookahead pattern found for reserved slugs\n";
         $passed++;
         
         // Verify the pattern contains necessary components
-        if (strpos($content, '(?P<slug>(?!food-trials)[a-zA-Z0-9_-]+)') !== false) {
+        if (strpos($content, '(?P<slug>(?!food-trials|food-check|water-calculator)[a-zA-Z0-9_-]+)') !== false) {
             echo "   ✓ Complete route pattern is correct\n";
             $passed++;
         } else {
@@ -33,8 +33,8 @@ if (file_exists($toolControllerFile)) {
         }
         
         // Check for comment explaining the exclusion
-        if (strpos($content, 'exclude food-trials') !== false || 
-            strpos($content, 'FoodTrialController') !== false) {
+        if (strpos($content, 'reserved single-segment paths') !== false ||
+            strpos($content, 'dedicated handlers') !== false) {
             echo "   ✓ Route has explanatory comment\n";
             $passed++;
         } else {
@@ -147,10 +147,11 @@ echo "\n";
 // Test 4: Pattern validation - simulate what WordPress would match
 echo "4. Route Pattern Validation\n";
 
-// Test paths that should be matched by FoodTrialController
-$foodTrialPaths = [
+// Test paths that should be handled by dedicated routes instead of ToolController::get_tool
+$reservedPaths = [
     'food-trials',
-    'food-trials/stats',
+    'food-check',
+    'water-calculator',
 ];
 
 // Test paths that should be matched by ToolController
@@ -160,9 +161,9 @@ $toolPaths = [
     'ingredient-guide',
 ];
 
-echo "   Testing FoodTrial paths (should NOT match ToolController pattern):\n";
-$toolPattern = '/^(?!food-trials)[a-zA-Z0-9_-]+$/';
-foreach ($foodTrialPaths as $path) {
+echo "   Testing reserved paths (should NOT match ToolController pattern):\n";
+$toolPattern = '/^(?!food-trials|food-check|water-calculator)[a-zA-Z0-9_-]+$/';
+foreach ($reservedPaths as $path) {
     if (preg_match($toolPattern, $path)) {
         echo "   ✗ '$path' incorrectly matches ToolController pattern\n";
         $failed++;
