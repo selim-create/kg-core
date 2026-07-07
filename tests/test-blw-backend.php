@@ -91,7 +91,7 @@ if (file_exists($toolControllerFile)) {
     // Check for required endpoints
     $requiredEndpoints = [
         '/tools',
-        '/tools/(?P<slug>[a-zA-Z0-9_-]+)',
+        '/tools/(?P<slug>(?!food-trials|food-check|water-calculator)[a-zA-Z0-9_-]+)',
         '/tools/blw-test/config',
         '/tools/blw-test/submit'
     ];
