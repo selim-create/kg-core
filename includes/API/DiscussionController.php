@@ -707,7 +707,7 @@ class DiscussionController {
             
             // Check user role/meta for expert badge
             if ( ! $is_expert && $comment->user_id ) {
-                $is_expert = $this->is_expert_user( $comment->user_id );
+                $is_expert = $this->is_expert_user( $comment->user_id, $comment_user );
             }
 
             // Get vote counts
@@ -776,7 +776,7 @@ class DiscussionController {
             }
         }
 
-        $author_is_expert = $author ? $this->is_expert_user( $author->ID ) : false;
+        $author_is_expert = $author ? $this->is_expert_user( $author->ID, $author ) : false;
 
         $response = [
             'id' => $post->ID,
@@ -982,13 +982,20 @@ class DiscussionController {
      * Check whether a user should be treated as expert in community payloads
      * Accepts user meta values: 1, true, yes.
      */
-    private function is_expert_user( $user_id ) {
+    private function is_expert_user( $user_id, $user = null ) {
         if ( ! $user_id ) {
             return false;
         }
 
-        if ( \KG_Core\Roles\RoleManager::is_expert( $user_id ) ) {
-            return true;
+        if ( ! $user ) {
+            $user = get_user_by( 'id', $user_id );
+        }
+
+        if ( $user ) {
+            $expert_roles = [ 'kg_expert', 'author', 'editor', 'administrator' ];
+            if ( ! empty( array_intersect( $expert_roles, $user->roles ) ) ) {
+                return true;
+            }
         }
 
         $is_expert_meta = get_user_meta( $user_id, 'is_expert', true );

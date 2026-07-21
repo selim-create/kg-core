@@ -65,7 +65,8 @@ if ( file_exists( $discussionControllerPath ) ) {
         $failed++;
     }
 
-    $has_role_check = strpos( $expert_method, "RoleManager::is_expert( \$user_id )" ) !== false;
+    $has_role_check = strpos( $expert_method, '$expert_roles = [ \'kg_expert\', \'author\', \'editor\', \'administrator\' ];' ) !== false
+        || strpos( $expert_method, 'array_intersect( $expert_roles, $user->roles )' ) !== false;
     $has_meta_check = strpos( $expert_method, "get_user_meta( \$user_id, 'is_expert', true )" ) !== false;
     if ( $has_role_check && $has_meta_check ) {
         echo "   ✓ expert detection covers role and is_expert meta\n";
