@@ -32,7 +32,7 @@ echo "\n2. DiscussionController author payload fields\n";
 if ( file_exists( $discussionControllerPath ) ) {
     $content = file_get_contents( $discussionControllerPath );
 
-    if ( strpos( $content, "'username' =>" ) !== false ) {
+    if ( preg_match( "/'author'\\s*=>\\s*\\[[\\s\\S]*'username'\\s*=>/", $content ) ) {
         echo "   ✓ username field present in author payload\n";
         $passed++;
     } else {
@@ -40,7 +40,7 @@ if ( file_exists( $discussionControllerPath ) ) {
         $failed++;
     }
 
-    if ( strpos( $content, "'is_expert' =>" ) !== false ) {
+    if ( preg_match( "/'author'\\s*=>\\s*\\[[\\s\\S]*'is_expert'\\s*=>/", $content ) ) {
         echo "   ✓ is_expert field present in author payload\n";
         $passed++;
     } else {

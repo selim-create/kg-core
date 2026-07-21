@@ -990,8 +990,8 @@ class DiscussionController {
         }
 
         $is_expert_meta = get_user_meta( $user_id, 'is_expert', true );
-        if ( is_bool( $is_expert_meta ) ) {
-            return $is_expert_meta;
+        if ( $is_expert_meta === '' ) {
+            return false;
         }
 
         return in_array( strtolower( (string) $is_expert_meta ), [ '1', 'true', 'yes' ], true );
