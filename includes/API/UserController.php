@@ -2314,8 +2314,16 @@ class UserController {
     public function get_public_profile( $request ) {
         $username = $request->get_param( 'username' );
         
+        // Support numeric user IDs as fallback for mobile clients
+        $user = null;
+        if ( is_numeric( $username ) ) {
+            $user = get_user_by( 'id', (int) $username );
+        }
+
         // Get user by login or slug
-        $user = get_user_by( 'login', $username );
+        if ( ! $user ) {
+            $user = get_user_by( 'login', $username );
+        }
         if ( ! $user ) {
             $user = get_user_by( 'slug', $username );
         }

@@ -4,6 +4,7 @@ namespace KG_Core\API;
 use KG_Core\Auth\JWTHandler;
 
 class DiscussionController {
+    private const EXPERT_META_TRUTHY_VALUES = [ '1', 'true', 'yes' ];
 
     public function __construct() {
         add_action( 'rest_api_init', [ $this, 'register_routes' ] );
@@ -702,13 +703,11 @@ class DiscussionController {
         $result = [];
         foreach ( $comments as $comment ) {
             $is_expert = (bool) get_comment_meta( $comment->comment_ID, '_is_expert_comment', true );
+            $comment_user = $comment->user_id ? get_user_by( 'id', $comment->user_id ) : null;
             
-            // Check user role for expert badge
-            if ( !  $is_expert && $comment->user_id ) {
-                $user = get_user_by( 'id', $comment->user_id );
-                if ( $user && ( in_array( 'administrator', $user->roles ) || in_array( 'expert', $user->roles ) ) ) {
-                    $is_expert = true;
-                }
+            // Check user role/meta for expert badge
+            if ( ! $is_expert && $comment->user_id ) {
+                $is_expert = $this->is_expert_user( $comment->user_id, $comment_user );
             }
 
             // Get vote counts
@@ -729,7 +728,9 @@ class DiscussionController {
                 'author' => [
                     'id' => $comment->user_id,
                     'name' => $comment->comment_author,
+                    'username' => $comment_user ? $comment_user->user_nicename : null,
                     'avatar' => get_avatar_url( $comment->user_id ?: $comment->comment_author_email ),
+                    'is_expert' => $is_expert,
                 ],
                 'is_expert_comment' => $is_expert,
                 'parent_id' => (int) $comment->comment_parent,
@@ -775,6 +776,8 @@ class DiscussionController {
             }
         }
 
+        $author_is_expert = $author ? $this->is_expert_user( $author->ID, $author ) : false;
+
         $response = [
             'id' => $post->ID,
             'title' => $post->post_title,
@@ -784,11 +787,15 @@ class DiscussionController {
             'author' => $is_anonymous ? [
                 'id' => 0,
                 'name' => 'Anonim',
+                'username' => null,
                 'avatar' => null,
+                'is_expert' => false,
             ] : [
-                'id' => $author->ID,
-                'name' => $author->display_name,
-                'avatar' => get_avatar_url( $author->ID ),
+                'id' => $author ? $author->ID : 0,
+                'name' => $author ? $author->display_name : '',
+                'username' => $author ? $author->user_nicename : null,
+                'avatar' => $author ? get_avatar_url( $author->ID ) : null,
+                'is_expert' => $author_is_expert,
             ],
             'circle' => $circle ?  [
                 'id' => $circle->term_id,
@@ -969,6 +976,38 @@ class DiscussionController {
         }
         
         return new \WP_REST_Response( $contributors, 200 );
+    }
+
+    /**
+     * Check whether a user should be treated as expert in community payloads
+     * Accepts user meta values: 1, true, yes.
+     */
+    private function is_expert_user( $user_id, $user = null ) {
+        if ( ! $user_id ) {
+            return false;
+        }
+
+        if ( ! $user ) {
+            $user = get_user_by( 'id', $user_id );
+        }
+
+        if ( $user ) {
+            $expert_roles = [ 'kg_expert', 'author', 'editor', 'administrator' ];
+            if ( ! empty( array_intersect( $expert_roles, $user->roles ) ) ) {
+                return true;
+            }
+        }
+
+        $is_expert_meta = get_user_meta( $user_id, 'is_expert', true );
+        if ( $is_expert_meta === '' || $is_expert_meta === null ) {
+            return false;
+        }
+
+        if ( ! is_scalar( $is_expert_meta ) ) {
+            return false;
+        }
+
+        return in_array( strtolower( (string) $is_expert_meta ), self::EXPERT_META_TRUTHY_VALUES, true );
     }
 
     /**
