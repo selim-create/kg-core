@@ -12,11 +12,25 @@ $failed = 0;
 $userControllerPath = $baseDir . '/includes/API/UserController.php';
 $discussionControllerPath = $baseDir . '/includes/API/DiscussionController.php';
 
+$extract_method = function( $content, $method_signature, $next_signature = null ) {
+    $start = strpos( $content, $method_signature );
+    if ( $start === false ) {
+        return '';
+    }
+
+    $end = $next_signature ? strpos( $content, $next_signature, $start + 1 ) : false;
+    if ( $end === false ) {
+        $end = strlen( $content );
+    }
+
+    return substr( $content, $start, $end - $start );
+};
+
 echo "1. UserController numeric ID support\n";
 if ( file_exists( $userControllerPath ) ) {
     $content = file_get_contents( $userControllerPath );
 
-    if ( strpos( $content, "is_numeric( \$username )" ) !== false && strpos( $content, "get_user_by( 'id', (int) \$username )" ) !== false ) {
+    if ( preg_match( "/is_numeric\\s*\\(\\s*\\\$username\\s*\\)/", $content ) && preg_match( "/get_user_by\\s*\\(\\s*'id'\\s*,\\s*\\(int\\)\\s*\\\$username\\s*\\)/", $content ) ) {
         echo "   ✓ get_public_profile supports numeric IDs\n";
         $passed++;
     } else {
@@ -31,24 +45,27 @@ if ( file_exists( $userControllerPath ) ) {
 echo "\n2. DiscussionController author payload fields\n";
 if ( file_exists( $discussionControllerPath ) ) {
     $content = file_get_contents( $discussionControllerPath );
+    $comments_method = $extract_method( $content, 'public function get_comments', 'private function prepare_discussion_response' );
+    $prepare_method = $extract_method( $content, 'private function prepare_discussion_response', 'public function get_top_contributors' );
+    $expert_method = $extract_method( $content, 'private function is_expert_user', 'public function vote_discussion' );
 
-    if ( preg_match( "/'author'\\s*=>\\s*\\[[\\s\\S]*'username'\\s*=>/", $content ) ) {
-        echo "   ✓ username field present in author payload\n";
+    if ( strpos( $comments_method, "'username' =>" ) !== false && strpos( $prepare_method, "'username' =>" ) !== false ) {
+        echo "   ✓ username field present in discussion and comment author payloads\n";
         $passed++;
     } else {
-        echo "   ✗ username field missing in author payload\n";
+        echo "   ✗ username field missing in discussion/comment author payload\n";
         $failed++;
     }
 
-    if ( preg_match( "/'author'\\s*=>\\s*\\[[\\s\\S]*'is_expert'\\s*=>/", $content ) ) {
-        echo "   ✓ is_expert field present in author payload\n";
+    if ( strpos( $comments_method, "'is_expert' =>" ) !== false && strpos( $prepare_method, "'is_expert' =>" ) !== false ) {
+        echo "   ✓ is_expert field present in discussion and comment author payloads\n";
         $passed++;
     } else {
-        echo "   ✗ is_expert field missing in author payload\n";
+        echo "   ✗ is_expert field missing in discussion/comment author payload\n";
         $failed++;
     }
 
-    if ( strpos( $content, "get_user_meta( \$user_id, 'is_expert', true )" ) !== false && strpos( $content, "RoleManager::is_expert( \$user_id )" ) !== false ) {
+    if ( strpos( $expert_method, "RoleManager::is_expert( \$user_id )" ) !== false && strpos( $expert_method, "get_user_meta( \$user_id, 'is_expert', true )" ) !== false ) {
         echo "   ✓ expert detection covers role and is_expert meta\n";
         $passed++;
     } else {

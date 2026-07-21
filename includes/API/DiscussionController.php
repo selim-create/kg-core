@@ -990,7 +990,11 @@ class DiscussionController {
         }
 
         $is_expert_meta = get_user_meta( $user_id, 'is_expert', true );
-        if ( $is_expert_meta === '' ) {
+        if ( $is_expert_meta === '' || $is_expert_meta === null ) {
+            return false;
+        }
+
+        if ( ! is_scalar( $is_expert_meta ) ) {
             return false;
         }
 
