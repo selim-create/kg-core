@@ -12,7 +12,7 @@ $failed = 0;
 $userControllerPath = $baseDir . '/includes/API/UserController.php';
 $discussionControllerPath = $baseDir . '/includes/API/DiscussionController.php';
 
-$extract_method = function( $content, $method_signature, $next_signature = null ) {
+$extractMethod = function( $content, $method_signature, $next_signature = null ) {
     $start = strpos( $content, $method_signature );
     if ( $start === false ) {
         return '';
@@ -45,9 +45,9 @@ if ( file_exists( $userControllerPath ) ) {
 echo "\n2. DiscussionController author payload fields\n";
 if ( file_exists( $discussionControllerPath ) ) {
     $content = file_get_contents( $discussionControllerPath );
-    $comments_method = $extract_method( $content, 'public function get_comments', 'private function prepare_discussion_response' );
-    $prepare_method = $extract_method( $content, 'private function prepare_discussion_response', 'public function get_top_contributors' );
-    $expert_method = $extract_method( $content, 'private function is_expert_user', 'public function vote_discussion' );
+    $comments_method = $extractMethod( $content, 'public function get_comments', 'private function prepare_discussion_response' );
+    $prepare_method = $extractMethod( $content, 'private function prepare_discussion_response', 'public function get_top_contributors' );
+    $expert_method = $extractMethod( $content, 'private function is_expert_user', 'public function vote_discussion' );
 
     if ( strpos( $comments_method, "'username' =>" ) !== false && strpos( $prepare_method, "'username' =>" ) !== false ) {
         echo "   ✓ username field present in discussion and comment author payloads\n";
@@ -65,7 +65,9 @@ if ( file_exists( $discussionControllerPath ) ) {
         $failed++;
     }
 
-    if ( strpos( $expert_method, "RoleManager::is_expert( \$user_id )" ) !== false && strpos( $expert_method, "get_user_meta( \$user_id, 'is_expert', true )" ) !== false ) {
+    $has_role_check = strpos( $expert_method, "RoleManager::is_expert( \$user_id )" ) !== false;
+    $has_meta_check = strpos( $expert_method, "get_user_meta( \$user_id, 'is_expert', true )" ) !== false;
+    if ( $has_role_check && $has_meta_check ) {
         echo "   ✓ expert detection covers role and is_expert meta\n";
         $passed++;
     } else {

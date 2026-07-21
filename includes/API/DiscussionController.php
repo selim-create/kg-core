@@ -4,6 +4,7 @@ namespace KG_Core\API;
 use KG_Core\Auth\JWTHandler;
 
 class DiscussionController {
+    private const EXPERT_META_TRUTHY_VALUES = [ '1', 'true', 'yes' ];
 
     public function __construct() {
         add_action( 'rest_api_init', [ $this, 'register_routes' ] );
@@ -705,7 +706,7 @@ class DiscussionController {
             $comment_user = $comment->user_id ? get_user_by( 'id', $comment->user_id ) : null;
             
             // Check user role/meta for expert badge
-            if ( !  $is_expert && $comment->user_id ) {
+            if ( ! $is_expert && $comment->user_id ) {
                 $is_expert = $this->is_expert_user( $comment->user_id );
             }
 
@@ -979,6 +980,7 @@ class DiscussionController {
 
     /**
      * Check whether a user should be treated as expert in community payloads
+     * Accepts user meta values: 1, true, yes.
      */
     private function is_expert_user( $user_id ) {
         if ( ! $user_id ) {
@@ -998,7 +1000,7 @@ class DiscussionController {
             return false;
         }
 
-        return in_array( strtolower( (string) $is_expert_meta ), [ '1', 'true', 'yes' ], true );
+        return in_array( strtolower( (string) $is_expert_meta ), self::EXPERT_META_TRUTHY_VALUES, true );
     }
 
     /**
