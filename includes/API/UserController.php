@@ -1171,9 +1171,10 @@ class UserController {
 
             if ( is_wp_error( $apple_data ) ) {
                 $error_code = $apple_data->get_error_code();
+                $internal_error_codes = [ 'apple_jwks_error', 'config_error', 'apple_dependency_missing', 'apple_internal_error' ];
 
                 $status = 401;
-                if ( in_array( $error_code, [ 'apple_jwks_error', 'config_error', 'apple_dependency_missing', 'apple_internal_error' ], true ) ) {
+                if ( in_array( $error_code, $internal_error_codes, true ) ) {
                     $status = 500;
                 } elseif ( 'missing_token' === $error_code ) {
                     $status = 400;

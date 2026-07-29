@@ -144,6 +144,7 @@ class AppleAuth {
                     'Apple token süresi dolmuş.'
                 );
             } catch ( \Throwable $e ) {
+                error_log( 'Apple token decode failed: ' . $e->getMessage() );
                 return new \WP_Error(
                     'invalid_token',
                     'Apple token doğrulanamadı.'
