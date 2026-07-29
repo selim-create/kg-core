@@ -1144,103 +1144,111 @@ class UserController {
      * Frontend'den gelen Apple identity token ile kullanıcı girişi yapar
      */
     public function apple_auth( $request ) {
-        // Apple Sign-In aktif mi kontrol et
-        if ( ! AppleAuth::is_enabled() ) {
-            return new \WP_Error(
-                'apple_auth_disabled',
-                'Apple ile giriş şu anda aktif değil.',
-                [ 'status' => 403 ]
-            );
-        }
-
-        $identity_token = $request->get_param( 'identity_token' );
-
-        if ( empty( $identity_token ) ) {
-            return new \WP_Error(
-                'missing_token',
-                'Apple identity token gerekli.',
-                [ 'status' => 400 ]
-            );
-        }
-
-        $apple_auth = new AppleAuth();
-
-        // Token'ı doğrula
-        $apple_data = $apple_auth->verify_identity_token( $identity_token );
-
-        if ( is_wp_error( $apple_data ) ) {
-            $error_code = $apple_data->get_error_code();
-
-            $status = 401;
-            if ( 'apple_jwks_error' === $error_code ) {
-                $status = 500;
-            } elseif ( 'config_error' === $error_code ) {
-                $status = 500;
-            } elseif ( 'missing_token' === $error_code ) {
-                $status = 400;
+        try {
+            // Apple Sign-In aktif mi kontrol et
+            if ( ! AppleAuth::is_enabled() ) {
+                return new \WP_Error(
+                    'apple_auth_disabled',
+                    'Apple ile giriş şu anda aktif değil.',
+                    [ 'status' => 403 ]
+                );
             }
 
+            $identity_token = $request->get_param( 'identity_token' );
+
+            if ( empty( $identity_token ) ) {
+                return new \WP_Error(
+                    'missing_token',
+                    'Apple identity token gerekli.',
+                    [ 'status' => 400 ]
+                );
+            }
+
+            $apple_auth = new AppleAuth();
+
+            // Token'ı doğrula
+            $apple_data = $apple_auth->verify_identity_token( $identity_token );
+
+            if ( is_wp_error( $apple_data ) ) {
+                $error_code = $apple_data->get_error_code();
+                $internal_error_codes = [ 'apple_jwks_error', 'config_error', 'apple_dependency_missing', 'apple_internal_error' ];
+
+                $status = 401;
+                if ( in_array( $error_code, $internal_error_codes, true ) ) {
+                    $status = 500;
+                } elseif ( 'missing_token' === $error_code ) {
+                    $status = 400;
+                }
+
+                return new \WP_Error(
+                    $error_code,
+                    $apple_data->get_error_message(),
+                    [ 'status' => $status ]
+                );
+            }
+
+            // İlk girişte client'ın gönderdiği isim bilgisi
+            $name = $request->get_param( 'name' );
+
+            // Kullanıcıyı bul veya oluştur
+            $user = $apple_auth->get_or_create_user( $apple_data, $name );
+
+            if ( is_wp_error( $user ) ) {
+                return new \WP_Error(
+                    'user_creation_failed',
+                    $user->get_error_message(),
+                    [ 'status' => 500 ]
+                );
+            }
+
+            // İlk giriş bayrağını kontrol et ve kullanıcıya işaretle
+            $is_first_signin = (bool) get_user_meta( $user->ID, 'apple_first_signin', true );
+            if ( $is_first_signin ) {
+                // Bayrak kalıcı değil — bir kez okunup temizlenir
+                delete_user_meta( $user->ID, 'apple_first_signin' );
+            }
+
+            $authorization_code = sanitize_text_field( $request->get_param( 'authorization_code' ) );
+            if ( ! empty( $authorization_code ) ) {
+                $token_response = $apple_auth->exchange_authorization_code( $authorization_code );
+                if ( ! is_wp_error( $token_response ) && ! empty( $token_response['refresh_token'] ) ) {
+                    update_user_meta( $user->ID, 'apple_refresh_token', $token_response['refresh_token'] );
+                } elseif ( is_wp_error( $token_response ) ) {
+                    error_log( 'Apple authorization_code exchange failed for user ' . $user->ID . ': ' . $token_response->get_error_message() );
+                }
+            }
+
+            $soft_delete_response = $this->check_soft_delete_status( $user );
+            if ( $soft_delete_response ) {
+                return $soft_delete_response;
+            }
+
+            // JWT token oluştur
+            $token = JWTHandler::generate_token( $user->ID );
+
+            // Kullanıcı bilgilerini hazırla
+            $user_data = $this->prepare_user_data( $user );
+
+            $response = [
+                'success' => true,
+                'token'   => $token,
+                'user'    => $user_data,
+                'message' => 'Apple ile giriş başarılı.',
+            ];
+
+            if ( $is_first_signin ) {
+                $response['apple_first_signin'] = true;
+            }
+
+            return new \WP_REST_Response( $response, 200 );
+        } catch ( \Throwable $e ) {
+            error_log( 'Apple auth endpoint fatal prevented during request handling.' );
             return new \WP_Error(
-                $error_code,
-                $apple_data->get_error_message(),
-                [ 'status' => $status ]
-            );
-        }
-
-        // İlk girişte client'ın gönderdiği isim bilgisi
-        $name = $request->get_param( 'name' );
-
-        // Kullanıcıyı bul veya oluştur
-        $user = $apple_auth->get_or_create_user( $apple_data, $name );
-
-        if ( is_wp_error( $user ) ) {
-            return new \WP_Error(
-                'user_creation_failed',
-                $user->get_error_message(),
+                'apple_auth_error',
+                'Apple ile giriş sırasında beklenmeyen bir hata oluştu.',
                 [ 'status' => 500 ]
             );
         }
-
-        // İlk giriş bayrağını kontrol et ve kullanıcıya işaretle
-        $is_first_signin = (bool) get_user_meta( $user->ID, 'apple_first_signin', true );
-        if ( $is_first_signin ) {
-            // Bayrak kalıcı değil — bir kez okunup temizlenir
-            delete_user_meta( $user->ID, 'apple_first_signin' );
-        }
-
-        $authorization_code = sanitize_text_field( $request->get_param( 'authorization_code' ) );
-        if ( ! empty( $authorization_code ) ) {
-            $token_response = $apple_auth->exchange_authorization_code( $authorization_code );
-            if ( ! is_wp_error( $token_response ) && ! empty( $token_response['refresh_token'] ) ) {
-                update_user_meta( $user->ID, 'apple_refresh_token', $token_response['refresh_token'] );
-            } elseif ( is_wp_error( $token_response ) ) {
-                error_log( 'Apple authorization_code exchange failed for user ' . $user->ID . ': ' . $token_response->get_error_message() );
-            }
-        }
-
-        $soft_delete_response = $this->check_soft_delete_status( $user );
-        if ( $soft_delete_response ) {
-            return $soft_delete_response;
-        }
-
-        // JWT token oluştur
-        $token = JWTHandler::generate_token( $user->ID );
-
-        // Kullanıcı bilgilerini hazırla
-        $user_data = $this->prepare_user_data( $user );
-
-        $response = [
-            'success' => true,
-            'token'   => $token,
-            'user'    => $user_data,
-            'message' => 'Apple ile giriş başarılı.',
-        ];
-
-        if ( $is_first_signin ) {
-            $response['apple_first_signin'] = true;
-        }
-
-        return new \WP_REST_Response( $response, 200 );
     }
 
     /**

@@ -40,6 +40,11 @@ class AppleAuth {
      * @return array|\WP_Error Doğrulanmış payload verisi veya WP_Error
      */
     public function verify_identity_token( $identity_token ) {
+        $dependency_check = $this->ensure_jwt_dependencies();
+        if ( is_wp_error( $dependency_check ) ) {
+            return $dependency_check;
+        }
+
         // Bundle ID veya Service ID yapılandırılmış mı kontrol et
         if ( empty( $this->bundle_id ) && empty( $this->service_id ) ) {
             return new \WP_Error(
@@ -48,141 +53,158 @@ class AppleAuth {
             );
         }
 
-        // Apple JWKS'yi al (24 saat önbelleğe al)
-        $jwks = get_transient( 'kg_apple_jwks' );
-
-        if ( false === $jwks ) {
-            $response = wp_remote_get( 'https://appleid.apple.com/auth/keys', [
-                'timeout' => 10,
-            ] );
-
-            if ( is_wp_error( $response ) ) {
-                return new \WP_Error(
-                    'apple_jwks_error',
-                    'Apple public key\'leri alınamadı: ' . $response->get_error_message()
-                );
-            }
-
-            $status_code = wp_remote_retrieve_response_code( $response );
-            if ( 200 !== (int) $status_code ) {
-                return new \WP_Error(
-                    'apple_jwks_error',
-                    'Apple public key\'leri alınamadı (HTTP ' . $status_code . ').'
-                );
-            }
-
-            $jwks = json_decode( wp_remote_retrieve_body( $response ), true );
-
-            if ( empty( $jwks['keys'] ) ) {
-                return new \WP_Error(
-                    'apple_jwks_error',
-                    'Apple JWKS geçersiz format.'
-                );
-            }
-
-            set_transient( 'kg_apple_jwks', $jwks, DAY_IN_SECONDS );
-        }
-
-        // JWT header'ını decode ederek kid (key ID) değerini al
-        $token_parts = explode( '.', $identity_token );
-        if ( count( $token_parts ) !== 3 ) {
-            return new \WP_Error(
-                'invalid_token',
-                'Geçersiz Apple identity token formatı.'
-            );
-        }
-
-        $header_raw = $this->base64url_decode( $token_parts[0] );
-        $header     = $header_raw ? json_decode( $header_raw ) : null;
-
-        if ( ! $header || empty( $header->kid ) ) {
-            return new \WP_Error(
-                'invalid_token',
-                'Apple token header geçersiz.'
-            );
-        }
-
-        // Token'daki kid'e göre JWKS'den ilgili anahtarı bul
-        $matching_key = null;
-        foreach ( $jwks['keys'] as $key ) {
-            if ( isset( $key['kid'] ) && $key['kid'] === $header->kid ) {
-                $matching_key = $key;
-                break;
-            }
-        }
-
-        if ( null === $matching_key ) {
-            // Önbelleği temizle ve yeniden dene (key rotation durumunda)
-            delete_transient( 'kg_apple_jwks' );
-            return new \WP_Error(
-                'invalid_token',
-                'Apple token için eşleşen public key bulunamadı.'
-            );
-        }
-
-        // Firebase JWT ile doğrula (imza + exp kontrolü)
         try {
-            $key_set = JWK::parseKeySet( [ 'keys' => [ $matching_key ] ] );
-            $payload = JWT::decode( $identity_token, $key_set );
-        } catch ( \Firebase\JWT\ExpiredException $e ) {
+            // Apple JWKS'yi al (24 saat önbelleğe al)
+            $jwks = get_transient( 'kg_apple_jwks' );
+
+            if ( false === $jwks ) {
+                $response = wp_remote_get( 'https://appleid.apple.com/auth/keys', [
+                    'timeout' => 10,
+                ] );
+
+                if ( is_wp_error( $response ) ) {
+                    return new \WP_Error(
+                        'apple_jwks_error',
+                        'Apple public key\'leri alınamadı: ' . $response->get_error_message()
+                    );
+                }
+
+                $status_code = wp_remote_retrieve_response_code( $response );
+                if ( 200 !== (int) $status_code ) {
+                    return new \WP_Error(
+                        'apple_jwks_error',
+                        'Apple public key\'leri alınamadı (HTTP ' . $status_code . ').'
+                    );
+                }
+
+                $jwks = json_decode( wp_remote_retrieve_body( $response ), true );
+
+                if ( empty( $jwks['keys'] ) || ! is_array( $jwks['keys'] ) ) {
+                    return new \WP_Error(
+                        'apple_jwks_error',
+                        'Apple JWKS geçersiz format.'
+                    );
+                }
+
+                set_transient( 'kg_apple_jwks', $jwks, DAY_IN_SECONDS );
+            }
+
+            if ( ! is_array( $jwks ) || empty( $jwks['keys'] ) || ! is_array( $jwks['keys'] ) ) {
+                delete_transient( 'kg_apple_jwks' );
+                return new \WP_Error(
+                    'apple_jwks_error',
+                    'Apple JWKS önbelleği geçersiz.'
+                );
+            }
+
+            // JWT header'ını decode ederek kid (key ID) değerini al
+            $token_parts = explode( '.', $identity_token );
+            if ( count( $token_parts ) !== 3 ) {
+                return new \WP_Error(
+                    'invalid_token',
+                    'Geçersiz Apple identity token formatı.'
+                );
+            }
+
+            $header_raw = $this->base64url_decode( $token_parts[0] );
+            $header     = $header_raw ? json_decode( $header_raw ) : null;
+
+            if ( ! $header || empty( $header->kid ) ) {
+                return new \WP_Error(
+                    'invalid_token',
+                    'Apple token header geçersiz.'
+                );
+            }
+
+            // Token'daki kid'e göre JWKS'den ilgili anahtarı bul
+            $matching_key = null;
+            foreach ( $jwks['keys'] as $key ) {
+                if ( isset( $key['kid'] ) && $key['kid'] === $header->kid ) {
+                    $matching_key = $key;
+                    break;
+                }
+            }
+
+            if ( null === $matching_key ) {
+                // Önbelleği temizle ve yeniden dene (key rotation durumunda)
+                delete_transient( 'kg_apple_jwks' );
+                return new \WP_Error(
+                    'invalid_token',
+                    'Apple token için eşleşen public key bulunamadı.'
+                );
+            }
+
+            // Firebase JWT ile doğrula (imza + exp kontrolü)
+            try {
+                $key_set = JWK::parseKeySet( [ 'keys' => [ $matching_key ] ] );
+                $payload = JWT::decode( $identity_token, $key_set );
+            } catch ( \Firebase\JWT\ExpiredException $e ) {
+                return new \WP_Error(
+                    'expired_token',
+                    'Apple token süresi dolmuş.'
+                );
+            } catch ( \Throwable $e ) {
+                error_log( 'Apple JWT decode failed during signature verification.' );
+                return new \WP_Error(
+                    'invalid_token',
+                    'Apple token doğrulanamadı.'
+                );
+            }
+
+            // iss (issuer) doğrulaması
+            if ( ( $payload->iss ?? '' ) !== 'https://appleid.apple.com' ) {
+                return new \WP_Error(
+                    'invalid_issuer',
+                    'Apple token issuer geçersiz.'
+                );
+            }
+
+            // aud (audience) doğrulaması — Bundle ID veya Service ID eşleşmeli
+            $token_aud      = $payload->aud ?? '';
+            $valid_audience = false;
+
+            if ( ! empty( $this->bundle_id ) && $token_aud === $this->bundle_id ) {
+                $valid_audience = true;
+            }
+            if ( ! empty( $this->service_id ) && $token_aud === $this->service_id ) {
+                $valid_audience = true;
+            }
+
+            if ( ! $valid_audience ) {
+                return new \WP_Error(
+                    'invalid_audience',
+                    'Apple token bu uygulama için geçerli değil.'
+                );
+            }
+
+            // email_verified kontrolü (Apple bazen string "true" döner)
+            $email_verified = $payload->email_verified ?? false;
+            $email_verified = ( $email_verified === true || $email_verified === 'true' );
+
+            // İsim bilgisi Apple'ın döndürmediği durumlarda boş string
+            $name = '';
+            if ( isset( $payload->name ) ) {
+                $name = trim( ( $payload->name->firstName ?? '' ) . ' ' . ( $payload->name->lastName ?? '' ) );
+            }
+
+            $email = $payload->email ?? '';
+
+            return [
+                'email'            => $email,
+                'email_verified'   => $email_verified,
+                'name'             => $name,
+                'apple_id'         => $payload->sub,
+                'is_private_email' => isset( $payload->is_private_email )
+                                        ? ( $payload->is_private_email === true || $payload->is_private_email === 'true' )
+                                        : $this->is_private_relay_email( $email ),
+            ];
+        } catch ( \Throwable $e ) {
+            error_log( 'Apple token verification internal error.' );
             return new \WP_Error(
-                'expired_token',
-                'Apple token süresi dolmuş.'
-            );
-        } catch ( \Exception $e ) {
-            return new \WP_Error(
-                'invalid_token',
-                'Apple token doğrulanamadı: ' . $e->getMessage()
+                'apple_internal_error',
+                'Apple token doğrulama sırasında beklenmeyen bir hata oluştu.'
             );
         }
-
-        // iss (issuer) doğrulaması
-        if ( ( $payload->iss ?? '' ) !== 'https://appleid.apple.com' ) {
-            return new \WP_Error(
-                'invalid_issuer',
-                'Apple token issuer geçersiz.'
-            );
-        }
-
-        // aud (audience) doğrulaması — Bundle ID veya Service ID eşleşmeli
-        $token_aud      = $payload->aud ?? '';
-        $valid_audience = false;
-
-        if ( ! empty( $this->bundle_id ) && $token_aud === $this->bundle_id ) {
-            $valid_audience = true;
-        }
-        if ( ! empty( $this->service_id ) && $token_aud === $this->service_id ) {
-            $valid_audience = true;
-        }
-
-        if ( ! $valid_audience ) {
-            return new \WP_Error(
-                'invalid_audience',
-                'Apple token bu uygulama için geçerli değil.'
-            );
-        }
-
-        // email_verified kontrolü (Apple bazen string "true" döner)
-        $email_verified = $payload->email_verified ?? false;
-        $email_verified = ( $email_verified === true || $email_verified === 'true' );
-
-        // İsim bilgisi Apple'ın döndürmediği durumlarda boş string
-        $name = '';
-        if ( isset( $payload->name ) ) {
-            $name = trim( ( $payload->name->firstName ?? '' ) . ' ' . ( $payload->name->lastName ?? '' ) );
-        }
-
-        $email = $payload->email ?? '';
-
-        return [
-            'email'            => $email,
-            'email_verified'   => $email_verified,
-            'name'             => $name,
-            'apple_id'         => $payload->sub,
-            'is_private_email' => isset( $payload->is_private_email )
-                                    ? ( $payload->is_private_email === true || $payload->is_private_email === 'true' )
-                                    : $this->is_private_relay_email( $email ),
-        ];
     }
 
     /**
@@ -438,6 +460,11 @@ class AppleAuth {
      * @return string|\WP_Error JWT string veya WP_Error
      */
     public function generate_client_secret() {
+        $dependency_check = $this->ensure_jwt_dependencies();
+        if ( is_wp_error( $dependency_check ) ) {
+            return $dependency_check;
+        }
+
         $private_key_pem = get_option( 'kg_apple_private_key', '' );
 
         if ( empty( $private_key_pem ) ) {
@@ -489,7 +516,7 @@ class AppleAuth {
             }
 
             $jwt = JWT::encode( $payload, $private_key, 'ES256', $this->key_id );
-        } catch ( \Exception $e ) {
+        } catch ( \Throwable $e ) {
             return new \WP_Error(
                 'apple_jwt_error',
                 'Client secret JWT oluşturulamadı: ' . $e->getMessage()
@@ -511,5 +538,21 @@ class AppleAuth {
             $data .= str_repeat( '=', 4 - $remainder );
         }
         return base64_decode( strtr( $data, '-_', '+/' ), true );
+    }
+
+    /**
+     * JWT bağımlılıklarının yüklü olduğunu doğrula.
+     *
+     * @return true|\WP_Error
+     */
+    private function ensure_jwt_dependencies() {
+        if ( ! class_exists( '\Firebase\JWT\JWT' ) || ! class_exists( '\Firebase\JWT\JWK' ) ) {
+            return new \WP_Error(
+                'apple_dependency_missing',
+                'Apple kimlik doğrulama bağımlılıkları eksik. Lütfen eklenti bağımlılıklarını yükleyin.'
+            );
+        }
+
+        return true;
     }
 }
