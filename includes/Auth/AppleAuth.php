@@ -144,7 +144,7 @@ class AppleAuth {
                     'Apple token süresi dolmuş.'
                 );
             } catch ( \Throwable $e ) {
-                error_log( 'Apple token decode failed: ' . $e->getMessage() );
+                error_log( 'Apple token decode failed.' );
                 return new \WP_Error(
                     'invalid_token',
                     'Apple token doğrulanamadı.'
@@ -199,7 +199,7 @@ class AppleAuth {
                                         : $this->is_private_relay_email( $email ),
             ];
         } catch ( \Throwable $e ) {
-            error_log( 'Apple token verification internal error: ' . $e->getMessage() );
+            error_log( 'Apple token verification internal error.' );
             return new \WP_Error(
                 'apple_internal_error',
                 'Apple token doğrulama sırasında beklenmeyen bir hata oluştu.'

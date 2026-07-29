@@ -1242,7 +1242,7 @@ class UserController {
 
             return new \WP_REST_Response( $response, 200 );
         } catch ( \Throwable $e ) {
-            error_log( 'Apple auth endpoint fatal prevented: ' . $e->getMessage() );
+            error_log( 'Apple auth endpoint fatal prevented.' );
             return new \WP_Error(
                 'apple_auth_error',
                 'Apple ile giriş sırasında beklenmeyen bir hata oluştu.',
