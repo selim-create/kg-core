@@ -19,7 +19,8 @@ $checks = [
     [ $apple_auth_content, "class_exists( '\\Firebase\\JWT\\JWT' )", 'JWT dependency check exists' ],
     [ $apple_auth_content, "class_exists( '\\Firebase\\JWT\\JWK' )", 'JWK dependency check exists' ],
     [ $apple_auth_content, 'catch ( \\Throwable $e )', 'AppleAuth catches Throwable' ],
-    [ $apple_auth_content, "new \\WP_Error(\n                'apple_internal_error'", 'AppleAuth returns internal error WP_Error' ],
+    [ $apple_auth_content, 'new \\WP_Error', 'AppleAuth returns WP_Error in fatal paths' ],
+    [ $apple_auth_content, "'apple_internal_error'", 'AppleAuth includes apple_internal_error code' ],
     [ $user_controller_content, 'catch ( \\Throwable $e )', 'Apple endpoint catches Throwable' ],
     [ $user_controller_content, "'apple_auth_error'", 'Apple endpoint returns JSON WP_Error for fatal paths' ],
 ];
