@@ -7,7 +7,7 @@
 
 echo "=== KG Core Google OAuth Implementation Verification ===\n\n";
 
-$baseDir = __DIR__;
+$baseDir = dirname(__DIR__);
 $passed = 0;
 $failed = 0;
 
@@ -45,11 +45,11 @@ if (file_exists($googleAuthFile)) {
         $failed++;
     }
     
-    if (strpos($content, '$body[\'aud\']') !== false && strpos($content, 'client_id') !== false) {
-        echo "   ✓ Client ID verification implemented\n";
+    if (strpos($content, 'kg_google_ios_client_id') !== false && strpos($content, 'kg_google_android_client_id') !== false && strpos($content, 'in_array($body[\'aud\'], $allowed_client_ids, true)') !== false) {
+        echo "   ✓ Multi-client ID verification implemented\n";
         $passed++;
     } else {
-        echo "   ✗ Client ID verification missing\n";
+        echo "   ✗ Multi-client ID verification missing\n";
         $failed++;
     }
     
@@ -143,6 +143,8 @@ if (file_exists($settingsPageFile)) {
     // Check for setting registrations
     $settings = [
         'kg_google_client_id',
+        'kg_google_ios_client_id',
+        'kg_google_android_client_id',
         'kg_google_client_secret',
         'kg_google_auth_enabled'
     ];
@@ -181,6 +183,14 @@ if (file_exists($settingsPageFile)) {
         $passed++;
     } else {
         echo "   ✗ Setup instructions missing\n";
+        $failed++;
+    }
+
+    if (strpos($content, 'Google iOS Client ID') !== false && strpos($content, 'Google Android Client ID') !== false) {
+        echo "   ✓ iOS and Android Client ID fields added\n";
+        $passed++;
+    } else {
+        echo "   ✗ iOS and Android Client ID fields missing\n";
         $failed++;
     }
 } else {

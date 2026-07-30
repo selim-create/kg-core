@@ -29,9 +29,13 @@ class GoogleAuth {
      * Frontend'den gelen token'ı Google API ile doğrular
      */
     public function verify_id_token($id_token) {
-        $client_id = $this->client_id;
+        $allowed_client_ids = array_filter([
+            $this->client_id,
+            get_option('kg_google_ios_client_id', ''),
+            get_option('kg_google_android_client_id', ''),
+        ]);
         
-        if (empty($client_id)) {
+        if (empty($allowed_client_ids)) {
             return new \WP_Error('config_error', 'Google Client ID yapılandırılmamış.');
         }
         
@@ -53,7 +57,7 @@ class GoogleAuth {
         }
         
         // Client ID doğrulaması
-        if ($body['aud'] !== $client_id) {
+        if (!isset($body['aud']) || !in_array($body['aud'], $allowed_client_ids, true)) {
             return new \WP_Error('invalid_audience', 'Token bu uygulama için geçerli değil.');
         }
         
