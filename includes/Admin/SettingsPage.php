@@ -85,6 +85,18 @@ class SettingsPage {
             'default' => ''
         ]);
 
+        register_setting('kg_ai_settings', 'kg_google_ios_client_id', [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ]);
+
+        register_setting('kg_ai_settings', 'kg_google_android_client_id', [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ]);
+
         register_setting('kg_ai_settings', 'kg_google_client_secret', [
             'type' => 'string',
             'sanitize_callback' => 'sanitize_text_field',
@@ -234,6 +246,8 @@ class SettingsPage {
         
         $google_auth_enabled = get_option('kg_google_auth_enabled', false);
         $google_client_id = get_option('kg_google_client_id', '');
+        $google_ios_client_id = get_option('kg_google_ios_client_id', '');
+        $google_android_client_id = get_option('kg_google_android_client_id', '');
         $google_client_secret = get_option('kg_google_client_secret', '');
 
         $apple_auth_enabled  = get_option('kg_apple_auth_enabled', false);
@@ -385,7 +399,21 @@ class SettingsPage {
                             <th scope="row">Google Client ID</th>
                             <td>
                                 <input type="text" name="kg_google_client_id" value="<?php echo esc_attr($google_client_id); ?>" class="regular-text" placeholder="xxxx.apps.googleusercontent.com">
-                                <p class="description">Google Cloud Console'dan alınan Client ID</p>
+                                <p class="description">Web istemcisi için Google Cloud Console'dan alınan Client ID</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Google iOS Client ID</th>
+                            <td>
+                                <input type="text" name="kg_google_ios_client_id" value="<?php echo esc_attr($google_ios_client_id); ?>" class="regular-text" placeholder="xxxx.apps.googleusercontent.com">
+                                <p class="description">Google iOS OAuth Client ID</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Google Android Client ID</th>
+                            <td>
+                                <input type="text" name="kg_google_android_client_id" value="<?php echo esc_attr($google_android_client_id); ?>" class="regular-text" placeholder="xxxx.apps.googleusercontent.com">
+                                <p class="description">Google Android OAuth Client ID</p>
                             </td>
                         </tr>
                         <tr>
