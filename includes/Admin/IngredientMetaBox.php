@@ -7,6 +7,12 @@ class IngredientMetaBox {
         add_action( 'add_meta_boxes', [ $this, 'add_custom_meta_boxes' ] );
         add_action( 'save_post', [ $this, 'save_custom_meta_data' ] );
         add_action( 'admin_notices', [ $this, 'show_validation_notices' ] );
+
+        // Keep image attribution tied to the currently selected featured image.
+        // This also covers featured_media updates coming from the WordPress REST API.
+        add_action( 'added_post_meta', [ $this, 'handle_featured_image_meta_change' ], 10, 4 );
+        add_action( 'updated_post_meta', [ $this, 'handle_featured_image_meta_change' ], 10, 4 );
+        add_action( 'deleted_post_meta', [ $this, 'handle_featured_image_meta_change' ], 10, 4 );
     }
     
     /**
@@ -67,6 +73,11 @@ class IngredientMetaBox {
         $selection_tips = get_post_meta( $post->ID, '_kg_selection_tips', true );
         $pro_tips = get_post_meta( $post->ID, '_kg_pro_tips', true );
         $preparation_tips = get_post_meta( $post->ID, '_kg_preparation_tips', true );
+
+        // Image attribution fields
+        $image_source = get_post_meta( $post->ID, '_kg_image_source', true );
+        $image_credit = get_post_meta( $post->ID, '_kg_image_credit', true );
+        $image_credit_url = get_post_meta( $post->ID, '_kg_image_credit_url', true );
         
         // Expert fields
         $expert_user_id = get_post_meta( $post->ID, '_kg_expert_user_id', true );
@@ -122,6 +133,26 @@ class IngredientMetaBox {
                     <option value="Yüksek" <?php selected( $allergy_risk, 'Yüksek' ); ?>>Yüksek</option>
                 </select>
             </p>
+
+            <h3>Görsel Kaynağı ve Kredi</h3>
+            <div style="background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 4px;">
+                <p style="margin-top:0;">
+                    <strong>Not:</strong> Öne çıkan görsel değiştirildiğinde eski kaynak ve fotoğrafçı bilgileri otomatik temizlenir. Yeni görsel için gerekiyorsa aşağıdaki alanları yeniden doldurun.
+                </p>
+                <p>
+                    <label for="kg_image_source"><strong>Görsel Kaynağı:</strong></label><br>
+                    <input type="text" id="kg_image_source" name="kg_image_source" value="<?php echo esc_attr( $image_source ); ?>" style="width:100%;" placeholder="Örn: pexels, unsplash, dall-e-3, KidsGourmet">
+                </p>
+                <p>
+                    <label for="kg_image_credit"><strong>Fotoğrafçı / Görsel Kredisi:</strong></label><br>
+                    <input type="text" id="kg_image_credit" name="kg_image_credit" value="<?php echo esc_attr( $image_credit ); ?>" style="width:100%;" placeholder="Örn: Mart Production">
+                    <small>Bu alan boş bırakılırsa frontend'de fotoğrafçı satırı gösterilmez.</small>
+                </p>
+                <p style="margin-bottom:0;">
+                    <label for="kg_image_credit_url"><strong>Kredi URL:</strong></label><br>
+                    <input type="url" id="kg_image_credit_url" name="kg_image_credit_url" value="<?php echo esc_attr( $image_credit_url ); ?>" style="width:100%;" placeholder="https://...">
+                </p>
+            </div>
 
             <h3>Alerjen Bilgileri</h3>
             <div style="background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 4px;">
@@ -394,6 +425,20 @@ class IngredientMetaBox {
             update_post_meta( $post_id, '_kg_allergy_risk', sanitize_text_field( $_POST['kg_allergy_risk'] ) );
         }
 
+        // Save image attribution. Empty values remove stale metadata completely.
+        if ( isset( $_POST['kg_image_source'] ) ) {
+            $image_source = sanitize_text_field( wp_unslash( $_POST['kg_image_source'] ) );
+            $this->update_or_delete_meta( $post_id, '_kg_image_source', $image_source );
+        }
+        if ( isset( $_POST['kg_image_credit'] ) ) {
+            $image_credit = sanitize_text_field( wp_unslash( $_POST['kg_image_credit'] ) );
+            $this->update_or_delete_meta( $post_id, '_kg_image_credit', $image_credit );
+        }
+        if ( isset( $_POST['kg_image_credit_url'] ) ) {
+            $image_credit_url = esc_url_raw( wp_unslash( $_POST['kg_image_credit_url'] ) );
+            $this->update_or_delete_meta( $post_id, '_kg_image_credit_url', $image_credit_url );
+        }
+
         // Save allergen taxonomy terms
         if ( isset( $_POST['kg_allergens'] ) && is_array( $_POST['kg_allergens'] ) ) {
             $allergen_ids = array_map( 'intval', $_POST['kg_allergens'] );
@@ -555,6 +600,45 @@ class IngredientMetaBox {
         if ( class_exists( '\KG_Core\Config\FeatureFlags' ) && \KG_Core\Config\FeatureFlags::useDualWrite() ) {
             \KG_Core\Services\MetaSyncService::syncIngredient( $post_id );
         }
+    }
+
+    /**
+     * Clear old image attribution whenever an ingredient's featured image changes.
+     *
+     * WordPress stores the featured image in the _thumbnail_id post meta field,
+     * including changes made through the REST API's featured_media property.
+     * AI/image generation flows remain compatible because they set the thumbnail
+     * first and then write the new attribution metadata.
+     *
+     * @param mixed  $meta_id_or_ids Meta ID (or IDs for deleted_post_meta).
+     * @param int    $post_id        Post ID.
+     * @param string $meta_key       Meta key.
+     * @param mixed  $meta_value     Meta value.
+     */
+    public function handle_featured_image_meta_change( $meta_id_or_ids, $post_id, $meta_key, $meta_value ) {
+        if ( '_thumbnail_id' !== $meta_key || 'ingredient' !== get_post_type( $post_id ) ) {
+            return;
+        }
+
+        delete_post_meta( $post_id, '_kg_image_source' );
+        delete_post_meta( $post_id, '_kg_image_credit' );
+        delete_post_meta( $post_id, '_kg_image_credit_url' );
+    }
+
+    /**
+     * Update a meta value, or remove the key when the submitted value is empty.
+     *
+     * @param int    $post_id Post ID.
+     * @param string $meta_key Meta key.
+     * @param string $value Sanitized value.
+     */
+    private function update_or_delete_meta( $post_id, $meta_key, $value ) {
+        if ( '' === $value ) {
+            delete_post_meta( $post_id, $meta_key );
+            return;
+        }
+
+        update_post_meta( $post_id, $meta_key, $value );
     }
     
     /**
