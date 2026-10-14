@@ -24,6 +24,7 @@ function delete_post_meta($post_id, $key) {
     unset($GLOBALS['kg_test_meta'][$post_id][$key]);
     return true;
 }
+function get_post($post_id) { return $GLOBALS['kg_test_posts'][$post_id] ?? null; }
 function wp_get_post_terms($post_id, $taxonomy, $args = []) {
     return $GLOBALS['kg_test_ages'];
 }
@@ -46,6 +47,8 @@ function check($condition, $message) {
 }
 
 $post_id = 111;
+$GLOBALS['kg_test_posts'][111] = (object)['post_title' => 'Bal tarifi', 'post_content' => 'Örnek', 'post_excerpt' => 'Kısa'];
+$GLOBALS['kg_test_posts'][112] = (object)['post_title' => 'Bal tarifi', 'post_content' => 'Örnek', 'post_excerpt' => 'Kısa'];
 $guard = new Guard();
 update_post_meta($post_id, '_kg_ingredients', [['name' => 'Bal']]);
 
@@ -87,3 +90,15 @@ $guard->recordReview($post_id, $scheduled, true, $future);
 $logs = get_post_meta($post_id, '_kg_recipe_safety_publication_log', false);
 check(count($logs) === 1 && $logs[0]['publisher_user_id'] === 0, 'scheduled publish recorded as system action');
 check($logs[0]['explicitly_acknowledged'] === false, 'scheduled publish does not impersonate an editor');
+
+// A new editorial text revision cannot inherit approval from an older version.
+$post_id = 113;
+$GLOBALS['kg_test_posts'][113] = (object)['post_title' => 'Bal tarifi', 'post_content' => 'Birinci sürüm', 'post_excerpt' => 'Kısa'];
+$GLOBALS['kg_test_user_id'] = 27;
+update_post_meta($post_id, '_kg_ingredients', [['name' => 'Bal']]);
+$guard->acknowledgeSavedVersion($post_id, 27);
+$GLOBALS['kg_test_posts'][113]->post_content = 'Değiştirilmiş sürüm';
+$changed = (object)['ID' => $post_id, 'post_type' => 'recipe', 'post_status' => 'publish'];
+$guard->recordReview($post_id, $changed, true, $draft);
+$logs = get_post_meta($post_id, '_kg_recipe_safety_publication_log', false);
+check(count($logs) === 1 && $logs[0]['explicitly_acknowledged'] === false, 'edited recipe content invalidates previous acknowledgment');
