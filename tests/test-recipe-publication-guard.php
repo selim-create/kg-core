@@ -5,6 +5,10 @@ use KG_Core\Services\RecipePublicationGuard as Guard;
 $cases = [
     ['empty ingredient list', [], [], true],
     ['honey for infant', [['name' => 'Bal']], ['baslangic-tadim-6-8-ay'], true],
+    ['honey with live 6-8 term', ['Bal'], ['6-8-ay-baslangic'], true],
+    ['honey with live 9-11 term', ['Bal'], ['9-11-ay-kesif'], true],
+    ['honey with live 12-24 term', ['Bal'], ['12-24-ay-gecis'], false],
+    ['unknown age term', ['Bal'], ['unknown-age'], true],
     ['honey at 9 months', ['Bal'], ['kesif-puturlye-gecis-9-11-ay'], true],
     ['honey missing age', ['Bal'], [], true],
     ['honey 12+ months', ['Bal'], ['aile-sofrasina-gecis-12-24-ay'], false],
