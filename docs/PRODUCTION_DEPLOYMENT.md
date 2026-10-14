@@ -64,7 +64,7 @@ ssh kidsgourmet-prod \
 
 - push/merge to `main`
 - GitHub Actions checks out the repository
-- files are synchronized over SSH with `rsync --delete`
+- files are synchronized over SSH with non-destructive `rsync` (server-only files are preserved)
 - development-only directories are excluded
 - Composer production dependencies are installed when Composer is available
 - PHP syntax is checked remotely after deployment
