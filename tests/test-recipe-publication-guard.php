@@ -9,6 +9,8 @@ $cases = [
     ['honey missing age', ['Bal'], [], true],
     ['honey 12+ months', ['Bal'], ['aile-sofrasina-gecis-12-24-ay'], false],
     ['fish not honey', ['Balık'], ['baslangic-tadim-6-8-ay'], false],
+    ['pumpkin not honey', ['Bal kabağı'], ['baslangic-tadim-6-8-ay'], false],
+    ['honey flavored', ['Ballı yoğurt'], ['baslangic-tadim-6-8-ay'], true],
     ['ordinary recipe', ['Havuç'], ['baslangic-tadim-6-8-ay'], false],
 ];
 foreach ($cases as [$label, $ingredients, $ages, $blocked]) {
@@ -19,3 +21,10 @@ foreach ($cases as [$label, $ingredients, $ages, $blocked]) {
     }
     echo "PASS: $label\n";
 }
+
+$ack = ['user_id' => 3, 'signature' => 'abc'];
+if (!Guard::ackMatches($ack, 'abc') || Guard::ackMatches($ack, 'different') || Guard::ackMatches([], 'abc')) {
+    fwrite(STDERR, "FAIL: editorial approval fingerprint check\n");
+    exit(1);
+}
+echo "PASS: explicit approval is bound to content fingerprint\n";
