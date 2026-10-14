@@ -28,6 +28,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate PHP and AI regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l kg-core.php
+          php -l includes/Services/AIService.php
+          php -l includes/Services/OpenAIClient.php
+          php tests/test-openai-modernization.php
+          php tests/test-recipe-ai-safety.php
+
       - name: Prepare SSH
         shell: bash
         run: |
