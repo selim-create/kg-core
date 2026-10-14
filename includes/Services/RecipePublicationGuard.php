@@ -125,7 +125,7 @@ class RecipePublicationGuard {
 
     /**
      * Hash the saved recipe version for which the editor saw the warning.
-     * Changing ingredients, age groups or warning invalidates old approvals.
+     * Changing recipe text, ingredients, instructions, age groups or warning invalidates prior approval.
      */
     private function signature($post_id, $warning) {
         $ages = wp_get_post_terms($post_id, 'age-group', ['fields' => 'slugs']);
@@ -133,9 +133,14 @@ class RecipePublicationGuard {
             $ages = [];
         }
         sort($ages, SORT_STRING);
+        $post = get_post($post_id);
         return hash('sha256', serialize([
             'warning' => $warning,
+            'title' => $post ? $post->post_title : '',
+            'content' => $post ? $post->post_content : '',
+            'excerpt' => $post ? $post->post_excerpt : '',
             'ingredients' => get_post_meta($post_id, '_kg_ingredients', true),
+            'instructions' => get_post_meta($post_id, '_kg_instructions', true),
             'ages' => $ages,
         ]));
     }
@@ -272,9 +277,29 @@ class RecipePublicationGuard {
         if (!is_array($age_slugs) || $age_slugs === []) {
             return 'Bal içeren tarifin yaş grubu doğrulanamadı.';
         }
-        foreach (['hazirlk-evresi-0-6-ay', 'baslangic-tadim-6-8-ay', 'kesif-puturlye-gecis-9-11-ay'] as $under_12) {
-            if (in_array($under_12, $age_slugs, true)) {
+        // Both the live age taxonomy defaults and legacy AI-generated slugs
+        // appear in KidsGourmet content. Unknown slugs must remain visible as
+        // warnings rather than being silently classified as 12 months or older.
+        $under_12 = [
+            '0-6-ay-sadece-sut',
+            '6-8-ay-baslangic',
+            '9-11-ay-kesif',
+            'hazirlk-evresi-0-6-ay',
+            'baslangic-tadim-6-8-ay',
+            'kesif-puturlye-gecis-9-11-ay',
+        ];
+        $known_12_plus = [
+            '12-24-ay-gecis',
+            '2-yas-ve-uzeri',
+            'aile-sofrasina-gecis-12-24-ay',
+            'cocuk-gurme-2-yas',
+        ];
+        foreach ($age_slugs as $age) {
+            if (!is_string($age) || in_array($age, $under_12, true)) {
                 return 'Bal içeren tarifler 12 aydan küçük çocuklara önerilemez.';
+            }
+            if (!in_array($age, $known_12_plus, true)) {
+                return 'Bal içeren tarifte tanımlanmamış bir yaş grubu var; editör kontrolü önerilir.';
             }
         }
         return null;
