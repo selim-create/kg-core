@@ -1,0 +1,24 @@
+name: Recipe Publication Checks
+
+on:
+  pull_request:
+    paths:
+      - 'includes/Services/RecipePublicationGuard.php'
+      - 'tests/test-recipe-publication-*.php'
+      - '.github/workflows/recipe-publication-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  recipe-publication:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax and editorial safety regression
+        run: |
+          php -l includes/Services/RecipePublicationGuard.php
+          php -l tests/test-recipe-publication-guard.php
+          php -l tests/test-recipe-publication-editorial-flow.php
+          php tests/test-recipe-publication-guard.php
+          php tests/test-recipe-publication-editorial-flow.php
