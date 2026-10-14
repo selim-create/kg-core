@@ -402,7 +402,11 @@ class AIService {
                 return $response;
             }
             
-            return $this->parseRecipeResponse($response);
+            $parsed = $this->parseRecipeResponse($response);
+            if (is_wp_error($parsed)) {
+                return $parsed;
+            }
+            return $this->validateRecipeIngredientSafety($recipe_data, $parsed);
             
         } catch (\Exception $e) {
             error_log('KG Core AI Recipe Error: ' . $e->getMessage());
@@ -410,6 +414,68 @@ class AIService {
         }
     }
     
+    /**
+     * Fail closed on high-confidence hazards before any AI fields are persisted.
+     * Editorial review is still required for preparation texture and allergies.
+     */
+    private function validateRecipeIngredientSafety($recipe_data, $generated) {
+        $ingredients = isset($recipe_data['ingredients']) ? $recipe_data['ingredients'] : [];
+        if (!is_array($ingredients) || empty($ingredients)) {
+            return new \\WP_Error('recipe_ingredients_missing', 'Malzeme listesi olmadan yaş ve alerjen güvenliği doğrulanamaz.');
+        }
+
+        $names = [];
+        foreach ($ingredients as $ingredient) {
+            if (is_array($ingredient)) {
+                $name = isset($ingredient['item']) ? $ingredient['item'] : (isset($ingredient['name']) ? $ingredient['name'] : '');
+            } else {
+                $name = $ingredient;
+            }
+            if (!is_string($name) || trim($name) === '') {
+                return new \\WP_Error('recipe_ingredient_invalid', 'Malzeme adı boş veya geçersiz; editör kontrolü gerekli.');
+            }
+            $names[] = $name;
+        }
+        $text = implode(' ', $names);
+        // Exact Turkish words, not substrings (e.g. balık must not trigger bal).
+        $has_honey = preg_match('/(?<![\\p{L}])bal(?![\\p{L}])/iu', $text) === 1;
+        if ($has_honey) {
+            $ages = isset($generated['age_groups']) && is_array($generated['age_groups'])
+                ? $generated['age_groups'] : [];
+            if (empty($ages) || in_array('baslangic-tadim-6-8-ay', $ages, true) ||
+                in_array('kesif-puturlye-gecis-9-11-ay', $ages, true)) {
+                return new \\WP_Error('honey_infant_risk', 'Bal içeren tarif 12 aydan küçük bebekler için uygun değildir. Yaş gruplarını editör kontrolünden geçirin.');
+            }
+        }
+
+        // Explicitly surface well-known allergens even when the model omits tags.
+        // Do not infer absence of allergens from a negative match.
+        $patterns = [
+            'Yumurta' => '/(?<![\\p{L}])yumurta(?![\\p{L}])/iu',
+            'Süt' => '/(?<![\\p{L}])(?:süt|yoğurt|peynir|tereyağı)(?![\\p{L}])/iu',
+            'Yer Fıstığı' => '/(?<![\\p{L}])yer\\s+fıstığı(?![\\p{L}])/iu',
+            'Susam' => '/(?<![\\p{L}])(?:susam|tahin)(?![\\p{L}])/iu',
+            'Balık' => '/(?<![\\p{L}])(?:balık|somon|hamsi|levrek)(?![\\p{L}])/iu',
+        ];
+        $declared = isset($generated['allergens']) && is_array($generated['allergens'])
+            ? $generated['allergens'] : [];
+        foreach ($patterns as $label => $pattern) {
+            if (preg_match($pattern, $text) === 1) {
+                $found = false;
+                foreach ($declared as $term) {
+                    if (is_string($term) && mb_strtolower($term, 'UTF-8') === mb_strtolower($label, 'UTF-8')) {
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    return new \\WP_Error('allergen_review_required', 'Malzeme listesinde ' . $label . ' tespit edildi ancak AI alerjen etiketi eksik; editör kontrolü gerekli.');
+                }
+            }
+        }
+        return $generated;
+    }
+
     /**
      * Build prompt for recipe content generation
      * 
