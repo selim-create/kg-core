@@ -234,7 +234,7 @@ class SettingsPage {
         // Get current settings
         $ai_provider = get_option('kg_ai_provider', 'openai');
         $openai_api_key = get_option('kg_openai_api_key', '') ?: get_option('kg_ai_api_key', '');
-        $ai_model = get_option('kg_ai_model', 'gpt-4o-mini');
+        $ai_model = \KG_Core\Services\OpenAIClient::resolveModel(get_option('kg_ai_model', \KG_Core\Services\OpenAIClient::DEFAULT_MODEL));
         
         $image_source = get_option('kg_image_source', 'dalle');
         $dalle_api_key = get_option('kg_dalle_api_key', '') ?: get_option('kg_ai_api_key', '');
@@ -293,9 +293,9 @@ class SettingsPage {
                             <th scope="row">Model</th>
                             <td>
                                 <select name="kg_ai_model">
-                                    <option value="gpt-4o" <?php selected($ai_model, 'gpt-4o'); ?>>GPT-4o (En İyi Kalite)</option>
-                                    <option value="gpt-4o-mini" <?php selected($ai_model, 'gpt-4o-mini'); ?>>GPT-4o Mini (Hızlı & Ekonomik)</option>
-                                    <option value="gpt-4-turbo" <?php selected($ai_model, 'gpt-4-turbo'); ?>>GPT-4 Turbo</option>
+                                    <option value="gpt-6.1-sol" <?php selected($ai_model, 'gpt-6.1-sol'); ?>>GPT-6.1 Sol (Önerilen)</option>
+                                    <option value="gpt-6-luna" <?php selected($ai_model, 'gpt-6-luna'); ?>>GPT-6 Luna (Hızlı & Ekonomik)</option>
+                                    <option value="gpt-6-astra" <?php selected($ai_model, 'gpt-6-astra'); ?>>GPT-6 Astra (En Yüksek Kalite)</option>
                                 </select>
                             </td>
                         </tr>
