@@ -44,11 +44,11 @@ jobs:
           ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
             "test -d '$DEPLOY_PATH' && test -w '$DEPLOY_PATH'"
 
-      - name: Deploy plugin files
+      - name: Deploy plugin files (non-destructive sync)
         shell: bash
         run: |
           set -euo pipefail
-          rsync -az --delete \
+          rsync -az \
             --exclude '.git/' \
             --exclude '.github/' \
             --exclude 'docs/' \
