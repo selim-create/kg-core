@@ -101,12 +101,21 @@ kg_test_expect(!is_wp_error($scheduled_recipe), 'scheduled recipe draft created'
 update_post_meta($scheduled_recipe, '_kg_ingredients', [['name' => 'Bal']]);
 wp_set_post_terms($scheduled_recipe, [$infant_id], 'age-group');
 $future_time = gmdate('Y-m-d H:i:s', time() + 3600);
-wp_update_post([
+$schedule_result = wp_update_post([
     'ID' => $scheduled_recipe,
     'post_status' => 'future',
     'post_date_gmt' => $future_time,
     'post_date' => get_date_from_gmt($future_time),
-]);
+], true);
+$scheduled_post = get_post($scheduled_recipe);
+WP_CLI::log('SCHEDULE DEBUG: ' . wp_json_encode([
+    'result' => is_wp_error($schedule_result) ? $schedule_result->get_error_message() : $schedule_result,
+    'status' => $scheduled_post->post_status,
+    'post_date_gmt' => $scheduled_post->post_date_gmt,
+    'post_date' => $scheduled_post->post_date,
+    'requested_date_gmt' => $future_time,
+    'now_utc' => current_time('mysql', true),
+]));
 kg_test_expect(get_post_status($scheduled_recipe) === 'future', 'future status saved');
 wp_set_current_user(0);
 // A WP-Cron publish callback invokes wp_publish_post(), which calls
