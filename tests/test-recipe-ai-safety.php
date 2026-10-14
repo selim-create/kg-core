@@ -40,4 +40,31 @@ namespace KG_Core\Services {
         exit(1);
     }
     echo "PASS: unverified nutrition discarded\n";
+    $safety = new \\ReflectionMethod(AIService::class, 'validateRecipeIngredientSafety');
+    $safety->setAccessible(true);
+    $cases = [
+        ['honey at 6 months', ['ingredients' => [['name' => 'Bal']]], ['age_groups' => ['baslangic-tadim-6-8-ay']], 'honey_infant_risk'],
+        ['honey at 9 months', ['ingredients' => ['bal']], ['age_groups' => ['kesif-puturlye-gecis-9-11-ay']], 'honey_infant_risk'],
+        ['honey without age', ['ingredients' => ['Bal']], ['age_groups' => []], 'honey_infant_risk'],
+        ['untagged egg', ['ingredients' => ['Yumurta']], ['age_groups' => ['aile-sofrasina-gecis-12-24-ay'], 'allergens' => []], 'allergen_review_required'],
+        ['missing ingredients', ['ingredients' => []], ['age_groups' => ['aile-sofrasina-gecis-12-24-ay']], 'recipe_ingredients_missing'],
+    ];
+    foreach ($cases as [$name, $recipe, $ai, $expected]) {
+        $result = $safety->invoke($service, $recipe, $ai);
+        if (!($result instanceof \\WP_Error) || $result->get_error_code() !== $expected) {
+            fwrite(STDERR, "FAIL: $name\\n");
+            exit(1);
+        }
+        echo "PASS: $name\\n";
+    }
+    // 'Balık' is not honey: no substring false positive.
+    $ok = $safety->invoke($service, ['ingredients' => ['Balık']], [
+        'age_groups' => ['baslangic-tadim-6-8-ay'], 'allergens' => ['Balık']
+    ]);
+    if ($ok instanceof \\WP_Error) {
+        fwrite(STDERR, "FAIL: fish must not be identified as honey\\n");
+        exit(1);
+    }
+    echo "PASS: fish is not honey\\n";
+
 }
