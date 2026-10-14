@@ -14,7 +14,7 @@ class RecipeSEOGenerator {
     private $model;
     
     public function __construct() {
-        $this->model = get_option('kg_ai_model', 'gpt-4o-mini');
+        $this->model = OpenAIClient::resolveModel(get_option('kg_ai_model', OpenAIClient::DEFAULT_MODEL));
     }
     
     /**
@@ -186,53 +186,15 @@ class RecipeSEOGenerator {
      * @return string|WP_Error API response or error
      */
     private function callOpenAI($prompt, $apiKey) {
-        $url = 'https://api.openai.com/v1/chat/completions';
-        
-        $body = [
-            'model' => $this->model,
-            'messages' => [
-                [
-                    'role' => 'system',
-                    'content' => 'Sen SEO uzmanısın. Yanıtlarını her zaman JSON formatında veriyorsun.'
-                ],
-                [
-                    'role' => 'user',
-                    'content' => $prompt
-                ]
-            ],
-            'temperature' => 0.7,
-            'max_tokens' => self::MAX_TOKENS
-        ];
-        
-        $response = wp_remote_post($url, [
-            'headers' => [
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Content-Type' => 'application/json'
-            ],
-            'body' => json_encode($body),
-            'timeout' => 30
-        ]);
-        
-        if (is_wp_error($response)) {
-            return $response;
-        }
-        
-        $status_code = wp_remote_retrieve_response_code($response);
-        if ($status_code !== 200) {
-            $body = json_decode(wp_remote_retrieve_body($response), true);
-            $error_msg = isset($body['error']['message']) ? $body['error']['message'] : 'Bilinmeyen hata';
-            return new \WP_Error('openai_error', 'OpenAI API hatası: ' . $error_msg);
-        }
-        
-        $body = json_decode(wp_remote_retrieve_body($response), true);
-        
-        if (!isset($body['choices'][0]['message']['content'])) {
-            return new \WP_Error('openai_parse_error', 'OpenAI yanıtı ayrıştırılamadı.');
-        }
-        
-        return $body['choices'][0]['message']['content'];
+        $client = new OpenAIClient($apiKey, $this->model);
+
+        return $client->generateText(
+            'Sen SEO konusunda uzman, çocuk ve bebek beslenmesi içeriklerinde sağlık iddialarını abartmayan bir asistansın. Yanıtını yalnızca istenen JSON formatında ver.',
+            $prompt,
+            self::MAX_TOKENS
+        );
     }
-    
+
     /**
      * Parse AI response to extract SEO data
      * 

@@ -9,7 +9,10 @@ class AIService {
     public function __construct() {
         $this->provider = get_option('kg_ai_provider', 'openai');
         $this->api_key = get_option('kg_openai_api_key', '') ?: get_option('kg_ai_api_key', '');
-        $this->model = get_option('kg_ai_model', 'gpt-4o-mini');
+        $stored_model = get_option('kg_ai_model', OpenAIClient::DEFAULT_MODEL);
+        $this->model = $this->provider === 'openai'
+            ? OpenAIClient::resolveModel($stored_model)
+            : $stored_model;
     }
     
     /**
@@ -134,34 +137,17 @@ class AIService {
         
         $prompt .= json_encode($json_template, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
         
-        $prompt .= "\n\n⚠️ KRİTİK: BAŞLANGIÇ YAŞI KURALLARI (MUTLAKA UYULMALI!)\n";
-        $prompt .= "start_age alanı çocuğun HAYATİ GÜVENLİĞİ için kritiktir. ASLA tahminle doldurma!\n\n";
-        $prompt .= "YASAKLI / GEÇ VERİLMESİ GEREKEN MALZEMELER:\n";
-        $prompt .= "- Bal: start_age = 12 (Botulizm riski - kesinlikle 1 yaş altına YASAK)\n";
-        $prompt .= "- Çay, kahve, kafeinli içecekler: start_age = 24 (tercihen hiç verilmemeli)\n";
-        $prompt .= "- İnek sütü (içecek olarak): start_age = 12\n";
-        $prompt .= "- Çilek, kivi, ananas, narenciye (alerjik meyveler): start_age = 8 minimum\n";
-        $prompt .= "- Tam yumurta (sarısı+beyazı): start_age = 8\n";
-        $prompt .= "- Yumurta beyazı tek başına: start_age = 12\n";
-        $prompt .= "- Kuruyemişler (bütün halde): start_age = 36 (boğulma riski)\n";
-        $prompt .= "- Kuruyemiş ezmesi: start_age = 6\n";
-        $prompt .= "- Deniz ürünleri (kabuklu): start_age = 12\n";
-        $prompt .= "- Şeker, tuz eklenmiş gıdalar: start_age = 24+\n";
-        $prompt .= "- Kakao, çikolata: start_age = 12\n";
-        $prompt .= "- Mantar: start_age = 12\n\n";
-        $prompt .= "GÜVENLİ ERKEN BAŞLANGIÇ (6 ay):\n";
-        $prompt .= "- Avokado, muz, elma (pişmiş), armut (pişmiş)\n";
-        $prompt .= "- Havuç, kabak, patates, tatlı patates\n";
-        $prompt .= "- Pirinç, yulaf\n\n";
-        $prompt .= "8 AY BAŞLANGIÇ:\n";
-        $prompt .= "- Yoğurt, peynir\n";
-        $prompt .= "- Mercimek, nohut (iyi pişmiş)\n";
-        $prompt .= "- Çilek, kivi (az miktarda test ile)\n";
-        $prompt .= "- Domates (çekirdeksiz, kabuğu soyulmuş)\n";
-        $prompt .= "- Tavuk, hindi, dana\n\n";
-        $prompt .= "ÖNEMLİ: prep_by_age alanındaki en erken yaş grubu ile start_age AYNI OLMALI!\n";
-        $prompt .= "Eğer prep_by_age'de en erken '8-9 Ay' yazıyorsa, start_age = 8 olmalı!\n\n";
-        
+        $prompt .= "\n\n⚠️ GÜVENLİK VE YAŞA UYGUNLUK KURALLARI\n";
+        $prompt .= "start_age alanı için tek bir sabit listeyi ezbere uygulama. Güncel pediatrik beslenme yaklaşımını esas al.\n";
+        $prompt .= "- Ek gıdaya geçiş genel olarak yaklaşık 6. ay civarında, bebeğin gelişimsel olarak hazır olmasıyla başlar.\n";
+        $prompt .= "- Bal: 12 aydan önce verilmez (infantil botulizm riski).\n";
+        $prompt .= "- İnek sütü ana içecek olarak 12 aydan önce verilmez; ancak yemek içindeki kullanım ve süt ürünleri ayrıca değerlendirilir.\n";
+        $prompt .= "- İlave şeker ve kafeinli içecekleri küçük çocuklar için önerme.\n";
+        $prompt .= "- Yumurta, yer fıstığı ve diğer yaygın alerjenleri yalnızca alerjen oldukları için gereksiz yere 8-12 aya erteleme. Gelişimsel olarak hazır bebeklerde yaklaşık 6. aydan itibaren yaşa uygun formda dikkatli tanıtım güncel yaklaşımla uyumludur.\n";
+        $prompt .= "- Bütün kuruyemiş, sert/yuvarlak gıdalar ve benzeri boğulma riski taşıyan formlar küçük çocuklar için uygun değildir; ezme, öğütme veya yaşa uygun yumuşak formu ayrıca değerlendir.\n";
+        $prompt .= "- Alerji öyküsü, ağır egzama, prematürite, yutma güçlüğü veya özel tıbbi durum varsa bireysel hekim değerlendirmesi gerektiğini belirt.\n";
+        $prompt .= "- start_age ile prep_by_age birbiriyle tutarlı olmalı. Emin olmadığın durumda kesin tıbbi hüküm verme; ihtiyatlı ve açıklayıcı değer üret.\n\n";
+
         $prompt .= "ÖNEMLİ MEVSİM KURALLARI:\n";
         $prompt .= "- Mevsim alanı için BİRDEN FAZLA mevsim seçilebilir (array olarak döndür)\n";
         $prompt .= "- Türkiye'nin mevsim koşullarına ve DOĞAL ÜRETİM dönemine göre değerlendir\n";
@@ -233,53 +219,15 @@ class AIService {
      * @return string|WP_Error API response or error
      */
     private function callOpenAI($prompt) {
-        $url = 'https://api.openai.com/v1/chat/completions';
-        
-        $body = [
-            'model' => $this->model,
-            'messages' => [
-                [
-                    'role' => 'system',
-                    'content' => 'Sen bebek beslenmesi konusunda uzman bir asistansın. Yanıtlarını her zaman JSON formatında veriyorsun.'
-                ],
-                [
-                    'role' => 'user',
-                    'content' => $prompt
-                ]
-            ],
-            'temperature' => 0.7,
-            'max_tokens' => 2000
-        ];
-        
-        $response = wp_remote_post($url, [
-            'headers' => [
-                'Authorization' => 'Bearer ' . $this->api_key,
-                'Content-Type' => 'application/json'
-            ],
-            'body' => json_encode($body),
-            'timeout' => 60
-        ]);
-        
-        if (is_wp_error($response)) {
-            return $response;
-        }
-        
-        $status_code = wp_remote_retrieve_response_code($response);
-        if ($status_code !== 200) {
-            $body = json_decode(wp_remote_retrieve_body($response), true);
-            $error_msg = isset($body['error']['message']) ? $body['error']['message'] : 'Bilinmeyen hata';
-            return new \WP_Error('openai_error', 'OpenAI API hatası: ' . $error_msg);
-        }
-        
-        $body = json_decode(wp_remote_retrieve_body($response), true);
-        
-        if (!isset($body['choices'][0]['message']['content'])) {
-            return new \WP_Error('openai_parse_error', 'OpenAI yanıtı ayrıştırılamadı.');
-        }
-        
-        return $body['choices'][0]['message']['content'];
+        $client = new OpenAIClient($this->api_key, $this->model);
+
+        return $client->generateText(
+            'Sen bebek ve çocuk beslenmesi konusunda kanıta dayalı çalışan bir asistansın. Tıbbi tanı koyma. Yaşa uygunluk, alerjen ve boğulma riski gibi güvenlik başlıklarında güncel pediatrik rehberlerle çelişen kesin ifadeler üretme. Yanıtını yalnızca istenen JSON formatında ver.',
+            $prompt,
+            3500
+        );
     }
-    
+
     /**
      * Call Anthropic Claude API
      * 
