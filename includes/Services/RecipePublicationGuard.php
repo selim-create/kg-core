@@ -7,8 +7,51 @@ namespace KG_Core\Services;
  */
 class RecipePublicationGuard {
     public function __construct() {
-        add_filter('wp_insert_post_data', [$this, 'guardClassicPublish'], 20, 2);
-        add_action('admin_notices', [$this, 'showNotice']);
+        add_action('add_meta_boxes_recipe', [$this, 'registerNoticeBox']);
+        add_action('save_post_recipe', [$this, 'recordReview'], 100, 3);
+    }
+
+    public function registerNoticeBox() {
+        add_meta_box('kg_recipe_safety_review', 'Beslenme Güvenliği', [$this, 'renderNoticeBox'], 'recipe', 'side', 'high');
+    }
+
+    public function renderNoticeBox($post) {
+        $warning = $this->assessPost($post->ID);
+        if ($warning === null) {
+            echo '<p>Tanımlı kontrollerde uyarı bulunamadı. Bu sonuç tıbbi onay değildir.</p>';
+        } else {
+            echo '<p><strong>Kontrol önerilir:</strong> ' . esc_html($warning) . '</p>';
+            echo '<p>Yayın kararı yetkili editöre aittir. Uyarıya rağmen yayınlanırsa karar kayıt altına alınır.</p>';
+        }
+    }
+
+    private function assessPost($post_id) {
+        $ingredients = get_post_meta($post_id, '_kg_ingredients', true);
+        $ages = wp_get_post_terms($post_id, 'age-group', ['fields' => 'slugs']);
+        return self::assess($ingredients, is_wp_error($ages) ? [] : $ages);
+    }
+
+    public function recordReview($post_id, $post, $update) {
+        if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+            return;
+        }
+        $warning = $this->assessPost($post_id);
+        update_post_meta($post_id, '_kg_recipe_safety_warning', $warning === null ? '' : $warning);
+        if ($post->post_status !== 'publish' || $warning === null) {
+            return;
+        }
+        $signature = hash('sha256', $warning . '|' . serialize(get_post_meta($post_id, '_kg_ingredients', true)) . '|' . serialize(wp_get_post_terms($post_id, 'age-group', ['fields' => 'slugs'])));
+        if (get_post_meta($post_id, '_kg_recipe_safety_audit_signature', true) === $signature) {
+            return;
+        }
+        $user_id = get_current_user_id();
+        add_post_meta($post_id, '_kg_recipe_safety_approval_log', [
+            'user_id' => $user_id,
+            'timestamp' => current_time('mysql', true),
+            'warning' => $warning,
+            'context' => $user_id ? 'editor_or_api' : 'system_or_scheduled',
+        ]);
+        update_post_meta($post_id, '_kg_recipe_safety_audit_signature', $signature);
     }
 
     public static function assess($ingredients, $age_slugs) {
@@ -42,59 +85,4 @@ class RecipePublicationGuard {
         return null;
     }
 
-    public function guardClassicPublish($data, $postarr) {
-        if (($data['post_type'] ?? '') !== 'recipe' || ($data['post_status'] ?? '') !== 'publish') {
-            return $data;
-        }
-        // Keep already-published updates unchanged until the full REST/classic
-        // save flows can be validated in staging, to avoid surprise unpublishing.
-        $post_id = isset($postarr['ID']) ? (int) $postarr['ID'] : 0;
-        if ($post_id > 0 && get_post_status($post_id) === 'publish') {
-            return $data;
-        }
-
-        $ingredients = isset($_POST['kg_ingredients']) && is_array($_POST['kg_ingredients'])
-            ? wp_unslash($_POST['kg_ingredients'])
-            : ($post_id ? get_post_meta($post_id, '_kg_ingredients', true) : []);
-
-        $ages = [];
-        if ($post_id > 0) {
-            $terms = wp_get_post_terms($post_id, 'age-group', ['fields' => 'slugs']);
-            if (!is_wp_error($terms) && is_array($terms)) {
-                $ages = $terms;
-            }
-        }
-        // The classic editor can include taxonomy term ids not saved yet.
-        // Resolve them before deciding; never silently assume an infant age.
-        if (isset($_POST['tax_input']['age-group']) && is_array($_POST['tax_input']['age-group'])) {
-            foreach (wp_unslash($_POST['tax_input']['age-group']) as $term_id) {
-                $term = get_term((int) $term_id, 'age-group');
-                if ($term && !is_wp_error($term)) {
-                    $ages[] = $term->slug;
-                }
-            }
-        }
-        $reason = self::assess($ingredients, array_unique($ages));
-        if ($reason !== null) {
-            $data['post_status'] = 'draft';
-            if (function_exists('set_transient') && is_user_logged_in()) {
-                set_transient('kg_recipe_publication_block_' . get_current_user_id(), $reason, 120);
-            }
-        }
-        return $data;
-    }
-
-    public function showNotice() {
-        if (!is_user_logged_in()) {
-            return;
-        }
-        $key = 'kg_recipe_publication_block_' . get_current_user_id();
-        $reason = get_transient($key);
-        if (!$reason) {
-            return;
-        }
-        delete_transient($key);
-        echo '<div class="notice notice-error"><p><strong>Tarif taslakta tutuldu:</strong> '
-            . esc_html($reason) . '</p></div>';
-    }
 }
