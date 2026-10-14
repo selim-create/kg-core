@@ -8,7 +8,7 @@ namespace KG_Core\Services;
 class RecipePublicationGuard {
     public function __construct() {
         add_action('add_meta_boxes_recipe', [$this, 'registerNoticeBox']);
-        add_action('save_post_recipe', [$this, 'recordReview'], 100, 3);
+        add_action('wp_after_insert_post', [$this, 'recordReview'], 100, 3);
     }
 
     public function registerNoticeBox() {
@@ -32,7 +32,7 @@ class RecipePublicationGuard {
     }
 
     public function recordReview($post_id, $post, $update) {
-        if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+        if ($post->post_type !== 'recipe' || wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
             return;
         }
         $warning = $this->assessPost($post_id);
