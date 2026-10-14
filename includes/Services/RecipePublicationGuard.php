@@ -233,6 +233,7 @@ class RecipePublicationGuard {
         }
 
         if ($post->post_status !== 'publish') {
+            delete_post_meta($post_id, self::LAST_SIGNATURE_META);
             return;
         }
         if ($warning === null) {
@@ -243,7 +244,9 @@ class RecipePublicationGuard {
         $first_publication = !is_object($post_before)
             || $post_before->post_status !== 'publish';
         $previous_signature = get_post_meta($post_id, self::LAST_SIGNATURE_META, true);
-        if (!$first_publication && $previous_signature === $fingerprint) {
+        // WP-Cron can emit both a transition hook and an insert callback.
+        // The same published version must never create duplicate audit entries.
+        if ($previous_signature === $fingerprint) {
             return;
         }
 
