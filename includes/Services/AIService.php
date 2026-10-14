@@ -421,7 +421,7 @@ class AIService {
     private function validateRecipeIngredientSafety($recipe_data, $generated) {
         $ingredients = isset($recipe_data['ingredients']) ? $recipe_data['ingredients'] : [];
         if (!is_array($ingredients) || empty($ingredients)) {
-            return new \\WP_Error('recipe_ingredients_missing', 'Malzeme listesi olmadan yaş ve alerjen güvenliği doğrulanamaz.');
+            return new \WP_Error('recipe_ingredients_missing', 'Malzeme listesi olmadan yaş ve alerjen güvenliği doğrulanamaz.');
         }
 
         $names = [];
@@ -432,7 +432,7 @@ class AIService {
                 $name = $ingredient;
             }
             if (!is_string($name) || trim($name) === '') {
-                return new \\WP_Error('recipe_ingredient_invalid', 'Malzeme adı boş veya geçersiz; editör kontrolü gerekli.');
+                return new \WP_Error('recipe_ingredient_invalid', 'Malzeme adı boş veya geçersiz; editör kontrolü gerekli.');
             }
             $names[] = $name;
         }
@@ -444,7 +444,7 @@ class AIService {
                 ? $generated['age_groups'] : [];
             if (empty($ages) || in_array('baslangic-tadim-6-8-ay', $ages, true) ||
                 in_array('kesif-puturlye-gecis-9-11-ay', $ages, true)) {
-                return new \\WP_Error('honey_infant_risk', 'Bal içeren tarif 12 aydan küçük bebekler için uygun değildir. Yaş gruplarını editör kontrolünden geçirin.');
+                return new \WP_Error('honey_infant_risk', 'Bal içeren tarif 12 aydan küçük bebekler için uygun değildir. Yaş gruplarını editör kontrolünden geçirin.');
             }
         }
 
@@ -463,13 +463,13 @@ class AIService {
             if (preg_match($pattern, $text) === 1) {
                 $found = false;
                 foreach ($declared as $term) {
-                    if (is_string($term) && mb_strtolower($term, 'UTF-8') === mb_strtolower($label, 'UTF-8')) {
+                    if (is_string($term) && strcasecmp($term, $label) === 0) {
                         $found = true;
                         break;
                     }
                 }
                 if (!$found) {
-                    return new \\WP_Error('allergen_review_required', 'Malzeme listesinde ' . $label . ' tespit edildi ancak AI alerjen etiketi eksik; editör kontrolü gerekli.');
+                    return new \WP_Error('allergen_review_required', 'Malzeme listesinde ' . $label . ' tespit edildi ancak AI alerjen etiketi eksik; editör kontrolü gerekli.');
                 }
             }
         }
