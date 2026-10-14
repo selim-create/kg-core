@@ -20,5 +20,6 @@ jobs:
           php -l includes/Services/RecipePublicationGuard.php
           php -l tests/test-recipe-publication-guard.php
           php -l tests/test-recipe-publication-editorial-flow.php
+          php -l tests/test-recipe-publication-wordpress.php
           php tests/test-recipe-publication-guard.php
           php tests/test-recipe-publication-editorial-flow.php
