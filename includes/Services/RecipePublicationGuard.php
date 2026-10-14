@@ -204,7 +204,9 @@ class RecipePublicationGuard {
         // avoids a second log entry when wp_after_insert_post follows.
         $previous = clone $post;
         $previous->post_status = $old_status;
-        $this->recordReview($post->ID, $post, true, $previous);
+        $published = clone $post;
+        $published->post_status = $new_status;
+        $this->recordReview($post->ID, $published, true, $previous);
     }
 
     /**
