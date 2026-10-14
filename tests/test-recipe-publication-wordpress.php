@@ -124,6 +124,7 @@ wp_set_current_user(0);
 wp_publish_post($scheduled_recipe);
 kg_test_expect(get_post_status($scheduled_recipe) === 'publish', 'scheduled recipe published by WordPress core');
 $schedule_logs = get_post_meta($scheduled_recipe, '_kg_recipe_safety_publication_log', false);
+WP_CLI::log('CRON AUDIT DEBUG: ' . wp_json_encode(['count' => count($schedule_logs), 'logs' => $schedule_logs, 'warning' => get_post_meta($scheduled_recipe, '_kg_recipe_safety_warning', true)]));
 kg_test_expect(count($schedule_logs) === 1, 'scheduled publication audit recorded');
 kg_test_expect($schedule_logs[0]['publisher_user_id'] === 0, 'scheduled publication has system identity');
 kg_test_expect($schedule_logs[0]['explicitly_acknowledged'] === false, 'scheduled publication not marked as editor-approved');
