@@ -20,6 +20,8 @@ class RecipePublicationGuard {
         // Runs after the post, taxonomy terms and post meta have been saved.
         // This also covers Gutenberg, REST and scheduled publication.
         add_action('wp_after_insert_post', [$this, 'recordReview'], 100, 4);
+        // WordPress cron calls wp_publish_post(), bypassing wp_after_insert_post.
+        add_action('transition_post_status', [$this, 'recordScheduledPublication'], 100, 3);
     }
 
     public function registerNoticeBox() {
@@ -191,6 +193,18 @@ class RecipePublicationGuard {
             'message' => 'Editoryal onay kaydedildi. Tarifi yayınlamak için ayrıca Yayınla seçeneğini kullanın.',
             'time_utc' => $ack['time_utc'],
         ]);
+    }
+
+    public function recordScheduledPublication($new_status, $old_status, $post) {
+        if ($post->post_type !== 'recipe' || $old_status !== 'future' || $new_status !== 'publish') {
+            return;
+        }
+        // For wp_publish_post() there is no wp_after_insert_post callback.
+        // If this runs as part of wp_update_post(), idempotency in recordReview
+        // avoids a second log entry when wp_after_insert_post follows.
+        $previous = clone $post;
+        $previous->post_status = $old_status;
+        $this->recordReview($post->ID, $post, true, $previous);
     }
 
     /**
