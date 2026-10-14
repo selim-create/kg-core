@@ -104,6 +104,7 @@ $future_time = gmdate('Y-m-d H:i:s', time() + 3600);
 $schedule_result = wp_update_post([
     'ID' => $scheduled_recipe,
     'post_status' => 'future',
+    'edit_date' => true,
     'post_date_gmt' => $future_time,
     'post_date' => get_date_from_gmt($future_time),
 ], true);
