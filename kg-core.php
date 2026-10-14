@@ -96,6 +96,10 @@ if ( file_exists( KG_CORE_PATH . 'includes/Services/SolidFoodReadinessChecker.ph
 // 2.9.1. RECOMMENDATION AND SAFETY SERVICES (NEW)
 if ( file_exists( KG_CORE_PATH . 'includes/Services/RecommendationService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/RecommendationService.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Services/SafetyCheckService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/SafetyCheckService.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Services/RecipePublicationGuard.php' ) ) {
+    require_once KG_CORE_PATH . 'includes/Services/RecipePublicationGuard.php';
+    new \KG_Core\Services\RecipePublicationGuard();
+}
 if ( file_exists( KG_CORE_PATH . 'includes/Services/NutritionTrackerService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/NutritionTrackerService.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Services/FoodIntroductionService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/FoodIntroductionService.php';
 

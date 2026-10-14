@@ -1,0 +1,69 @@
+name: Recipe Publication Checks
+
+on:
+  pull_request:
+    paths:
+      - 'includes/Services/RecipePublicationGuard.php'
+      - 'tests/test-recipe-publication-*.php'
+      - '.github/workflows/recipe-publication-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  recipe-publication:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: kg_recipe_ci
+          MYSQL_USER: kg_ci
+          MYSQL_PASSWORD: kg_ci_password
+          MYSQL_ROOT_PASSWORD: kg_ci_root_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax and editorial safety regression
+        run: |
+          php -l includes/Services/RecipePublicationGuard.php
+          php -l tests/test-recipe-publication-guard.php
+          php -l tests/test-recipe-publication-editorial-flow.php
+          php -l tests/test-recipe-publication-wordpress.php
+          php tests/test-recipe-publication-guard.php
+          php tests/test-recipe-publication-editorial-flow.php
+
+      - name: Provision disposable WordPress test site
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -m | grep -iq mysqli
+          mkdir -p "$RUNNER_TEMP/kg-wordpress"
+          curl --fail --location --silent --show-error \
+            https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+            --output "$RUNNER_TEMP/wp-cli.phar"
+          php "$RUNNER_TEMP/wp-cli.phar" core download \
+            --path="$RUNNER_TEMP/kg-wordpress" --quiet
+          php "$RUNNER_TEMP/wp-cli.phar" config create \
+            --path="$RUNNER_TEMP/kg-wordpress" \
+            --dbname=kg_recipe_ci --dbuser=kg_ci --dbpass=kg_ci_password \
+            --dbhost=127.0.0.1:3306 --quiet
+          php "$RUNNER_TEMP/wp-cli.phar" core install \
+            --path="$RUNNER_TEMP/kg-wordpress" \
+            --url=http://localhost --title="KidsGourmet isolated CI" \
+            --admin_user=kg_ci_admin --admin_password=ci-only-admin-pass \
+            --admin_email=ci-admin@example.invalid --skip-email --quiet
+
+      - name: Real WordPress integration - REST, publication, cron
+        shell: bash
+        run: |
+          set -euo pipefail
+          php "$RUNNER_TEMP/wp-cli.phar" \
+            --path="$RUNNER_TEMP/kg-wordpress" \
+            eval-file "$GITHUB_WORKSPACE/tests/test-recipe-publication-wordpress.php"
