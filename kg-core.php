@@ -79,6 +79,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Services/TariftenService.php' ) ) req
 if ( file_exists( KG_CORE_PATH . 'includes/Services/MetaSyncService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/MetaSyncService.php';
 
 // 2.8. AI SERVİSLERİ DAHİL ET
+if ( file_exists( KG_CORE_PATH . 'includes/Services/OpenAIClient.php' ) ) require_once KG_CORE_PATH . 'includes/Services/OpenAIClient.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Services/AIService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/AIService.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Services/ImageService.php' ) ) require_once KG_CORE_PATH . 'includes/Services/ImageService.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Services/IngredientGenerator.php' ) ) require_once KG_CORE_PATH . 'includes/Services/IngredientGenerator.php';
