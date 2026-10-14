@@ -62,7 +62,7 @@ class AIService {
      * @return string Formatted prompt
      */
     private function buildIngredientPrompt($name) {
-        $prompt = "Sen bebek beslenmesi konusunda uzman bir diyetisyen ve çocuk doktorusun. ";
+        $prompt = "Sen kanıta dayalı bebek beslenmesi bilgisi hazırlayan bir içerik asistanısın; doktor veya diyetisyen olduğunu iddia etme. ";
         $prompt .= "Aşağıdaki malzeme hakkında Türkçe olarak detaylı ve bilimsel bilgi ver.\n\n";
         $prompt .= "Malzeme: {$name}\n\n";
         $prompt .= "Lütfen yanıtını SADECE aşağıdaki JSON formatında ver (başka açıklama ekleme):\n\n";
@@ -436,7 +436,7 @@ class AIService {
             return ($idx + 1) . ". " . $inst;
         }, $instructions, array_keys($instructions))) : $instructions;
         
-        $prompt = "Sen bebek ve çocuk beslenmesi konusunda uzman bir diyetisyen ve pediatristsin.\n";
+        $prompt = "Sen kanıta dayalı bebek ve çocuk beslenmesi bilgisi hazırlayan bir içerik asistanısın; doktor veya diyetisyen olduğunu iddia etme.\n";
         $prompt .= "Aşağıdaki tarif bilgilerine göre eksik alanları Türkçe olarak doldur.\n\n";
         $prompt .= "Tarif Adı: {$title}\n";
         $prompt .= "Mevcut Açıklama: {$content}\n";
@@ -487,7 +487,7 @@ class AIService {
         $prompt .= "3. Zorluk seviyesi sadece: Kolay, Orta, Zor\n";
         $prompt .= "4. Dondurulabilir mi: true veya false\n";
         $prompt .= "5. İkame malzemeler array formatında\n";
-        $prompt .= "6. Beslenme değerleri porsiyon başına\n";
+        $prompt .= "6. Beslenme değerleri porsiyon başına; doğrulanmış kaynak ve kesin porsiyon ölçüsü yoksa sayısal değer uydurma, nutrition alanını null döndür\n";
         $prompt .= "7. SEO title max 60 karakter\n";
         $prompt .= "8. SEO description 150-160 karakter\n";
         $prompt .= "9. Content sadece mevcut content boşsa doldurulacak (1 paragraf)\n\n";
@@ -523,7 +523,11 @@ class AIService {
         $prompt .= "- Bilimsel ve güvenilir bilgiler ver\n";
         $prompt .= "- Malzeme listesine göre alerjenleri belirle\n";
         $prompt .= "- İkame malzemelerde alerjik malzemeler için alternatif öner\n";
-        $prompt .= "- Beslenme değerleri gerçekçi olmalı\n";
+        $prompt .= "- Hesaplanmayan besin değerlerini tahmin ederek doldurma; doğrulanamıyorsa nutrition = null kullan\\n";
+        $prompt .= "- 0-6 ay grubuna ek gıda tarifi atama; ek gıdalar genellikle yaklaşık 6. ayda, gelişimsel hazır oluşla başlar\\n";
+        $prompt .= "- Bal içeren tariflerde 12 aydan küçük yaş gruplarını seçme (botulizm riski)\\n";
+        $prompt .= "- Sert/yuvarlak veya bütün kuruyemiş içeren hazırlama biçimlerinde boğulma riskine karşı uygun doku öner; güvenli biçim net değilse küçük bebeklere atama\\n";
+        $prompt .= "- Alerjen içeren tariflerde olası alerjenleri açıkça işaretle; özel riskli çocuklarda hekim değerlendirmesi gerektiğini belirt\\n";
         
         return $prompt;
     }
@@ -546,11 +550,38 @@ class AIService {
             return new \WP_Error('json_parse_error', 'AI yanıtı JSON olarak ayrıştırılamadı: ' . json_last_error_msg());
         }
         
-        // Debug log
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('KG Core AI Recipe Response: ' . print_r($data, true));
+        if (!is_array($data) || array_keys($data) === range(0, count($data) - 1)) {
+            return new \\WP_Error('invalid_recipe_shape', 'AI yanıtı tarif nesnesi içermiyor.');
         }
-        
+
+        // The 0-6 month taxonomy represents preparation, not complementary feeding.
+        if (isset($data['age_groups'])) {
+            if (!is_array($data['age_groups'])) {
+                return new \\WP_Error('invalid_age_groups', 'Yaş grupları liste olarak dönmelidir.');
+            }
+            $allowed = [
+                'hazirlk-evresi-0-6-ay',
+                'baslangic-tadim-6-8-ay',
+                'kesif-puturlye-gecis-9-11-ay',
+                'aile-sofrasina-gecis-12-24-ay',
+                'cocuk-gurme-2-yas',
+            ];
+            foreach ($data['age_groups'] as $age_group) {
+                if (!is_string($age_group) || !in_array($age_group, $allowed, true)) {
+                    return new \\WP_Error('invalid_age_group', 'AI tanımlı olmayan bir yaş grubu döndürdü.');
+                }
+            }
+            if (in_array('hazirlk-evresi-0-6-ay', $data['age_groups'], true)) {
+                return new \\WP_Error('unsafe_age_group', 'Ek gıda tarifi 0-6 ay hazırlık evresine atanamaz; editör kontrolü gerekli.');
+            }
+        }
+
+        // Never show synthetic precise nutritional values when recipe quantities
+        // and a verified source are unavailable in this generation workflow.
+        if (array_key_exists('nutrition', $data)) {
+            $data['nutrition'] = null;
+        }
+
         return $data;
     }
 }
