@@ -39,6 +39,7 @@ jobs:
           php tests/test-recipe-ai-safety.php
           php -l includes/Services/RecipePublicationGuard.php
           php tests/test-recipe-publication-guard.php
+          php tests/test-recipe-publication-editorial-flow.php
 
       - name: Prepare SSH
         shell: bash
