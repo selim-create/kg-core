@@ -2,26 +2,118 @@
 namespace KG_Core\Services;
 
 /**
- * Conservative pre-publication checks using values already saved in WordPress,
- * or supplied in the classic editor request. Never claims a complete medical audit.
+ * Advisory checks for recipe publishing.
+ *
+ * A warning is not a medical judgment. Authorized editors retain final
+ * publication control; acknowledgement and publication are audited separately.
  */
 class RecipePublicationGuard {
+    private const ACK_META = '_kg_recipe_safety_acknowledgment';
+    private const WARNING_META = '_kg_recipe_safety_warning';
+    private const LAST_SIGNATURE_META = '_kg_recipe_safety_last_publish_signature';
+    private const LOG_META = '_kg_recipe_safety_publication_log';
+
     public function __construct() {
         add_action('add_meta_boxes_recipe', [$this, 'registerNoticeBox']);
-        add_action('wp_after_insert_post', [$this, 'recordReview'], 100, 3);
+        add_action('admin_enqueue_scripts', [$this, 'enqueueReviewScript']);
+        add_action('wp_ajax_kg_recipe_acknowledge_warning', [$this, 'ajaxAcknowledgeWarning']);
+        // Runs after the post, taxonomy terms and post meta have been saved.
+        // This also covers Gutenberg, REST and scheduled publication.
+        add_action('wp_after_insert_post', [$this, 'recordReview'], 100, 4);
     }
 
     public function registerNoticeBox() {
-        add_meta_box('kg_recipe_safety_review', 'Beslenme Güvenliği', [$this, 'renderNoticeBox'], 'recipe', 'side', 'high');
+        add_meta_box(
+            'kg_recipe_safety_review',
+            'Beslenme Güvenliği · Editoryal Kontrol',
+            [$this, 'renderNoticeBox'],
+            'recipe',
+            'side',
+            'high',
+            [
+                '__block_editor_compatible_meta_box' => true,
+                '__back_compat_meta_box' => false,
+            ]
+        );
+    }
+
+    public function enqueueReviewScript($hook) {
+        if ($hook !== 'post.php' && $hook !== 'post-new.php') {
+            return;
+        }
+        $screen = get_current_screen();
+        if (!$screen || $screen->post_type !== 'recipe') {
+            return;
+        }
+        global $post;
+        if (!$post || !current_user_can('edit_post', $post->ID)) {
+            return;
+        }
+        wp_enqueue_script(
+            'kg-recipe-safety-review',
+            KG_CORE_URL . 'assets/admin/js/recipe-safety-review.js',
+            [],
+            KG_CORE_VERSION,
+            true
+        );
+        wp_localize_script('kg-recipe-safety-review', 'kgRecipeSafety', [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('kg_recipe_safety_ack_' . $post->ID),
+            'postId' => (int) $post->ID,
+        ]);
     }
 
     public function renderNoticeBox($post) {
+        if (!current_user_can('edit_post', $post->ID)) {
+            return;
+        }
+
         $warning = $this->assessPost($post->ID);
         if ($warning === null) {
-            echo '<p>Tanımlı kontrollerde uyarı bulunamadı. Bu sonuç tıbbi onay değildir.</p>';
+            echo '<p>Kaydedilmiş tarifte bu sınırlı kontroller kapsamında uyarı bulunmadı.</p>';
+            echo '<p><small>Bu sonuç uzman incelemesi veya tıbbi onay değildir.</small></p>';
+            return;
+        }
+
+        echo '<div class="notice notice-warning inline"><p><strong>Güvenlik uyarısı:</strong> '
+            . esc_html($warning) . '</p></div>';
+        echo '<p><small>Uyarı kaydedilmiş malzeme ve yaş gruplarına dayanır. '
+            . 'Değişiklik yaptıysanız önce tarifi kaydedin.</small></p>';
+
+        $fingerprint = $this->signature($post->ID, $warning);
+        $ack = get_post_meta($post->ID, self::ACK_META, true);
+        if (self::ackMatches($ack, $fingerprint)) {
+            $reviewer = get_userdata((int) $ack['user_id']);
+            $name = $reviewer ? $reviewer->display_name : 'ID ' . (int) $ack['user_id'];
+            echo '<p><strong>Bu sürüm için editör onayı kayıtlı:</strong> '
+                . esc_html($name) . ' · ' . esc_html($ack['time_utc']) . ' UTC</p>';
         } else {
-            echo '<p><strong>Kontrol önerilir:</strong> ' . esc_html($warning) . '</p>';
-            echo '<p>Yayın kararı yetkili editöre aittir. Uyarıya rağmen yayınlanırsa karar kayıt altına alınır.</p>';
+            echo '<p><strong>Bu sürüm için açık editör onayı bulunmuyor.</strong></p>';
+        }
+
+        if (current_user_can('publish_posts')) {
+            echo '<div data-kg-safety-review>';
+            echo '<label><input type="checkbox" data-kg-safety-confirm> '
+                . 'Uyarıyı okudum; bu tarifin mevcut sürümüne ilişkin editoryal kararı onaylıyorum.</label>';
+            echo '<p><button type="button" class="button button-secondary" data-kg-safety-submit disabled>'
+                . 'Editör Onayını Kaydet</button></p>';
+            echo '<p role="status" aria-live="polite" data-kg-safety-result></p>';
+            echo '</div>';
+        }
+
+        echo '<p><small>Onay, tarifi otomatik yayımlamaz. Yayınla düğmesi ayrıca kullanılır. '
+            . 'Yetkili editör onay vermeden de yayımlayabilir; bu durumda yayın geçmişine '
+            . '“açık onay yok” kaydı düşülür.</small></p>';
+
+        $history = get_post_meta($post->ID, self::LOG_META, false);
+        if (is_array($history) && $history !== []) {
+            $last = end($history);
+            if (is_array($last)) {
+                echo '<p><small>Son riskli yayın: '
+                    . esc_html($last['published_at_utc'] ?? '') . ' UTC · '
+                    . (!empty($last['explicitly_acknowledged']) ? 'Açık onay var' : 'Açık onay yok')
+                    . '</small></p>';
+            }
         }
     }
 
@@ -31,32 +123,132 @@ class RecipePublicationGuard {
         return self::assess($ingredients, is_wp_error($ages) ? [] : $ages);
     }
 
-    public function recordReview($post_id, $post, $update) {
+    /**
+     * Hash the saved recipe version for which the editor saw the warning.
+     * Changing ingredients, age groups or warning invalidates old approvals.
+     */
+    private function signature($post_id, $warning) {
+        $ages = wp_get_post_terms($post_id, 'age-group', ['fields' => 'slugs']);
+        if (is_wp_error($ages) || !is_array($ages)) {
+            $ages = [];
+        }
+        sort($ages, SORT_STRING);
+        return hash('sha256', serialize([
+            'warning' => $warning,
+            'ingredients' => get_post_meta($post_id, '_kg_ingredients', true),
+            'ages' => $ages,
+        ]));
+    }
+
+    public static function ackMatches($ack, $fingerprint) {
+        return is_array($ack)
+            && !empty($ack['user_id'])
+            && !empty($ack['signature'])
+            && is_string($ack['signature'])
+            && hash_equals($fingerprint, $ack['signature']);
+    }
+
+    /**
+     * Internal acknowledgment operation, called only after AJAX authorization.
+     * Public for isolated regression testing; it does not grant publish access.
+     */
+    public function acknowledgeSavedVersion($post_id, $user_id) {
+        $warning = $this->assessPost($post_id);
+        if ($warning === null) {
+            return false;
+        }
+        $ack = [
+            'user_id' => (int) $user_id,
+            'time_utc' => current_time('mysql', true),
+            'warning' => $warning,
+            'signature' => $this->signature($post_id, $warning),
+        ];
+        update_post_meta($post_id, self::ACK_META, $ack);
+        return $ack;
+    }
+
+    public function ajaxAcknowledgeWarning() {
+        $post_id = isset($_POST['post_id']) ? absint(wp_unslash($_POST['post_id'])) : 0;
+        if (!$post_id || !check_ajax_referer('kg_recipe_safety_ack_' . $post_id, 'nonce', false)) {
+            wp_send_json_error(['message' => 'Güvenlik doğrulaması başarısız. Sayfayı yenileyin.'], 403);
+        }
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== 'recipe'
+            || !current_user_can('edit_post', $post_id) || !current_user_can('publish_posts')) {
+            wp_send_json_error(['message' => 'Bu tarife onay verme yetkiniz yok.'], 403);
+        }
+
+        $ack = $this->acknowledgeSavedVersion($post_id, get_current_user_id());
+        if ($ack === false) {
+            wp_send_json_error(['message' => 'Kaydedilmiş sürümde onay bekleyen uyarı bulunamadı.'], 409);
+        }
+        wp_send_json_success([
+            'message' => 'Editoryal onay kaydedildi. Tarifi yayınlamak için ayrıca Yayınla seçeneğini kullanın.',
+            'time_utc' => $ack['time_utc'],
+        ]);
+    }
+
+    /**
+     * Keep warning and actual publication decisions separate. A publication
+     * without explicit acknowledgment remains possible and is recorded as such.
+     *
+     * $post_before is null for newly inserted posts.
+     */
+    public function recordReview($post_id, $post, $update, $post_before = null) {
         if ($post->post_type !== 'recipe' || wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
             return;
         }
+
         $warning = $this->assessPost($post_id);
-        update_post_meta($post_id, '_kg_recipe_safety_warning', $warning === null ? '' : $warning);
-        if ($post->post_status !== 'publish' || $warning === null) {
+        update_post_meta($post_id, self::WARNING_META, $warning === null ? '' : $warning);
+
+        $ack = get_post_meta($post_id, self::ACK_META, true);
+        $fingerprint = $warning === null ? '' : $this->signature($post_id, $warning);
+        if (!self::ackMatches($ack, $fingerprint)) {
+            // Invalidate an old sign-off even if the author later restores
+            // previous content. No silent approval carryover.
+            delete_post_meta($post_id, self::ACK_META);
+            $ack = false;
+        }
+
+        if ($post->post_status !== 'publish') {
             return;
         }
-        $signature = hash('sha256', $warning . '|' . serialize(get_post_meta($post_id, '_kg_ingredients', true)) . '|' . serialize(wp_get_post_terms($post_id, 'age-group', ['fields' => 'slugs'])));
-        if (get_post_meta($post_id, '_kg_recipe_safety_audit_signature', true) === $signature) {
+        if ($warning === null) {
+            delete_post_meta($post_id, self::LAST_SIGNATURE_META);
             return;
         }
-        $user_id = get_current_user_id();
-        add_post_meta($post_id, '_kg_recipe_safety_approval_log', [
-            'user_id' => $user_id,
-            'timestamp' => current_time('mysql', true),
+
+        $first_publication = !is_object($post_before)
+            || $post_before->post_status !== 'publish';
+        $previous_signature = get_post_meta($post_id, self::LAST_SIGNATURE_META, true);
+        if (!$first_publication && $previous_signature === $fingerprint) {
+            return;
+        }
+
+        $explicit = self::ackMatches($ack, $fingerprint);
+        add_post_meta($post_id, self::LOG_META, [
+            'published_at_utc' => current_time('mysql', true),
+            'publisher_user_id' => get_current_user_id(),
             'warning' => $warning,
-            'context' => $user_id ? 'editor_or_api' : 'system_or_scheduled',
+            'signature' => $fingerprint,
+            'explicitly_acknowledged' => $explicit,
+            'acknowledging_user_id' => $explicit ? (int) $ack['user_id'] : 0,
+            'acknowledged_at_utc' => $explicit ? $ack['time_utc'] : null,
+            'publication_type' => $first_publication ? 'publish_transition' : 'published_revision',
         ]);
-        update_post_meta($post_id, '_kg_recipe_safety_audit_signature', $signature);
+        update_post_meta($post_id, self::LAST_SIGNATURE_META, $fingerprint);
+        // Explicit sign-off applies to this publication, not future revisions.
+        delete_post_meta($post_id, self::ACK_META);
     }
 
+    /**
+     * Limited deterministic warning for explicit ingredient names.
+     * Never infer that ingredients are allergen-free or safe to swallow.
+     */
     public static function assess($ingredients, $age_slugs) {
         if (!is_array($ingredients) || $ingredients === []) {
-            return 'Tarifin malzeme listesi eksik. Yayın öncesi kontrol gerekli.';
+            return 'Tarifin malzeme listesi eksik. Yayın öncesi kontrol önerilir.';
         }
         $names = [];
         foreach ($ingredients as $ingredient) {
@@ -69,8 +261,11 @@ class RecipePublicationGuard {
             $names[] = $name;
         }
 
-        $joined = implode(' ', $names);
-        $has_honey = preg_match('/(?<![\\p{L}])bal(?![\\p{L}])/iu', $joined) === 1;
+        $text = implode(' ', $names);
+        // Distinguish honey (bal, ballı) from pumpkin (bal kabağı)
+        // and fish (balık). An exact-token detector is deliberately narrow.
+        $without_pumpkin = preg_replace('/(?<![\p{L}])bal\s+kaba(?:ğ|g)ı(?![\p{L}])/iu', '', $text);
+        $has_honey = preg_match('/(?<![\p{L}])(?:bal|ballı|balli)(?![\p{L}])/iu', $without_pumpkin) === 1;
         if (!$has_honey) {
             return null;
         }
@@ -84,5 +279,4 @@ class RecipePublicationGuard {
         }
         return null;
     }
-
 }
