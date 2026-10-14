@@ -550,14 +550,14 @@ class AIService {
             return new \WP_Error('json_parse_error', 'AI yanıtı JSON olarak ayrıştırılamadı: ' . json_last_error_msg());
         }
         
-        if (!is_array($data) || array_keys($data) === range(0, count($data) - 1)) {
-            return new \\WP_Error('invalid_recipe_shape', 'AI yanıtı tarif nesnesi içermiyor.');
+        if (!is_array($data) || $data === [] || array_keys($data) === range(0, count($data) - 1)) {
+            return new \WP_Error('invalid_recipe_shape', 'AI yanıtı tarif nesnesi içermiyor.');
         }
 
         // The 0-6 month taxonomy represents preparation, not complementary feeding.
         if (isset($data['age_groups'])) {
             if (!is_array($data['age_groups'])) {
-                return new \\WP_Error('invalid_age_groups', 'Yaş grupları liste olarak dönmelidir.');
+                return new \WP_Error('invalid_age_groups', 'Yaş grupları liste olarak dönmelidir.');
             }
             $allowed = [
                 'hazirlk-evresi-0-6-ay',
@@ -568,11 +568,11 @@ class AIService {
             ];
             foreach ($data['age_groups'] as $age_group) {
                 if (!is_string($age_group) || !in_array($age_group, $allowed, true)) {
-                    return new \\WP_Error('invalid_age_group', 'AI tanımlı olmayan bir yaş grubu döndürdü.');
+                    return new \WP_Error('invalid_age_group', 'AI tanımlı olmayan bir yaş grubu döndürdü.');
                 }
             }
             if (in_array('hazirlk-evresi-0-6-ay', $data['age_groups'], true)) {
-                return new \\WP_Error('unsafe_age_group', 'Ek gıda tarifi 0-6 ay hazırlık evresine atanamaz; editör kontrolü gerekli.');
+                return new \WP_Error('unsafe_age_group', 'Ek gıda tarifi 0-6 ay hazırlık evresine atanamaz; editör kontrolü gerekli.');
             }
         }
 
