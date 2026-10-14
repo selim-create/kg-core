@@ -37,6 +37,8 @@ jobs:
           php -l includes/Services/OpenAIClient.php
           php tests/test-openai-modernization.php
           php tests/test-recipe-ai-safety.php
+          php -l includes/Services/RecipePublicationGuard.php
+          php tests/test-recipe-publication-guard.php
 
       - name: Prepare SSH
         shell: bash
