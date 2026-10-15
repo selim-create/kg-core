@@ -1,0 +1,33 @@
+name: Ingredient AI Editorial Review Checks
+
+on:
+  pull_request:
+    paths:
+      - 'kg-core.php'
+      - 'includes/Admin/IngredientAIReview.php'
+      - 'includes/Services/AIService.php'
+      - 'assets/admin/js/ingredient-ai-review.js'
+      - 'assets/admin/css/ingredient-ai-review.css'
+      - 'tests/test-ingredient-ai-review.php'
+      - '.github/workflows/ingredient-ai-review-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check PHP syntax
+        run: |
+          php -l kg-core.php
+          php -l includes/Admin/IngredientAIReview.php
+          php -l includes/Services/AIService.php
+      - name: Check JavaScript syntax
+        run: node --check assets/admin/js/ingredient-ai-review.js
+      - name: Ingredient AI regression
+        run: |
+          php tests/test-ingredient-ai-review.php
+          php tests/test-openai-modernization.php
+          php tests/test-recipe-ai-safety.php
