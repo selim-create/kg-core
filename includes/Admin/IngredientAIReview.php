@@ -13,11 +13,17 @@ class IngredientAIReview {
     private const LOG_META = '_kg_ingredient_ai_review_log';
 
     public function __construct() {
+        // WP-Cron requests are not wp-admin requests. This hook must exist
+        // whenever WordPress loads the plugin, including cron and WP-CLI.
+        add_action('kg_ingredient_ai_review_generate_job', [$this, 'runQueuedPreview'], 10, 3);
+
+        if (!is_admin()) {
+            return;
+        }
         add_action('add_meta_boxes_ingredient', [$this, 'registerBox']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
         add_action('wp_ajax_kg_ingredient_ai_review_preview', [$this, 'preview']);
         add_action('wp_ajax_kg_ingredient_ai_review_status', [$this, 'status']);
-        add_action('kg_ingredient_ai_review_generate_job', [$this, 'runQueuedPreview'], 10, 3);
         add_action('wp_ajax_kg_ingredient_ai_review_apply', [$this, 'apply']);
     }
 

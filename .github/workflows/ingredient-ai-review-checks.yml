@@ -9,6 +9,7 @@ on:
       - 'assets/admin/js/ingredient-ai-review.js'
       - 'assets/admin/css/ingredient-ai-review.css'
       - 'tests/test-ingredient-ai-review.php'
+      - 'tests/test-ingredient-ai-cron-bootstrap.php'
       - '.github/workflows/ingredient-ai-review-checks.yml'
 
 permissions:
@@ -29,5 +30,6 @@ jobs:
       - name: Ingredient AI regression
         run: |
           php tests/test-ingredient-ai-review.php
+          php tests/test-ingredient-ai-cron-bootstrap.php
           php tests/test-openai-modernization.php
           php tests/test-recipe-ai-safety.php

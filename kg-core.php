@@ -391,7 +391,10 @@ function kg_core_init() {
     if ( is_admin() && class_exists( '\KG_Core\Admin\BulkIngredientSeeder' ) ) {
         new \KG_Core\Admin\BulkIngredientSeeder();
     }
-    if ( is_admin() && class_exists( '\KG_Core\Admin\IngredientAIReview' ) ) {
+    // Register the background AI worker in WP-Cron requests as well as admin.
+    // wp-cron.php is NOT an admin request: gating this instance by is_admin()
+    // silently drops scheduled callbacks and leaves preview jobs queued forever.
+    if ( class_exists( '\KG_Core\Admin\IngredientAIReview' ) ) {
         new \KG_Core\Admin\IngredientAIReview();
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\RecipeWorkflowSidebar' ) ) {
