@@ -59,3 +59,13 @@ check_result(strpos($source, "current_user_can('edit_post'") !== false, 'per-pos
 check_result(strpos($ai, '$editor_context = []') !== false, 'existing ingredient editorial context supported');
 check_result(strpos($js, 'MutationObserver') !== false, 'Gutenberg remounts initialize the review card');
 check_result(strpos($js, 'textContent') !== false && strpos($js, 'innerHTML') === false, 'AI content rendered without raw HTML injection');
+check_result($class::isFilled('Dolu'), 'non-empty field is filled');
+check_result(!$class::isFilled('  '), 'whitespace is missing');
+check_result(!$class::isFilled([]), 'empty list is missing');
+check_result(!$class::isFilled(['', ' ']), 'empty nested list is missing');
+check_result($class::isFilled(['', 'Hazırlama']), 'partially filled list is filled');
+check_result(strpos($source, 'coverageSnapshot') !== false, 'server computes saved ingredient completeness');
+check_result(strpos($source, "'complete', 'enrich'") !== false, 'complete and enrich modes validated');
+check_result(strpos($source, "\$mode === 'complete' && self::isFilled(\$current)") !== false, 'complete mode preserves populated fields');
+check_result(strpos($js, "startPreview('complete')") !== false && strpos($js, "startPreview('enrich')") !== false, 'two AI actions available');
+check_result(strpos($js, "if (dirty())") !== false && strpos($js, "generate.addEventListener") === false, 'preview no longer incorrectly blocked by dirty form');
