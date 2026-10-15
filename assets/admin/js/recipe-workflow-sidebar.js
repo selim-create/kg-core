@@ -6,7 +6,7 @@
 (function (wp) {
     'use strict';
 
-    if (!wp || !wp.editor || !wp.editor.PluginSidebar ||
+    if (!wp || !(wp.editPost && wp.editPost.PluginSidebar) && !(wp.editor && wp.editor.PluginSidebar) ||
         !wp.plugins || !wp.data || !wp.element || !wp.components ||
         typeof kgRecipeWorkflow === 'undefined') {
         return;
@@ -15,7 +15,7 @@
     var el = wp.element.createElement;
     var useState = wp.element.useState;
     var useSelect = wp.data.useSelect;
-    var PluginSidebar = wp.editor.PluginSidebar;
+    var PluginSidebar = (wp.editPost && wp.editPost.PluginSidebar) || wp.editor.PluginSidebar;
     var PanelBody = wp.components.PanelBody;
     var CheckboxControl = wp.components.CheckboxControl;
     var Button = wp.components.Button;
