@@ -98,8 +98,13 @@ class IngredientMetaBox {
         // Güvenlik için nonce
         wp_nonce_field( 'kg_ingredient_save', 'kg_ingredient_nonce' );
         ?>
-        <div class="kg-meta-box">
-            <h3>Temel Bilgiler</h3>
+        <div class="kg-meta-box kg-ingredient-studio">
+            <header class="kg-ingredient-hero"><span class="kg-ingredient-eyebrow">KIDSGOURMET / MALZEME STÜDYOSU</span><h2>Malzeme rehberini düzenle</h2><p>Önce yaş ve alerjen bilgisini kontrol et; ardından hazırlama ve diğer alanları tamamla. AI önerileri uzman onayı yerine geçmez.</p></header>
+            <nav class="kg-ingredient-nav" aria-label="Malzeme bölümleri">
+                <a href="#kg-ing-basics">Temel Bilgiler</a><a href="#kg-ing-allergy">Alerjenler</a><a href="#kg-ing-prepare">Hazırlama</a><a href="#kg-ing-nutrition">Beslenme</a><a href="#kg-ing-expert">Uzman</a>
+            </nav>
+            <details class="kg-ingredient-section" id="kg-ing-basics" open><summary><span class="kg-ingredient-section-number">01</span><span class="kg-ingredient-section-heading"><strong>Temel Bilgiler</strong><small>Yaş ve temel bilgiler</small></span><span class="kg-ingredient-chevron" aria-hidden="true"></span></summary><div class="kg-ingredient-section-body">
+
 
             <p>
                 <label for="kg_is_featured">
@@ -134,7 +139,9 @@ class IngredientMetaBox {
                 </select>
             </p>
 
-            <h3>Görsel Kaynağı ve Kredi</h3>
+            </div></details>
+            <details class="kg-ingredient-section" id="kg-ing-images"><summary><span class="kg-ingredient-section-number">02</span><span class="kg-ingredient-section-heading"><strong>Görsel Kaynağı ve Kredi</strong><small>Fotoğraf kaynağı ve kullanım bilgisi</small></span><span class="kg-ingredient-chevron" aria-hidden="true"></span></summary><div class="kg-ingredient-section-body">
+
             <div style="background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 4px;">
                 <p style="margin-top:0;">
                     <strong>Not:</strong> Öne çıkan görsel değiştirildiğinde eski kaynak ve fotoğrafçı bilgileri otomatik temizlenir. Yeni görsel için gerekiyorsa aşağıdaki alanları yeniden doldurun.
@@ -154,7 +161,9 @@ class IngredientMetaBox {
                 </p>
             </div>
 
-            <h3>Alerjen Bilgileri</h3>
+            </div></details>
+            <details class="kg-ingredient-section" id="kg-ing-allergy" open><summary><span class="kg-ingredient-section-number">03</span><span class="kg-ingredient-section-heading"><strong>Alerjen Bilgileri</strong><small>Alerjenler, çapraz bulaşma ve alternatifler</small></span><span class="kg-ingredient-chevron" aria-hidden="true"></span></summary><div class="kg-ingredient-section-body">
+
             <div style="background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 4px;">
                 <p>
                     <label for="kg_cross_contamination"><strong>Çapraz Bulaşma Riski:</strong></label><br>
@@ -192,7 +201,9 @@ class IngredientMetaBox {
                 <?php endif; ?>
             </div>
 
-            <h3>Besin Değerleri (100g başına)</h3>
+            </div></details>
+            <details class="kg-ingredient-section" id="kg-ing-nutrition"><summary><span class="kg-ingredient-section-number">04</span><span class="kg-ingredient-section-heading"><strong>Besin Değerleri (100g başına)</strong><small>Yalnızca doğrulanmış sayısal bilgiler</small></span><span class="kg-ingredient-chevron" aria-hidden="true"></span></summary><div class="kg-ingredient-section-body">
+
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
                 <p>
                     <label for="kg_ing_calories_100g"><strong>Kalori (kcal):</strong></label><br>
@@ -230,7 +241,9 @@ class IngredientMetaBox {
                 </p>
             </div>
 
-            <h3>Faydalar ve Kullanım</h3>
+            </div></details>
+            <details class="kg-ingredient-section" id="kg-ing-benefits"><summary><span class="kg-ingredient-section-number">05</span><span class="kg-ingredient-section-heading"><strong>Faydalar ve Kullanım</strong><small>Kullanım ve dikkat edilmesi gerekenler</small></span><span class="kg-ingredient-chevron" aria-hidden="true"></span></summary><div class="kg-ingredient-section-body">
+
             <p>
                 <label for="kg_benefits"><strong>Faydaları:</strong></label><br>
                 <textarea id="kg_benefits" name="kg_benefits" rows="4" style="width:100%;"><?php echo esc_textarea( $benefits ); ?></textarea>
@@ -264,7 +277,9 @@ class IngredientMetaBox {
                 <small>Bebekler için özel ipuçları ve püf noktaları</small>
             </p>
             
-            <h3>Yaşa Göre Hazırlama</h3>
+            </div></details>
+            <details class="kg-ingredient-section" id="kg-ing-prepare" open><summary><span class="kg-ingredient-section-number">06</span><span class="kg-ingredient-section-heading"><strong>Yaşa Göre Hazırlama</strong><small>Yaşa uygun form ve hazırlanış</small></span><span class="kg-ingredient-chevron" aria-hidden="true"></span></summary><div class="kg-ingredient-section-body">
+
             <p>
                 <label for="kg_prep_by_age"><strong>Yaş Gruplarına Göre Hazırlama (JSON Format):</strong></label><br>
                 <textarea id="kg_prep_by_age" name="kg_prep_by_age" rows="6" style="width:100%; font-family: monospace;"><?php 
@@ -276,7 +291,9 @@ class IngredientMetaBox {
                 <small>Örnek: [{"age":"6-9 Ay","method":"Püre","text":"Haşlayıp püre yapın"}]</small>
             </p>
             
-            <h3>Uyumlu İkililer</h3>
+            </div></details>
+            <details class="kg-ingredient-section" id="kg-ing-pairings"><summary><span class="kg-ingredient-section-number">07</span><span class="kg-ingredient-section-heading"><strong>Uyumlu İkililer</strong><small>Birlikte kullanılan malzemeler</small></span><span class="kg-ingredient-chevron" aria-hidden="true"></span></summary><div class="kg-ingredient-section-body">
+
             <p>
                 <label for="kg_pairings"><strong>Bu Malzeme İle Uyumlu İkililer (JSON Format):</strong></label><br>
                 <textarea id="kg_pairings" name="kg_pairings" rows="4" style="width:100%; font-family: monospace;"><?php 
@@ -288,7 +305,9 @@ class IngredientMetaBox {
                 <small>Örnek: [{"emoji":"🍌","name":"Muz"},{"emoji":"🥚","name":"Yumurta"}]</small>
             </p>
 
-            <h3>Mevsim ve Saklama</h3>
+            </div></details>
+            <details class="kg-ingredient-section" id="kg-ing-storage"><summary><span class="kg-ingredient-section-number">08</span><span class="kg-ingredient-section-heading"><strong>Mevsim ve Saklama</strong><small>Seçme ve saklama koşulları</small></span><span class="kg-ingredient-chevron" aria-hidden="true"></span></summary><div class="kg-ingredient-section-body">
+
             <p><strong>Mevsim (Birden fazla seçilebilir):</strong></p>
             <div style="background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 4px;">
                 <?php 
@@ -317,7 +336,9 @@ class IngredientMetaBox {
                 <small>Malzemenin nasıl saklanması gerektiği hakkında bilgiler</small>
             </p>
 
-            <h3>Sıkça Sorulan Sorular (FAQ)</h3>
+            </div></details>
+            <details class="kg-ingredient-section" id="kg-ing-faq"><summary><span class="kg-ingredient-section-number">09</span><span class="kg-ingredient-section-heading"><strong>Sıkça Sorulan Sorular (FAQ)</strong><small>Sık sorulan sorular ve açıklamalar</small></span><span class="kg-ingredient-chevron" aria-hidden="true"></span></summary><div class="kg-ingredient-section-body">
+
             <p>
                 <label for="kg_faq"><strong>SSS (JSON Format):</strong></label><br>
                 <textarea id="kg_faq" name="kg_faq" rows="6" style="width:100%; font-family: monospace;"><?php 
@@ -332,7 +353,9 @@ class IngredientMetaBox {
             <hr>
 
             <!-- Kayıtlı Uzman Seçici -->
-            <h3>Uzman Onayı</h3>
+            </div></details>
+            <details class="kg-ingredient-section" id="kg-ing-expert"><summary><span class="kg-ingredient-section-number">10</span><span class="kg-ingredient-section-heading"><strong>Uzman Onayı</strong><small>Kayıtlı uzman ve editoryal kontrol</small></span><span class="kg-ingredient-chevron" aria-hidden="true"></span></summary><div class="kg-ingredient-section-body">
+
             <p>
                 <label for="kg_expert_user_id"><strong>Kayıtlı Uzman Seç:</strong></label><br>
                 <select id="kg_expert_user_id" name="kg_expert_user_id" style="width:100%;">
@@ -385,6 +408,7 @@ class IngredientMetaBox {
                 });
             });
             </script>
+            </div></details>
         </div>
         <?php
     }

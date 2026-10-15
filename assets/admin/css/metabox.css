@@ -518,3 +518,29 @@
 .kg-recipe-editor .kg-add-item{background:#e8f3f1;color:#116f6a;border:1px solid #cbe4df;border-radius:7px;padding:7px 13px;font-weight:700;font-size:12px}
 .kg-recipe-editor .kg-add-item:hover{background:#d9edeb;color:#075b55}
 @media(max-width:782px){.kg-recipe-editor .kg-editor-hero{align-items:flex-start;flex-direction:column;padding:18px}.kg-recipe-editor .kg-editor-hero h2{font-size:21px}.kg-recipe-editor .kg-editor-nav{flex-wrap:nowrap;overflow-x:auto;padding-bottom:8px}.kg-recipe-editor .kg-editor-nav a{white-space:nowrap}.kg-recipe-editor .kg-ingredient-row{grid-template-columns:1fr}.kg-recipe-editor .kg-item-content{margin:24px 28px 0 0}.kg-recipe-editor .kg-section-summary{padding:12px}.kg-recipe-editor .kg-section-body{padding:14px}.kg-recipe-editor .kg-section-count{display:none}}
+
+
+/* KidsGourmet Ingredient Studio */
+.kg-ingredient-studio{max-width:1100px;margin:0 auto;color:#213641}
+.kg-ingredient-hero{background:#eaf5f3;border:1px solid #d5e8e5;border-radius:14px;padding:23px 25px;margin:4px 0 14px}
+.kg-ingredient-eyebrow{letter-spacing:.14em;font-weight:800;font-size:10px;color:#17736e}
+.kg-ingredient-hero h2{font-size:23px;line-height:1.25;margin:8px 0}
+.kg-ingredient-hero p{font-size:13px;color:#607a7c;margin:0;line-height:1.6}
+.kg-ingredient-nav{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 20px}
+.kg-ingredient-nav a{border-radius:8px;border:1px solid #dce5e6;padding:7px 11px;background:white;color:#42656b;text-decoration:none;font-weight:600;font-size:12px}
+.kg-ingredient-nav a:hover{border-color:#18756f}
+.kg-ingredient-section{border:1px solid #e0e8ea;border-radius:11px;background:#fff;margin:0 0 10px;overflow:hidden;scroll-margin-top:110px}
+.kg-ingredient-section[open]{border-color:#cee3df}
+.kg-ingredient-section>summary{display:flex;align-items:center;gap:12px;padding:15px;min-height:47px;cursor:pointer;list-style:none}
+.kg-ingredient-section>summary::-webkit-details-marker{display:none}
+.kg-ingredient-section-number{width:29px;height:29px;flex-shrink:0;border-radius:8px;background:#f0f5f5;color:#537077;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+.kg-ingredient-section-heading{flex:1;display:flex;flex-direction:column;gap:3px}
+.kg-ingredient-section-heading strong{font-size:14px;color:#203641}
+.kg-ingredient-section-heading small{font-size:12px;color:#788991}
+.kg-ingredient-chevron{width:7px;height:7px;border-bottom:2px solid #8c9b9d;border-right:2px solid #8c9b9d;transform:rotate(45deg);margin:0 5px 4px}
+.kg-ingredient-section[open] .kg-ingredient-chevron{transform:rotate(225deg)}
+.kg-ingredient-section-body{padding:14px 19px 22px;border-top:1px solid #eff2f3}
+.kg-ingredient-section-body>h3{display:none}
+.kg-ingredient-section-body p{line-height:1.5}
+.kg-ingredient-section-body input[type=text],.kg-ingredient-section-body input[type=number],.kg-ingredient-section-body textarea,.kg-ingredient-section-body select{max-width:100%;border-radius:7px}
+@media(max-width:782px){.kg-ingredient-hero{padding:17px}.kg-ingredient-nav{flex-wrap:nowrap;overflow-x:auto}.kg-ingredient-nav a{white-space:nowrap}.kg-ingredient-section-body{padding:13px}}
