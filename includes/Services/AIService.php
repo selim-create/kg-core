@@ -347,6 +347,10 @@ class AIService {
             return new \WP_Error('json_parse_error', 'AI yanıtı JSON olarak ayrıştırılamadı: ' . json_last_error_msg());
         }
         
+        if (!is_array($data) || $data === [] || array_keys($data) === range(0, count($data) - 1)) {
+            return new \WP_Error('invalid_ingredient_shape', 'AI malzeme yanıtı geçerli bir nesne değil.');
+        }
+
         // Pairings validasyonu - AI'dan gelmezse boş array set et ve logla
         if (!isset($data['pairings']) || !is_array($data['pairings']) || empty($data['pairings'])) {
             error_log('KG Core: pairings alanı AI yanıtında bulunamadı veya boş. Raw response: ' . substr($response, 0, 500));
@@ -367,6 +371,27 @@ class AIService {
             }
         }
         
+        // Reject medically implausible ages before any automatic ingredient
+        // enrichment can persist an AI suggestion. Editor can still manually
+        // decide and record an override in WordPress.
+        if (!is_numeric($data['start_age']) || (int) $data['start_age'] < 6 || (int) $data['start_age'] > 144) {
+            return new \WP_Error('invalid_ingredient_age', 'Başlangıç yaşı için doğrulanabilir ay cinsinden değer gerekli.');
+        }
+        $name = isset($data['title']) && is_string($data['title']) ? $data['title'] : '';
+        if (preg_match('/(?<![\p{L}])(?:bal|ballı|balli)(?![\p{L}])/iu', preg_replace('/(?<![\p{L}])bal\s+kaba(?:ğ|g)ı(?![\p{L}])/iu', '', $name))) {
+            if ((int) $data['start_age'] < 12) {
+                return new \WP_Error('unsafe_honey_age', 'Bal içeren malzeme için 12 aydan küçük başlangıç yaşı önerilemez.');
+            }
+        }
+
+        // Nutritional numbers must not be fabricated by generative AI.
+        // Keep existing verified manual values; AI returns no numerical values.
+        if (isset($data['nutrition']) && is_array($data['nutrition'])) {
+            foreach (['calories', 'protein', 'carbs', 'fat', 'fiber', 'sugar'] as $field) {
+                unset($data['nutrition'][$field]);
+            }
+        }
+
         return $data;
     }
     
