@@ -55,7 +55,7 @@ class RecipePublicationGuard {
             'kg-recipe-safety-review',
             KG_CORE_URL . 'assets/admin/js/recipe-safety-review.js',
             [],
-            KG_CORE_VERSION,
+            (string) filemtime(KG_CORE_PATH . 'assets/admin/js/recipe-safety-review.js'),
             true
         );
         wp_localize_script('kg-recipe-safety-review', 'kgRecipeSafety', [
