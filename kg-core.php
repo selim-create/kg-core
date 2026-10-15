@@ -191,6 +191,7 @@ if ( file_exists( KG_CORE_PATH . 'includes/Admin/SettingsPage.php' ) ) require_o
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/BulkIngredientSeeder.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/AIEnrichButton.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientEnricher.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/IngredientEnricher.php';
+if ( file_exists( KG_CORE_PATH . 'includes/Admin/IngredientAIReview.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/IngredientAIReview.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/RecipeEnricher.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/RecipeEnricher.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/RecipeWorkflowSidebar.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/RecipeWorkflowSidebar.php';
 if ( file_exists( KG_CORE_PATH . 'includes/Admin/RecipeAIEnrichButton.php' ) ) require_once KG_CORE_PATH . 'includes/Admin/RecipeAIEnrichButton.php';
@@ -390,11 +391,8 @@ function kg_core_init() {
     if ( is_admin() && class_exists( '\KG_Core\Admin\BulkIngredientSeeder' ) ) {
         new \KG_Core\Admin\BulkIngredientSeeder();
     }
-    if ( is_admin() && class_exists( '\KG_Core\Admin\AIEnrichButton' ) ) {
-        new \KG_Core\Admin\AIEnrichButton();
-    }
-    if ( is_admin() && class_exists( '\KG_Core\Admin\IngredientEnricher' ) ) {
-        new \KG_Core\Admin\IngredientEnricher();
+    if ( is_admin() && class_exists( '\KG_Core\Admin\IngredientAIReview' ) ) {
+        new \KG_Core\Admin\IngredientAIReview();
     }
     if ( is_admin() && class_exists( '\KG_Core\Admin\RecipeWorkflowSidebar' ) ) {
         new \KG_Core\Admin\RecipeWorkflowSidebar();
