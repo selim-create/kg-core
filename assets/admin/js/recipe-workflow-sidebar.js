@@ -6,7 +6,7 @@
 (function (wp) {
     'use strict';
 
-    if (!wp || !(wp.editPost && wp.editPost.PluginSidebar) && !(wp.editor && wp.editor.PluginSidebar) ||
+    if (!wp || !(wp.editPost && wp.editPost.PluginDocumentSettingPanel) && !(wp.editor && wp.editor.PluginDocumentSettingPanel) ||
         !wp.plugins || !wp.data || !wp.element || !wp.components ||
         typeof kgRecipeWorkflow === 'undefined') {
         return;
@@ -15,11 +15,12 @@
     var el = wp.element.createElement;
     var useState = wp.element.useState;
     var useSelect = wp.data.useSelect;
-    var PluginSidebar = (wp.editPost && wp.editPost.PluginSidebar) || wp.editor.PluginSidebar;
+    var PluginDocumentSettingPanel = (wp.editPost && wp.editPost.PluginDocumentSettingPanel) || (wp.editor && wp.editor.PluginDocumentSettingPanel);
     var PanelBody = wp.components.PanelBody;
     var CheckboxControl = wp.components.CheckboxControl;
     var Button = wp.components.Button;
     var Spinner = wp.components.Spinner;
+    if (!PluginDocumentSettingPanel) return;
     var cfg = kgRecipeWorkflow;
     var groups = cfg.taxonomies || [];
 
@@ -149,9 +150,11 @@
     }
 
     function SafetyControl(props) {
-        var state = useState(!!cfg.approved);
-        var accepted = state[0];
-        var setAccepted = state[1];
+        var state = useState({warning: cfg.warning, approved: !!cfg.approved, last_publication: null});
+        var review = state[0];
+        var setReview = state[1];
+        var accepted = review.approved;
+        var setAccepted = function (value) { setReview(function (prev) { return Object.assign({}, prev, {approved: value}); }); };
         var checkbox = useState(false);
         var agreed = checkbox[0];
         var setAgreed = checkbox[1];
@@ -161,6 +164,14 @@
         var messageState = useState('');
         var message = messageState[0];
         var setMessage = messageState[1];
+
+        wp.element.useEffect(function () {
+            if (props.isDirty || !cfg.postId) return;
+            var params = new URLSearchParams({action: 'kg_recipe_review_status', post_id: String(cfg.postId), nonce: cfg.reviewNonce});
+            fetch(cfg.ajaxUrl, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'}, body: params.toString()})
+                .then(function (r) { return r.json(); })
+                .then(function (r) { if (r.success) setReview(r.data); });
+        }, [props.isDirty]);
 
         function approve() {
             if (!agreed || busy || accepted || props.isDirty || !cfg.postId) return;
@@ -189,17 +200,17 @@
         }
 
         return el('div', {className: 'kg-wf-safety'},
-            cfg.warning ?
+            review.warning ?
                 el('div', {className: 'kg-wf-alert', role: 'alert'},
                     el('strong', null, 'Beslenme uyarısı'),
-                    el('p', null, cfg.warning)
+                    el('p', null, review.warning)
                 ) :
                 el('div', {className: 'kg-wf-neutral'},
                     el('strong', null, 'Kayıtlı verilerde bilinen bir uyarı yok'),
                     el('p', null, 'Bu sonuç bir tıbbi uygunluk onayı değildir.')
                 ),
             el('p', {className: 'kg-wf-helper'}, 'Değerlendirme kaydedilmiş tarif üzerinden yapılır.'),
-            cfg.warning && cfg.canPublish ?
+            review.warning && cfg.canPublish ?
                 accepted ?
                     el('div', {className: 'kg-wf-accepted'}, '✓ Bu sürüm için editör onayı kayıtlı.') :
                     el('div', null,
@@ -220,7 +231,8 @@
                     ) :
                 null,
             message ? el('p', {className: 'kg-wf-feedback', role: 'status'}, message) : null,
-            el('p', {className: 'kg-wf-helper'}, 'Yetkili editör uyarıya rağmen yayınlayabilir. Açık onay verilip verilmediği ayrıca kayıt altına alınır.')
+            review.last_publication ? el('p', {className: 'kg-wf-helper'}, 'Son riskli yayın: ' + (review.last_publication.published_at_utc || '') + ' UTC · ' + (review.last_publication.explicitly_acknowledged ? 'Açık onaylı' : 'Açık onaysız')) : null,
+            el('p', {className: 'kg-wf-helper'}, 'Yetkili editör uyarıya rağmen yayınlayabilir. Açık onay bilgisi ayrıca kayıt altına alınır.')
         );
     }
 
@@ -254,16 +266,12 @@
             if (typeof window.kgShowRecipeEnrichModal === 'function') {
                 window.kgShowRecipeEnrichModal();
             } else {
-                openWordPressSettings();
+                window.alert('AI zenginleştirme penceresi kullanılamıyor. Sayfayı yenileyip tekrar deneyin.');
             }
         }
 
-        return el(PluginSidebar, {
-            name: 'editorial',
-            title: 'KidsGourmet · Tarif Kontrolü',
-            icon: 'food',
-            className: 'kg-workflow-sidebar'
-        },
+        return el(wp.element.Fragment, null,
+        el(PluginDocumentSettingPanel, {name: 'kg-recipe-overview', title: 'KidsGourmet · Yayın Masası', className: 'kg-workflow-sidebar'},
         el('div', {className: 'kg-wf-top'},
             el('span', {className: 'kg-wf-brand'}, 'KIDSGOURMET', el('span', null, ' / YAYIN MASASI')),
             el('h2', null, 'Tarif Kontrolü'),
@@ -274,7 +282,8 @@
                     el('span', {className: 'kg-wf-dirty'}, 'Kaydedilmemiş değişiklikler') :
                     el('span', {className: 'kg-wf-clean'}, 'Değişiklikler kaydedildi')
             )
-        ),
+        )),
+        el(PluginDocumentSettingPanel, {name: 'kg-recipe-taxonomy', title: 'Tarif Sınıflandırması', className: 'kg-workflow-sidebar'},
         el('div', {className: 'kg-wf-section-caption'}, 'TARİF SINIFLANDIRMASI'),
         order.filter(function (g) { return !!groupMap[g.slug]; }).map(function (g) {
             var tax = groupMap[g.slug];
@@ -285,38 +294,27 @@
                 className: 'kg-wf-panel kg-wf-panel-' + tax.slug
             }, el(TermPicker, {group: tax}));
         }),
+        ),
+        el(PluginDocumentSettingPanel, {name: 'kg-recipe-tools', title: 'Beslenme Güvenliği ve AI', className: 'kg-workflow-sidebar'},
         el('div', {className: 'kg-wf-section-caption kg-wf-section-caption--second'}, 'YAYIN ARAÇLARI'),
-        el(PanelBody, {title: 'Beslenme Güvenliği', initialOpen: !!cfg.warning, className: 'kg-wf-panel'},
+        el(PanelBody, {title: 'Beslenme Güvenliği', initialOpen: true, className: 'kg-wf-panel'},
             el(SafetyControl, {isDirty: editorState.dirty})
         ),
-        el(PanelBody, {title: 'Yapay Zekâ Desteği', initialOpen: false, className: 'kg-wf-panel'},
+        el(PanelBody, {title: 'AI İçerik Asistanı', initialOpen: true, className: 'kg-wf-panel'},
             el('div', {className: 'kg-wf-ai'},
-                el('p', null, 'Eksik tarif bilgilerini AI ile tamamlamak veya yeniden oluşturmak için.'),
-                el(Button, {variant: 'secondary', onClick: openAI}, 'AI ile Zenginleştir'),
-                el('small', null, 'Değişiklikleri onaylamadan önce içeriği ve yaş uygunluğunu kontrol et.')
+                el('span', {className: 'kg-wf-overline'}, 'YAPAY ZEKÂ DESTEKLİ İÇERİK'),
+                el('strong', {className: 'kg-wf-card-heading'}, 'Tarifini geliştirmeye devam et'),
+                el('p', null, 'Eksik alanları tamamlama veya yeniden oluşturma seçimini sonraki ekranda yapabilirsin.'),
+                el('div', {className: 'kg-wf-ai-actions'},
+                    el(Button, {variant: 'primary', onClick: openAI, disabled: editorState.dirty}, 'AI ile Zenginleştir'),
+                    editorState.dirty ? el('small', {className: 'kg-wf-unsaved'}, 'Önce tarifteki değişiklikleri kaydet.') : null
+                ),
+                el('div', {className: 'kg-wf-ai-note'}, 'AI önerileri taslak niteliğindedir. Yaş ve alerjen bilgilerini editör kontrol etmeli; doğrulanmamış besin değerleri otomatik hesaplanmaz.')
             )
         ),
-        el('div', {className: 'kg-wf-bottom'},
-            el(Button, {variant: 'tertiary', onClick: openWordPressSettings}, 'Tüm WordPress ayarlarını aç ↗'),
-            el('small', null, 'SEO, öne çıkan görsel, bağlantılar ve tüm standart ayarlar korunur.')
         ));
     }
 
     wp.plugins.registerPlugin('kg-recipe-workflow', {render: WorkflowSidebar});
-
-    // Replace the cluttered default document view on initial recipe load only.
-    // Never steal focus from a selected block or another plugin sidebar.
-    window.setTimeout(function () {
-        var editor = wp.data.select('core/editor');
-        var ui = wp.data.select('core/interface');
-        if (!editor || editor.getCurrentPostType() !== 'recipe') return;
-        var active = ui && ui.getActiveComplementaryArea ?
-            ui.getActiveComplementaryArea('core') : null;
-        if (active && active !== 'edit-post/document') return;
-        var edit = wp.data.dispatch('core/edit-post');
-        if (edit && typeof edit.openGeneralSidebar === 'function') {
-            edit.openGeneralSidebar('kg-recipe-workflow/editorial');
-        }
-    }, 650);
 
 })(window.wp);
