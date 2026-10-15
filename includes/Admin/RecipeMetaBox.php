@@ -84,8 +84,42 @@ class RecipeMetaBox {
         // Güvenlik için nonce
         wp_nonce_field( 'kg_recipe_save', 'kg_recipe_nonce' );
         ?>
-        <div class="kg-meta-box">
-            <h3>Temel Bilgiler</h3>
+        <div class="kg-meta-box kg-recipe-editor">
+            <header class="kg-editor-hero">
+                <div class="kg-editor-hero-copy">
+                    <span class="kg-editor-eyebrow">KIDSGOURMET / TARİF STÜDYOSU</span>
+                    <h2>Tarif detaylarını düzenle</h2>
+                    <p>Önce temel bilgileri, malzemeleri ve hazırlanışı tamamla. Diğer alanları gerektiğinde aç.</p>
+                </div>
+                <div class="kg-editor-hero-meta" aria-label="Tarif bölümleri">
+                    <span class="kg-editor-hero-dot" aria-hidden="true"></span>
+                    <span>9 düzenleme bölümü</span>
+                </div>
+            </header>
+            <nav class="kg-editor-nav" aria-label="Tarif alanlarına hızlı geçiş">
+                <a href="#kg-recipe-basics">Temel Bilgiler</a>
+                <a href="#kg-recipe-ingredients">Malzemeler <span data-kg-count="ingredients"></span></a>
+                <a href="#kg-recipe-instructions">Hazırlanış <span data-kg-count="instructions"></span></a>
+                <a href="#kg-recipe-substitutes">İkameler</a>
+                <a href="#kg-recipe-nutrition">Besin Değerleri</a>
+                <a href="#kg-recipe-expert">Uzman Onayı</a>
+                <a href="#kg-recipe-notes">Özel Notlar</a>
+                <a href="#kg-recipe-media">Medya</a>
+                <a href="#kg-recipe-cross-sell">Tariften.com</a>
+            </nav>
+            <p class="kg-editor-group-label">Tarifin Temeli <span>Öncelikli alanlar</span></p>
+            <details class="kg-recipe-section kg-recipe-section--basics" id="kg-recipe-basics" open>
+                <summary class="kg-section-summary">
+                    <span class="kg-section-num" aria-hidden="true">01</span>
+                    <span class="kg-section-title-wrap">
+                        <strong>Temel Bilgiler</strong>
+                        <small>Hazırlama, pişirme, porsiyon ve saklama</small>
+                    </span>
+                    <span class="kg-section-count" data-kg-section="basics"></span>
+                    <span class="kg-section-caret" aria-hidden="true"></span>
+                </summary>
+                <div class="kg-section-body">
+
             <p>
                 <label for="kg_prep_time"><strong>Hazırlama Süresi (dk):</strong></label><br>
                 <input type="text" id="kg_prep_time" name="kg_prep_time" value="<?php echo esc_attr( $prep_time ); ?>" style="width:100%;">
@@ -121,7 +155,19 @@ class RecipeMetaBox {
                 <input type="checkbox" id="kg_is_featured" name="kg_is_featured" value="1" <?php checked( $is_featured, 1 ); ?>>
             </p>
             
-            <h3>Malzemeler</h3>
+            </div></details>
+            <details class="kg-recipe-section kg-recipe-section--ingredients" id="kg-recipe-ingredients" open>
+                <summary class="kg-section-summary">
+                    <span class="kg-section-num" aria-hidden="true">02</span>
+                    <span class="kg-section-title-wrap">
+                        <strong>Malzemeler</strong>
+                        <small>Tarifte kullanılan malzemeler ve miktarlar</small>
+                    </span>
+                    <span class="kg-section-count" data-kg-section="ingredients"></span>
+                    <span class="kg-section-caret" aria-hidden="true"></span>
+                </summary>
+                <div class="kg-section-body">
+
             <div id="kg-ingredients-repeater" class="kg-repeater">
                 <div class="kg-repeater-items">
                     <?php
@@ -135,7 +181,19 @@ class RecipeMetaBox {
                 <button type="button" class="kg-add-item">Malzeme Ekle</button>
             </div>
 
-            <h3>Hazırlanış Adımları</h3>
+            </div></details>
+            <details class="kg-recipe-section kg-recipe-section--instructions" id="kg-recipe-instructions" open>
+                <summary class="kg-section-summary">
+                    <span class="kg-section-num" aria-hidden="true">03</span>
+                    <span class="kg-section-title-wrap">
+                        <strong>Hazırlanış Adımları</strong>
+                        <small>Adım adım yapılışı ve püf noktaları</small>
+                    </span>
+                    <span class="kg-section-count" data-kg-section="instructions"></span>
+                    <span class="kg-section-caret" aria-hidden="true"></span>
+                </summary>
+                <div class="kg-section-body">
+
             <div id="kg-instructions-repeater" class="kg-repeater">
                 <div class="kg-repeater-items">
                     <?php
@@ -149,7 +207,20 @@ class RecipeMetaBox {
                 <button type="button" class="kg-add-item">Adım Ekle</button>
             </div>
 
-            <h3>İkame Malzemeler</h3>
+            </div></details>
+            <p class="kg-editor-group-label kg-editor-group-label--advanced">Ek Bilgiler <span>İhtiyaç duyduğunda aç</span></p>
+            <details class="kg-recipe-section kg-recipe-section--substitutes" id="kg-recipe-substitutes">
+                <summary class="kg-section-summary">
+                    <span class="kg-section-num" aria-hidden="true">04</span>
+                    <span class="kg-section-title-wrap">
+                        <strong>İkame Malzemeler</strong>
+                        <small>Alternatif malzemeler ve öneriler</small>
+                    </span>
+                    <span class="kg-section-count" data-kg-section="substitutes"></span>
+                    <span class="kg-section-caret" aria-hidden="true"></span>
+                </summary>
+                <div class="kg-section-body">
+
             <div id="kg-substitutes-repeater" class="kg-repeater">
                 <div class="kg-repeater-items">
                     <?php
@@ -163,7 +234,19 @@ class RecipeMetaBox {
                 <button type="button" class="kg-add-item">İkame Ekle</button>
             </div>
 
-            <h3>Beslenme Değerleri</h3>
+            </div></details>
+            <details class="kg-recipe-section kg-recipe-section--nutrition" id="kg-recipe-nutrition">
+                <summary class="kg-section-summary">
+                    <span class="kg-section-num" aria-hidden="true">05</span>
+                    <span class="kg-section-title-wrap">
+                        <strong>Beslenme Değerleri</strong>
+                        <small>Doğrulanmış besin bilgileri</small>
+                    </span>
+                    <span class="kg-section-count" data-kg-section="nutrition"></span>
+                    <span class="kg-section-caret" aria-hidden="true"></span>
+                </summary>
+                <div class="kg-section-body">
+
             <p>
                 <label for="kg_calories"><strong>Kalori:</strong></label><br>
                 <input type="text" id="kg_calories" name="kg_calories" value="<?php echo esc_attr( $calories ); ?>" style="width:100%;" placeholder="80 kcal">
@@ -203,7 +286,19 @@ class RecipeMetaBox {
                 <small>Örnek: Kalsiyum, Demir, Çinko</small>
             </p>
 
-            <h3>Uzman Onayı</h3>
+            </div></details>
+            <details class="kg-recipe-section kg-recipe-section--expert" id="kg-recipe-expert">
+                <summary class="kg-section-summary">
+                    <span class="kg-section-num" aria-hidden="true">06</span>
+                    <span class="kg-section-title-wrap">
+                        <strong>Uzman Onayı</strong>
+                        <small>Uzman bilgileri ve değerlendirme</small>
+                    </span>
+                    <span class="kg-section-count" data-kg-section="expert"></span>
+                    <span class="kg-section-caret" aria-hidden="true"></span>
+                </summary>
+                <div class="kg-section-body">
+
             
             <!-- Kayıtlı Uzman Seçici -->
             <p>
@@ -246,21 +341,57 @@ class RecipeMetaBox {
                 <input type="checkbox" id="kg_expert_approved" name="kg_expert_approved" value="1" <?php checked( $expert_approved, 1 ); ?>>
             </p>
 
-            <h3>Özel Notlar</h3>
+            </div></details>
+            <details class="kg-recipe-section kg-recipe-section--notes" id="kg-recipe-notes">
+                <summary class="kg-section-summary">
+                    <span class="kg-section-num" aria-hidden="true">07</span>
+                    <span class="kg-section-title-wrap">
+                        <strong>Özel Notlar</strong>
+                        <small>Saklama, alerji ve özel açıklamalar</small>
+                    </span>
+                    <span class="kg-section-count" data-kg-section="notes"></span>
+                    <span class="kg-section-caret" aria-hidden="true"></span>
+                </summary>
+                <div class="kg-section-body">
+
             <p>
                 <label for="kg_special_notes"><strong>Özel Notlar (Süt, Not, İpucu vb.):</strong></label><br>
                 <textarea id="kg_special_notes" name="kg_special_notes" rows="4" style="width:100%;"><?php echo esc_textarea( $special_notes ); ?></textarea>
                 <small>Süt bilgisi, uyarılar ve ek ipuçları (Süt:, Not:, İpucu: vb.)</small>
             </p>
 
-            <h3>Medya</h3>
+            </div></details>
+            <details class="kg-recipe-section kg-recipe-section--media" id="kg-recipe-media">
+                <summary class="kg-section-summary">
+                    <span class="kg-section-num" aria-hidden="true">08</span>
+                    <span class="kg-section-title-wrap">
+                        <strong>Medya</strong>
+                        <small>Tarife ait video bağlantıları</small>
+                    </span>
+                    <span class="kg-section-count" data-kg-section="media"></span>
+                    <span class="kg-section-caret" aria-hidden="true"></span>
+                </summary>
+                <div class="kg-section-body">
+
             <p>
                 <label for="kg_video_url"><strong>Video URL:</strong></label><br>
                 <input type="url" id="kg_video_url" name="kg_video_url" value="<?php echo esc_attr( $video_url ); ?>" style="width:100%;">
                 <small>YouTube, Vimeo vb. video linki</small>
             </p>
 
-            <h3>Cross-Sell (Tariften.com) - Bizimkiler Ne Yiyecek?</h3>
+            </div></details>
+            <details class="kg-recipe-section kg-recipe-section--cross-sell" id="kg-recipe-cross-sell">
+                <summary class="kg-section-summary">
+                    <span class="kg-section-num" aria-hidden="true">09</span>
+                    <span class="kg-section-title-wrap">
+                        <strong>Cross-Sell (Tariften.com) - Bizimkiler Ne Yiyecek?</strong>
+                        <small>Tariften.com bağlantıları ve öneriler</small>
+                    </span>
+                    <span class="kg-section-count" data-kg-section="cross-sell"></span>
+                    <span class="kg-section-caret" aria-hidden="true"></span>
+                </summary>
+                <div class="kg-section-body">
+
             
             <div class="kg-cross-sell-mode">
                 <label>
@@ -315,6 +446,7 @@ class RecipeMetaBox {
                 <input type="hidden" name="kg_cross_sell_selected_title" id="kg_cross_sell_selected_title" value="">
                 <input type="hidden" name="kg_cross_sell_selected_image" id="kg_cross_sell_selected_image" value="">
             </div>
+            </div></details>
         </div>
         
         <script>
@@ -373,9 +505,12 @@ class RecipeMetaBox {
                         <input type="hidden" name="kg_ingredients[<?php echo $index; ?>][ingredient_id]" class="kg-ingredient-id" value="<?php echo esc_attr( $ingredient_id ); ?>">
                     </div>
                 </div>
-                <div class="kg-ingredient-note-row" style="margin-top: 8px;">
-                    <label>Not <small>(opsiyonel - kullanıcıya gösterilecek ipucu)</small></label>
-                    <input type="text" name="kg_ingredients[<?php echo $index; ?>][note]" class="kg-ingredient-note" value="<?php echo esc_attr( $note ); ?>" placeholder="Örn: Oda sıcaklığında olmalı, taze sıkılmış tercih edin" style="width: 100%;">
+                <div class="kg-ingredient-note-row">
+                    <details class="kg-ingredient-note-details" <?php echo trim((string) $note) !== '' ? 'open' : ''; ?>>
+                        <summary>Malzeme notu <span>İsteğe bağlı</span></summary>
+                        <label class="screen-reader-text" for="kg-ingredient-note-<?php echo esc_attr( $index ); ?>">Malzeme notu</label>
+                        <input id="kg-ingredient-note-<?php echo esc_attr( $index ); ?>" type="text" name="kg_ingredients[<?php echo $index; ?>][note]" class="kg-ingredient-note" value="<?php echo esc_attr( $note ); ?>" placeholder="Kullanıcıya gösterilecek kısa bir ipucu">
+                    </details>
                 </div>
             </div>
         </div>

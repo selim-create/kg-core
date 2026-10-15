@@ -1,0 +1,28 @@
+name: Recipe Editor UX Checks
+
+on:
+  pull_request:
+    paths:
+      - 'includes/Admin/RecipeMetaBox.php'
+      - 'assets/admin/css/metabox.css'
+      - 'assets/admin/js/recipe-editor-studio.js'
+      - 'kg-core.php'
+      - 'tests/test-recipe-editor-ux.php'
+      - '.github/workflows/recipe-editor-ux-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  recipe-editor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          php -l kg-core.php
+          php -l includes/Admin/RecipeMetaBox.php
+      - name: Recipe Studio DOM contract
+        run: php tests/test-recipe-editor-ux.php
+      - name: JavaScript syntax
+        run: node --check assets/admin/js/recipe-editor-studio.js

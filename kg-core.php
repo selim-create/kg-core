@@ -547,7 +547,7 @@ function kg_core_enqueue_admin_assets( $hook ) {
             'kg-metabox-css', 
             KG_CORE_URL . 'assets/admin/css/metabox.css', 
             [], 
-            KG_CORE_VERSION 
+            (string) filemtime(KG_CORE_PATH . 'assets/admin/css/metabox.css') 
         );
         
         // Enqueue custom admin JS
@@ -559,6 +559,15 @@ function kg_core_enqueue_admin_assets( $hook ) {
             true 
         );
         
+        // Recipe Studio shell (visual only; existing repeater/save handlers remain unchanged)
+        wp_enqueue_script(
+            'kg-recipe-editor-studio',
+            KG_CORE_URL . 'assets/admin/js/recipe-editor-studio.js',
+            [],
+            (string) filemtime(KG_CORE_PATH . 'assets/admin/js/recipe-editor-studio.js'),
+            true
+        );
+
         // Enqueue cross-sell JS
         wp_enqueue_script( 
             'kg-cross-sell-js', 

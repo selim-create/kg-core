@@ -468,3 +468,53 @@
     border-left: 4px solid #d63638;
     border-radius: 2px;
 }
+
+
+/* KidsGourmet Recipe Studio: presentation only; all form fields remain in DOM. */
+.kg-recipe-editor {--kg-ink:#182d38;--kg-muted:#687986;--kg-accent:#147a76;color:var(--kg-ink);max-width:1100px;margin:0 auto;padding:8px 0 22px}
+.kg-recipe-editor .kg-editor-hero{display:flex;justify-content:space-between;align-items:center;gap:24px;background:#edf6f5;border:1px solid #d4e6e2;border-radius:15px;padding:24px 26px;margin:4px 0 18px}
+.kg-recipe-editor .kg-editor-eyebrow{font-size:10px;font-weight:800;letter-spacing:.17em;color:var(--kg-accent)}
+.kg-recipe-editor .kg-editor-hero h2{font-size:23px;margin:8px 0;color:var(--kg-ink);line-height:1.25}
+.kg-recipe-editor .kg-editor-hero p{margin:0;color:var(--kg-muted);font-size:13px;line-height:1.6}
+.kg-recipe-editor .kg-editor-hero-meta{display:flex;align-items:center;white-space:nowrap;gap:8px;color:var(--kg-accent);font-size:12px;font-weight:700}
+.kg-recipe-editor .kg-editor-hero-dot{background:#26a78f;width:7px;height:7px;border-radius:50%}
+.kg-recipe-editor .kg-editor-nav{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 20px}
+.kg-recipe-editor .kg-editor-nav a{display:inline-flex;gap:6px;align-items:center;padding:7px 11px;border:1px solid #dbe2e5;border-radius:9px;color:#405460;text-decoration:none;font-size:12px;font-weight:600;background:#fff}
+.kg-recipe-editor .kg-editor-nav a:hover,.kg-recipe-editor .kg-editor-nav a:focus{border-color:var(--kg-accent);color:var(--kg-accent);box-shadow:none}
+.kg-recipe-editor .kg-editor-nav span{font-variant-numeric:tabular-nums;color:#687986}
+.kg-recipe-editor .kg-editor-group-label{display:flex;align-items:center;gap:12px;font-size:11px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--kg-accent);margin:26px 0 12px}
+.kg-recipe-editor .kg-editor-group-label span{font-size:11px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--kg-muted)}
+.kg-recipe-editor .kg-editor-group-label--advanced{margin-top:31px}
+.kg-recipe-editor .kg-recipe-section{border:1px solid #e1e8ea;background:#fff;border-radius:12px;margin:0 0 10px;overflow:hidden;scroll-margin-top:110px}
+.kg-recipe-editor .kg-recipe-section[open]{border-color:#cee0df;box-shadow:0 2px 10px rgba(26,65,69,.045)}
+.kg-recipe-editor .kg-section-summary{display:flex;gap:13px;align-items:center;min-height:52px;padding:13px 16px;cursor:pointer;list-style:none;background:#fff}
+.kg-recipe-editor .kg-section-summary::-webkit-details-marker{display:none}
+.kg-recipe-editor .kg-section-summary:focus-visible{outline:2px solid var(--kg-accent);outline-offset:-2px}
+.kg-recipe-editor .kg-section-num{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#f0f4f5;color:#46616b;font-size:12px;font-weight:800;flex-shrink:0}
+.kg-recipe-editor .kg-section-title-wrap{display:flex;flex:1;flex-direction:column;gap:3px;min-width:0}
+.kg-recipe-editor .kg-section-title-wrap strong{font-size:14px;color:var(--kg-ink);font-weight:700}
+.kg-recipe-editor .kg-section-title-wrap small{font-size:12px;color:var(--kg-muted)}
+.kg-recipe-editor .kg-section-count{color:#72818b;font-size:11px;white-space:nowrap}
+.kg-recipe-editor .kg-section-caret{width:7px;height:7px;border-right:2px solid #8c9aa1;border-bottom:2px solid #8c9aa1;transform:rotate(45deg);margin:0 5px 4px 5px;flex-shrink:0;transition:transform .15s}
+.kg-recipe-editor .kg-recipe-section[open] .kg-section-caret{transform:rotate(225deg);margin-top:5px}
+.kg-recipe-editor .kg-section-body{border-top:1px solid #eff2f3;padding:15px 18px 20px}
+.kg-recipe-editor .kg-section-body>h3{display:none}
+.kg-recipe-editor .kg-section-body>p{margin:0 0 13px;break-inside:avoid}
+.kg-recipe-editor .kg-section-body>p>label{display:inline-block;margin-bottom:4px;color:#394b55;font-size:12px}
+.kg-recipe-editor .kg-section-body>p>small{display:block;color:var(--kg-muted);margin-top:4px}
+.kg-recipe-editor .kg-section-body input[type=text],.kg-recipe-editor .kg-section-body input[type=url],.kg-recipe-editor .kg-section-body textarea,.kg-recipe-editor .kg-section-body select{border-radius:7px;min-height:36px;border-color:#d8e0e4}
+.kg-recipe-editor .kg-repeater{background:#f7f9fa;border:1px solid #e5eaed;border-radius:10px;padding:12px;margin:4px 0 2px}
+.kg-recipe-editor .kg-repeater-item{border:1px solid #e5e9ec;border-radius:9px;padding:12px 13px;margin-bottom:8px;box-shadow:none}
+.kg-recipe-editor .kg-item-content{margin-left:24px;margin-right:31px}
+.kg-recipe-editor .kg-drag-handle{left:7px;color:#9babb4}
+.kg-recipe-editor .kg-remove-item{right:8px;top:9px;width:25px;height:25px;background:#fff;color:#b74444;border:1px solid #e8cece}
+.kg-recipe-editor .kg-remove-item:hover{background:#fff3f3;color:#992c2c}
+.kg-recipe-editor .kg-ingredient-row{grid-template-columns:minmax(65px,.65fr) minmax(120px,1.1fr) minmax(170px,2.5fr);gap:10px}
+.kg-recipe-editor .kg-ingredient-note-row{margin-top:8px}
+.kg-recipe-editor .kg-ingredient-note-details{margin-top:6px}
+.kg-recipe-editor .kg-ingredient-note-details>summary{color:#50717b;cursor:pointer;font-size:11px;padding:4px 0;list-style:revert}
+.kg-recipe-editor .kg-ingredient-note-details>summary span{color:#84949d;margin-left:4px}
+.kg-recipe-editor .kg-ingredient-note-details input{width:100%;margin-top:8px}
+.kg-recipe-editor .kg-add-item{background:#e8f3f1;color:#116f6a;border:1px solid #cbe4df;border-radius:7px;padding:7px 13px;font-weight:700;font-size:12px}
+.kg-recipe-editor .kg-add-item:hover{background:#d9edeb;color:#075b55}
+@media(max-width:782px){.kg-recipe-editor .kg-editor-hero{align-items:flex-start;flex-direction:column;padding:18px}.kg-recipe-editor .kg-editor-hero h2{font-size:21px}.kg-recipe-editor .kg-editor-nav{flex-wrap:nowrap;overflow-x:auto;padding-bottom:8px}.kg-recipe-editor .kg-editor-nav a{white-space:nowrap}.kg-recipe-editor .kg-ingredient-row{grid-template-columns:1fr}.kg-recipe-editor .kg-item-content{margin:24px 28px 0 0}.kg-recipe-editor .kg-section-summary{padding:12px}.kg-recipe-editor .kg-section-body{padding:14px}.kg-recipe-editor .kg-section-count{display:none}}
