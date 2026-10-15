@@ -266,7 +266,7 @@
             if (typeof window.kgShowRecipeEnrichModal === 'function') {
                 window.kgShowRecipeEnrichModal();
             } else {
-                openWordPressSettings();
+                window.alert('AI zenginleştirme penceresi kullanılamıyor. Sayfayı yenileyip tekrar deneyin.');
             }
         }
 
