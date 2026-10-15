@@ -1,0 +1,30 @@
+name: Recipe Workflow Sidebar Checks
+
+on:
+  pull_request:
+    paths:
+      - 'kg-core.php'
+      - 'includes/Admin/RecipeWorkflowSidebar.php'
+      - 'assets/admin/js/recipe-workflow-sidebar.js'
+      - 'assets/admin/css/recipe-workflow-sidebar.css'
+      - '.github/workflows/recipe-workflow-sidebar-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP and JS syntax checks
+        run: |
+          php -l kg-core.php
+          php -l includes/Admin/RecipeWorkflowSidebar.php
+          node --check assets/admin/js/recipe-workflow-sidebar.js
+      - name: Validate sidebar contracts
+        shell: bash
+        run: |
+          grep -q 'registerPlugin' assets/admin/js/recipe-workflow-sidebar.js
+          grep -q 'editPost(update)' assets/admin/js/recipe-workflow-sidebar.js
+          grep -q 'current_user_can' includes/Admin/RecipeWorkflowSidebar.php
