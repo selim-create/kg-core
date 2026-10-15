@@ -7,7 +7,9 @@
     var root = document.getElementById('kg-ingredient-ai-review');
     if (!root || root.dataset.kgAiReady === '1') return;
     root.dataset.kgAiReady = '1';
-    var generate = root.querySelector('[data-kg-ai-generate]');
+    var complete = root.querySelector('[data-kg-ai-generate-complete]');
+    var enrich = root.querySelector('[data-kg-ai-generate-enrich]');
+    var coverage = cfg.coverage || null;
     var apply = root.querySelector('[data-kg-ai-apply]');
     var cancel = root.querySelector('[data-kg-ai-cancel]');
     var notice = root.querySelector('[data-kg-ai-message]');
@@ -16,6 +18,35 @@
     var count = root.querySelector('[data-kg-ai-count]');
     var token = '';
     var working = false;
+    var previewMode = 'complete';
+    function renderCoverage(data) {
+        if (!data) return;
+        var headline = root.querySelector('[data-kg-ai-coverage-headline]');
+        var summary = root.querySelector('[data-kg-ai-coverage-summary]');
+        var score = root.querySelector('[data-kg-ai-coverage-score]');
+        var progress = root.querySelector('[data-kg-ai-coverage-progress]');
+        var groups = root.querySelector('[data-kg-ai-coverage-groups]');
+        var toggle = root.querySelector('[data-kg-ai-coverage-toggle]');
+        if (!headline || !groups) return;
+        headline.textContent = data.missing + ' eksik alan';
+        summary.textContent = data.filled + ' alan dolu · ' + data.total + ' alan kontrol edildi';
+        score.textContent = data.total ? Math.round(data.filled * 100 / data.total) + '%' : '—';
+        progress.style.width = (data.total ? Math.round(data.filled * 100 / data.total) : 0) + '%';
+        toggle.textContent = data.missing ? 'Eksik alanları göster (' + data.missing + ')' : 'Kontrol edilen alanları göster';
+        groups.textContent = '';
+        (data.groups || []).forEach(function (group) {
+            var block = node('div', 'kg-ai-review__coverage-group');
+            block.appendChild(node('strong', '', group.title + ' · ' + group.filled + '/' + group.total));
+            var list = node('ul', '');
+            (group.items || []).forEach(function (item) {
+                var entry = node('li', item.filled ? 'is-filled' : 'is-missing', (item.filled ? '✓ ' : '○ ') + item.label);
+                list.appendChild(entry);
+            });
+            block.appendChild(list);
+            groups.appendChild(block);
+        });
+    }
+    renderCoverage(coverage);
 
     function report(message, error) {
         notice.textContent = message || '';
@@ -51,7 +82,8 @@
     }
     function busy(value, message) {
         working = value;
-        generate.disabled = value;
+        complete.disabled = value;
+        enrich.disabled = value;
         apply.disabled = value || selectedFields().length === 0;
         if (message) report(message, false);
     }
@@ -89,7 +121,7 @@
         });
         preview.hidden = false;
         refresh();
-        report('AI önerileri hazır. Henüz hiçbir veri değişmedi.', false);
+        report((previewMode === 'complete' ? 'Boş alanlara yönelik' : 'İçerik geliştirmeye yönelik') + ' AI önerileri hazır. Henüz hiçbir veri değişmedi.', false);
     }
     function clear() {
         token = '';
@@ -123,18 +155,17 @@
         });
     }
 
-    generate.addEventListener('click', function () {
+    function startPreview(mode) {
         if (working) return;
-        if (dirty()) {
-            report('AI önerisinden önce kaydedilmemiş değişiklikleri kaydet.', true);
-            return;
-        }
+        previewMode = mode;
         clear();
-        busy(true, 'AI önerileri hazırlanıyor...');
-        ajax('kg_ingredient_ai_review_preview', {}).then(show).catch(function (error) {
+        busy(true, mode === 'complete' ? 'Eksik alanlar için AI önerileri hazırlanıyor...' : 'Zenginleştirme önerileri hazırlanıyor...');
+        ajax('kg_ingredient_ai_review_preview', {mode: mode}).then(show).catch(function (error) {
             report(error.message, true);
         }).finally(function () { busy(false); });
-    });
+    }
+    complete.addEventListener('click', function () { startPreview('complete'); });
+    enrich.addEventListener('click', function () { startPreview('enrich'); });
     rows.addEventListener('change', function (event) {
         if (event.target.matches('input[data-kg-ai-field]')) refresh();
     });
@@ -142,7 +173,7 @@
     apply.addEventListener('click', function () {
         if (working || !token) return;
         if (dirty()) {
-            report('Onaydan önce kaydedilmemiş değişiklikleri kaydet ve öneriyi yenile.', true);
+            report('Onaydan önce değişikliklerini WordPress üzerinden kaydet, sayfayı yenile ve yeni öneri oluştur.', true);
             return;
         }
         var fields = selectedFields();
