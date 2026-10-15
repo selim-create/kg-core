@@ -145,7 +145,21 @@
             headers: {'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'},
             body: form.toString()
         }).then(function (response) {
-            return response.json().catch(function () { throw new Error('Sunucu yanıtı okunamadı.'); });
+            return response.text().then(function (body) {
+                var json;
+                try { json = JSON.parse(body); }
+                catch (ignore) {
+                    var reason = response.status === 502 || response.status === 504 ? 'Ağ geçidi zaman aşımı' :
+                        response.status === 403 ? 'Sunucu güvenlik engeli' :
+                        response.status === 500 ? 'Sunucuda PHP hatası' :
+                        'Beklenmedik sunucu yanıtı';
+                    throw new Error(reason + ' (HTTP ' + response.status + '). ' +
+                        (body.trim() === '0' ? 'WordPress işlem tanımlayıcısı çalışmadı.' :
+                            body.trim() === '-1' ? 'WordPress güvenlik doğrulaması başarısız.' :
+                            'Yanıt JSON değil. Sunucu logunu ve Network yanıtını kontrol et.'));
+                }
+                return json;
+            });
         }).then(function (json) {
             if (!json.success) {
                 var message = json.data && (typeof json.data === 'string' ? json.data : json.data.message);
@@ -160,7 +174,20 @@
         previewMode = mode;
         clear();
         busy(true, mode === 'complete' ? 'Eksik alanlar için AI önerileri hazırlanıyor...' : 'Zenginleştirme önerileri hazırlanıyor...');
-        ajax('kg_ingredient_ai_review_preview', {mode: mode}).then(show).catch(function (error) {
+        ajax('kg_ingredient_ai_review_preview', {mode: mode}).then(function (job) {
+            if (!job.job_id) throw new Error('AI işi başlatılamadı: sunucu iş kimliği döndürmedi.');
+            var started = Date.now();
+            function poll() {
+                if (Date.now() - started > 190000) throw new Error('AI işlemi zamanında tamamlanamadı; WP-Cron ve sunucu zaman sınırlarını kontrol et.');
+                return ajax('kg_ingredient_ai_review_status', {job_id: job.job_id}).then(function (result) {
+                    if (result.status === 'done') return show(result.preview);
+                    if (result.status === 'failed') throw new Error(result.message || 'AI sunucuda tamamlanamadı.');
+                    report(result.message || 'AI önerileri hazırlanıyor...', false);
+                    return new Promise(function (resolve) { setTimeout(resolve, 2300); }).then(poll);
+                });
+            }
+            return poll();
+        }).catch(function (error) {
             report(error.message, true);
         }).finally(function () { busy(false); });
     }
