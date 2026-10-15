@@ -36,3 +36,24 @@
 .kg-ai-review__footer{display:flex;gap:9px;align-items:center;justify-content:flex-end;margin-top:21px;padding-top:16px;border-top:1px solid #e3e9e9}
 .kg-ai-review__footer .button{border-radius:8px}
 @media(max-width:782px){.kg-ai-review__header{padding:17px}.kg-ai-review__headline{flex-direction:column}.kg-ai-review__intro,.kg-ai-review__actions{padding-left:14px;padding-right:14px}.kg-ai-review__preview{padding:15px}.kg-ai-review__compare{grid-template-columns:1fr}.kg-ai-review__footer{justify-content:flex-start}}
+
+.kg-ai-review__coverage{margin:18px 22px 0;padding:19px 20px;background:#f4f9f8;border:1px solid #dcebe7;border-radius:12px}
+.kg-ai-review__coverage-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.kg-ai-review__coverage-head strong{display:block;font-size:20px;color:#213c40}
+.kg-ai-review__coverage-head p{font-size:12px;color:#6b8285;margin:5px 0}
+.kg-ai-review__coverage-score{font-size:24px;font-weight:750;color:#176e66}
+.kg-ai-review__coverage-track{height:7px;border-radius:8px;background:#dce9e7;overflow:hidden;margin:13px 0}
+.kg-ai-review__coverage-track span{display:block;height:100%;width:0;background:#2c9887;border-radius:8px}
+.kg-ai-review__coverage-details summary{cursor:pointer;font-size:12px;color:#216c65;font-weight:700;padding:7px 0}
+.kg-ai-review__coverage-group{padding:10px 0;border-top:1px solid #dfebe9}
+.kg-ai-review__coverage-group>strong{font-size:12px}
+.kg-ai-review__coverage-group ul{list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 14px;margin:9px 0 0;padding:0}
+.kg-ai-review__coverage-group li{font-size:11px;color:#a05936}
+.kg-ai-review__coverage-group li.is-filled{color:#42796f}
+.kg-ai-review__coverage-hint{font-size:11px;color:#78908d;margin:10px 0 0;line-height:1.6}
+.kg-ai-review__action-choice{display:flex;flex-direction:column;gap:6px;min-width:185px}
+.kg-ai-review__action-choice small{font-size:11px;line-height:1.5;color:#73888d}
+.kg-ai-review__action-choice .button{min-height:38px;text-align:center;justify-content:center}
+.kg-ai-review__actions>.kg-ai-review__action-choice+.kg-ai-review__action-choice .button{border-color:#a1c7bf;color:#1c6d65}
+.kg-ai-review__actions>p{width:100%;max-width:none}
+@media(max-width:782px){.kg-ai-review__coverage{margin:14px;padding:15px}.kg-ai-review__coverage-group ul{grid-template-columns:1fr}.kg-ai-review__action-choice{width:100%}}

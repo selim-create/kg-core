@@ -22,7 +22,7 @@ class IngredientAIReview {
     public function registerBox() {
         add_meta_box(
             'kg_ingredient_ai_review',
-            'AI Öneri Stüdyosu',
+            'Malzeme AI Asistanı',
             [$this, 'renderBox'],
             'ingredient',
             'normal',
@@ -41,20 +41,43 @@ class IngredientAIReview {
                 <span class="kg-ai-review__eyebrow">KIDSGOURMET / EDITORYAL ASISTAN</span>
                 <div class="kg-ai-review__headline">
                     <div>
-                        <h2>Malzeme &ouml;nerilerini incele</h2>
+                        <h2>Malzeme bilgilerini tamamla ve geliştir</h2>
                         <p>Yapay zek&acirc; &ouml;neriler hazırlar; hangi bilgilerin kaydedileceğine sen karar verirsin.</p>
                     </div>
                     <span class="kg-ai-review__tag">Onaylı akış</span>
                 </div>
             </header>
+            <div class="kg-ai-review__coverage" data-kg-ai-coverage>
+                <div class="kg-ai-review__coverage-head">
+                    <div>
+                        <span class="kg-ai-review__eyebrow">KAYDEDİLMİŞ ALANLAR</span>
+                        <strong data-kg-ai-coverage-headline>Alanlar inceleniyor</strong>
+                        <p data-kg-ai-coverage-summary>Kaydedilmiş malzeme bilgilerinin doluluk durumu.</p>
+                    </div>
+                    <span class="kg-ai-review__coverage-score" data-kg-ai-coverage-score></span>
+                </div>
+                <div class="kg-ai-review__coverage-track" aria-hidden="true"><span data-kg-ai-coverage-progress></span></div>
+                <details class="kg-ai-review__coverage-details" data-kg-ai-coverage-details>
+                    <summary><span data-kg-ai-coverage-toggle>Hangi alanlar boş?</span></summary>
+                    <div data-kg-ai-coverage-groups></div>
+                </details>
+                <p class="kg-ai-review__coverage-hint">Sayılar kaydedilmiş bilgilere dayanır. İsteğe bağlı, yalnızca alerjenlere özgü bilgiler uygun olduğunda sayılır; besin değerleri, uzman onayı ve görseller otomatik eksik kabul edilmez.</p>
+            </div>
             <div class="kg-ai-review__intro">
-                <span class="kg-ai-review__step">01 &middot; &Ouml;neri oluştur</span>
-                <span class="kg-ai-review__step">02 &middot; Alanları se&ccedil;</span>
-                <span class="kg-ai-review__step">03 &middot; Kaydet</span>
+                <span class="kg-ai-review__step">01 &middot; İşlem seç</span>
+                <span class="kg-ai-review__step">02 &middot; Önerileri incele</span>
+                <span class="kg-ai-review__step">03 &middot; Seçip kaydet</span>
             </div>
             <div class="kg-ai-review__actions">
-                <button type="button" class="button button-primary" data-kg-ai-generate>AI ile &ouml;neri oluştur</button>
-                <p>Malzeme başlığı ve kaydedilmiş bilgileri temel alır. Kaydedilmemiş değişikliklerin varsa &ouml;nce malzemeyi kaydet.</p>
+                <div class="kg-ai-review__action-choice">
+                    <button type="button" class="button button-primary" data-kg-ai-generate-complete>AI ile Tamamla</button>
+                    <small>Yalnızca boş alanlar için öneri oluştur.</small>
+                </div>
+                <div class="kg-ai-review__action-choice">
+                    <button type="button" class="button button-secondary" data-kg-ai-generate-enrich>AI ile Zenginleştir</button>
+                    <small>Dolu alanları da iyileştirmek için öneri oluştur.</small>
+                </div>
+                <p>Öneriler kaydedilmiş verilerden oluşturulur. Kaydedilmemiş değişiklikler öneri üretimini engellemez; ancak onaydan önce bu değişiklikleri kaydetmelisin.</p>
             </div>
             <div class="kg-ai-review__message" data-kg-ai-message role="status" aria-live="polite"></div>
             <div class="kg-ai-review__preview" data-kg-ai-preview hidden>
@@ -96,6 +119,7 @@ class IngredientAIReview {
             'nonce' => wp_create_nonce('kg_ingredient_ai_review_' . $post->ID),
             'postId' => (int) $post->ID,
             'isPublished' => $post->post_status === 'publish',
+            'coverage' => $this->coverageSnapshot((int) $post->ID),
         ]);
         wp_enqueue_style('kg-ingredient-ai-review', KG_CORE_URL . $css, [], (string) filemtime(KG_CORE_PATH . $css));
     }
@@ -118,6 +142,89 @@ class IngredientAIReview {
             'prep_methods' => ['label' => 'Hazırlama yöntemleri', 'source' => 'prep_methods', 'target' => '_kg_prep_methods', 'format' => 'list'],
             'prep_by_age' => ['label' => 'Yaşa göre hazırlama', 'source' => 'prep_by_age', 'target' => '_kg_prep_by_age', 'format' => 'age_rows'],
             'pairings' => ['label' => 'Uyumlu ikililer', 'source' => 'pairings', 'target' => '_kg_pairings', 'format' => 'pairings'],
+        ];
+    }
+
+    /**
+     * Coverage is editorial completeness, not an AI safety score.
+     * All counts use saved WordPress fields; conditional allergen fields
+     * are only tracked for ingredients already assigned allergen terms.
+     */
+    public static function isFilled($value) {
+        if (is_array($value)) {
+            foreach ($value as $item) {
+                if (self::isFilled($item)) return true;
+            }
+            return false;
+        }
+        if ($value === null || $value === false) return false;
+        if (is_scalar($value)) return trim(wp_strip_all_tags((string) $value)) !== '';
+        return false;
+    }
+
+    private function coverageSnapshot($post_id) {
+        $post = get_post($post_id);
+        $definitions = self::fieldDefinitions();
+        $groups = [
+            ['key' => 'essential', 'title' => 'Temel editoryal bilgiler', 'keys' => [
+                'title', 'excerpt', 'content', 'start_age', 'allergy_risk', 'category',
+            ]],
+            ['key' => 'enrichment', 'title' => 'Tamamlayıcı bilgiler', 'keys' => [
+                'benefits', 'preparation_tips', 'storage_tips', 'selection_tips',
+                'pro_tips', 'season', 'prep_methods', 'prep_by_age', 'pairings',
+            ]],
+        ];
+
+        $allergens = wp_get_post_terms($post_id, 'allergen', ['fields' => 'ids']);
+        if (!is_wp_error($allergens) && !empty($allergens)) {
+            $groups[] = ['key' => 'allergens', 'title' => 'Alerjen açıklamaları', 'keys' => [
+                'cross_contamination', 'allergy_symptoms', 'alternatives',
+            ]];
+        }
+
+        $category_terms = wp_get_post_terms($post_id, 'ingredient-category', ['fields' => 'ids']);
+        $has_category = !is_wp_error($category_terms) && !empty($category_terms);
+        $missing_count = 0;
+        $filled_count = 0;
+        $result = [];
+
+        foreach ($groups as $group) {
+            $items = [];
+            $group_filled = 0;
+            foreach ($group['keys'] as $key) {
+                if ($key === 'title') {
+                    $label = 'Malzeme adı';
+                    $value = $post ? $post->post_title : '';
+                    $filled = self::isFilled($value);
+                } elseif ($key === 'category') {
+                    $label = 'Malzeme kategorisi';
+                    $filled = $has_category;
+                } else {
+                    if (!isset($definitions[$key])) continue;
+                    $def = $definitions[$key];
+                    $label = $def['label'];
+                    $filled = self::isFilled($this->currentValue($post_id, $def['target']));
+                }
+                $items[] = ['key' => $key, 'label' => $label, 'filled' => $filled];
+                if ($filled) $group_filled++;
+            }
+            $n = count($items);
+            $filled_count += $group_filled;
+            $missing_count += $n - $group_filled;
+            $result[] = [
+                'key' => $group['key'],
+                'title' => $group['title'],
+                'total' => $n,
+                'filled' => $group_filled,
+                'items' => $items,
+            ];
+        }
+
+        return [
+            'total' => $filled_count + $missing_count,
+            'filled' => $filled_count,
+            'missing' => $missing_count,
+            'groups' => $result,
         ];
     }
 
@@ -224,6 +331,22 @@ class IngredientAIReview {
             wp_send_json_error(['message' => 'Once bir malzeme adi yazip taslagi kaydedin.'], 409);
         }
         $id = (int) $post->ID;
+        $mode = isset($_POST['mode']) ? sanitize_key(wp_unslash($_POST['mode'])) : 'complete';
+        if (!in_array($mode, ['complete', 'enrich'], true)) {
+            wp_send_json_error(['message' => 'Geçersiz AI işlem türü.'], 422);
+        }
+        if ($mode === 'complete') {
+            $has_empty = false;
+            foreach (self::fieldDefinitions() as $definition) {
+                if (!self::isFilled($this->currentValue($id, $definition['target']))) {
+                    $has_empty = true;
+                    break;
+                }
+            }
+            if (!$has_empty) {
+                wp_send_json_error(['message' => 'AI ile tamamlanabilecek boş alan yok. Mevcut içeriği geliştirmek için AI ile Zenginleştir seçeneğini kullan.'], 422);
+            }
+        }
         $rate_key = 'kg_ai_review_rate_' . get_current_user_id() . '_' . $id;
         if (get_transient($rate_key)) {
             wp_send_json_error(['message' => 'Yeni bir AI istegi icin kisa bir sure bekleyin.'], 429);
@@ -253,28 +376,31 @@ class IngredientAIReview {
             if ($proposed === null) continue;
             $current = $this->currentValue($id, $field['target']);
             if (serialize($current) === serialize($proposed)) continue;
+            if ($mode === 'complete' && self::isFilled($current)) continue;
             $suggestions[$key] = $proposed;
             $fields[] = [
                 'key' => $key,
                 'label' => $field['label'],
                 'current' => self::present($current),
                 'suggested' => self::present($proposed),
-                'empty' => $current === '' || $current === [] || $current === null,
+                'empty' => !self::isFilled($current),
             ];
         }
         if ($fields === []) {
-            wp_send_json_error(['message' => 'Farkli bir AI onerisi bulunamadi; mevcut alanlar degismedi.'], 422);
+            wp_send_json_error(['message' => $mode === 'complete' ? 'Boş alanlar için uygulanabilir AI önerisi bulunamadı. Alanları elle tamamlayabilir veya daha sonra tekrar deneyebilirsin.' : 'Mevcut içerikten farklı bir AI önerisi bulunamadı.'], 422);
         }
         $token = wp_generate_password(40, false, false);
         set_transient($this->cacheKey($id), [
             'token' => $token,
             'signature' => $snapshot,
             'values' => $suggestions,
+            'mode' => $mode,
             'time' => current_time('mysql', true),
         ], self::PREVIEW_TTL);
         wp_send_json_success([
             'token' => $token,
             'fields' => $fields,
+            'mode' => $mode,
             'expires_in' => self::PREVIEW_TTL,
             'message' => 'AI onerileri hazir. Hicbir alan otomatik kaydedilmedi.',
         ]);
