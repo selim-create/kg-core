@@ -42,3 +42,16 @@
 .kg-wf-bottom{padding:20px 16px}
 .kg-wf-bottom .components-button{font-size:12px}
 .kg-wf-bottom small{display:block;font-size:10px;line-height:1.6;color:#94a0a4;margin:6px 0 0}
+
+
+/* Native Gutenberg document-panel refinement, isolated to KG panels. */
+.edit-post-sidebar .kg-workflow-sidebar,.interface-complementary-area .kg-workflow-sidebar{background:#fff}
+.kg-workflow-sidebar .kg-wf-top{margin:-4px -4px 0;padding:18px 16px;border-radius:10px}
+.kg-workflow-sidebar .kg-wf-ai{background:#f6faf9;border:1px solid #dfece8;border-radius:11px;padding:15px}
+.kg-workflow-sidebar .kg-wf-ai .kg-wf-overline{display:block;font-size:10px;font-weight:800;letter-spacing:.12em;color:#1b7770;margin-bottom:8px}
+.kg-workflow-sidebar .kg-wf-ai .kg-wf-card-heading{display:block;font-size:15px;font-weight:750;line-height:1.4;color:#1b3a40}
+.kg-workflow-sidebar .kg-wf-ai-actions{display:flex;flex-direction:column;align-items:flex-start;gap:5px;margin:11px 0}
+.kg-workflow-sidebar .kg-wf-ai-note{font-size:11px;line-height:1.6;color:#6d8087;border-top:1px solid #dce7e4;padding-top:11px}
+.kg-workflow-sidebar .kg-wf-safety{padding:0 0 2px}
+.kg-workflow-sidebar .kg-wf-safety .kg-wf-alert{border-radius:10px}
+.kg-workflow-sidebar .kg-wf-safety .kg-wf-neutral{border-radius:10px}
