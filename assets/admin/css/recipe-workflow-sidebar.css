@@ -1,0 +1,44 @@
+/* KidsGourmet focused Gutenberg sidebar */
+.kg-workflow-sidebar .components-panel__body{border-bottom:1px solid #e7edf0}
+.kg-workflow-sidebar .components-panel__body-toggle{padding:17px 18px;font-weight:650;color:#20343e}
+.kg-workflow-sidebar .components-panel__body.is-opened>.components-panel__body-toggle{color:#176d69}
+.kg-wf-top{padding:23px 20px 17px;background:#edf6f4;border-bottom:1px solid #d6e6e3}
+.kg-wf-brand{font-size:10px;letter-spacing:.14em;font-weight:800;color:#14756e}
+.kg-wf-brand span{font-weight:500;color:#718b89}
+.kg-wf-top h2{margin:9px 0 4px;font-size:23px;font-weight:750;color:#17343d;line-height:1.25}
+.kg-wf-top>p{margin:0;color:#687e81;font-size:12px;line-height:1.5}
+.kg-wf-state{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:17px}
+.kg-wf-status{display:inline-flex;align-items:center;gap:6px;border:1px solid #cee1d9;background:#fff;border-radius:99px;padding:4px 9px;font-size:11px;font-weight:700;color:#226d58}
+.kg-wf-status-dot{width:6px;height:6px;background:#35a782;border-radius:50%}
+.kg-wf-dirty,.kg-wf-clean{font-size:10px;color:#627a7c}
+.kg-wf-dirty{color:#a55a17}
+.kg-wf-section-caption{padding:21px 20px 8px;color:#8996a1;font-size:10px;font-weight:800;letter-spacing:.13em}
+.kg-wf-section-caption--second{padding-top:25px}
+.kg-wf-term-picker{padding-bottom:8px}
+.kg-wf-picked{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:11px}
+.kg-wf-chip{display:inline-flex;align-items:center;gap:5px;color:#17655e;background:#e8f4f1;border:1px solid #d1e9e4;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer;text-align:left}
+.kg-wf-chip span{font-size:15px;line-height:10px}
+.kg-wf-placeholder{font-size:11px;color:#88959e}
+.kg-wf-search-label input{width:100%;box-sizing:border-box;border-radius:8px;margin-bottom:8px;min-height:34px}
+.kg-wf-terms{max-height:220px;overflow:auto;padding-right:3px}
+.kg-wf-terms .components-base-control{margin:0 0 6px}
+.kg-wf-terms .components-checkbox-control__label{font-size:12px;line-height:1.4}
+.kg-wf-helper{font-size:11px;line-height:1.55;color:#829096;margin:10px 0 0}
+.kg-wf-loading{display:flex;align-items:center;gap:4px;font-size:11px;color:#829096}
+.kg-wf-more{padding:5px 0}
+.kg-wf-alert{padding:12px 13px;border-radius:9px;background:#fff6e9;border:1px solid #f1d5a5;border-left:3px solid #bc751f}
+.kg-wf-alert strong{font-size:12px;color:#83501a}
+.kg-wf-alert p{font-size:12px;line-height:1.55;color:#815a2b;margin:6px 0 0}
+.kg-wf-neutral{padding:11px 12px;border:1px solid #e3e9ed;border-radius:9px;background:#f8fafb}
+.kg-wf-neutral strong{font-size:12px}
+.kg-wf-neutral p{font-size:11px;color:#677b86;margin:5px 0 0}
+.kg-wf-accepted{padding:9px 10px;border-radius:7px;background:#eaf6f0;font-size:12px;color:#206948;margin-top:10px}
+.kg-wf-unsaved{color:#a65b15;font-size:12px;font-weight:600}
+.kg-wf-safety .components-checkbox-control{margin-top:12px}
+.kg-wf-safety .components-button{margin-top:9px}
+.kg-wf-feedback{font-size:11px;color:#36695e;line-height:1.5}
+.kg-wf-ai p{font-size:12px;color:#647680;line-height:1.55}
+.kg-wf-ai small{display:block;margin-top:8px;color:#84949b;line-height:1.5}
+.kg-wf-bottom{padding:20px 16px}
+.kg-wf-bottom .components-button{font-size:12px}
+.kg-wf-bottom small{display:block;font-size:10px;line-height:1.6;color:#94a0a4;margin:6px 0 0}
