@@ -594,6 +594,16 @@ function kg_core_enqueue_admin_assets( $hook ) {
         ]);
     }
     
+    // Ingredient Studio uses the existing save form and only changes presentation.
+    if ( ( $hook === 'post.php' || $hook === 'post-new.php' ) && $post_type === 'ingredient' ) {
+        wp_enqueue_style(
+            'kg-ingredient-studio-css',
+            KG_CORE_URL . 'assets/admin/css/metabox.css',
+            [],
+            (string) filemtime(KG_CORE_PATH . 'assets/admin/css/metabox.css')
+        );
+    }
+
     // Load on post edit screens for post (WordPress Posts)
     if ( ( $hook === 'post.php' || $hook === 'post-new.php' ) && $post_type === 'post' ) {
         // Enqueue WordPress Media Uploader
