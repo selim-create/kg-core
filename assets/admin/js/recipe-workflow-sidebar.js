@@ -297,14 +297,19 @@
         ),
         el(PluginDocumentSettingPanel, {name: 'kg-recipe-tools', title: 'Beslenme Güvenliği ve AI', className: 'kg-workflow-sidebar'},
         el('div', {className: 'kg-wf-section-caption kg-wf-section-caption--second'}, 'YAYIN ARAÇLARI'),
-        el(PanelBody, {title: 'Beslenme Güvenliği', initialOpen: !!cfg.warning, className: 'kg-wf-panel'},
+        el(PanelBody, {title: 'Beslenme Güvenliği', initialOpen: true, className: 'kg-wf-panel'},
             el(SafetyControl, {isDirty: editorState.dirty})
         ),
-        el(PanelBody, {title: 'Yapay Zekâ Desteği', initialOpen: false, className: 'kg-wf-panel'},
+        el(PanelBody, {title: 'AI İçerik Asistanı', initialOpen: true, className: 'kg-wf-panel'},
             el('div', {className: 'kg-wf-ai'},
-                el('p', null, 'Eksik tarif bilgilerini AI ile tamamlamak veya yeniden oluşturmak için.'),
-                el(Button, {variant: 'secondary', onClick: openAI}, 'AI ile Zenginleştir'),
-                el('small', null, 'Değişiklikleri onaylamadan önce içeriği ve yaş uygunluğunu kontrol et.')
+                el('span', {className: 'kg-wf-overline'}, 'YAPAY ZEKÂ DESTEKLİ İÇERİK'),
+                el('strong', {className: 'kg-wf-card-heading'}, 'Tarifini geliştirmeye devam et'),
+                el('p', null, 'Eksik alanları tamamlama veya yeniden oluşturma seçimini sonraki ekranda yapabilirsin.'),
+                el('div', {className: 'kg-wf-ai-actions'},
+                    el(Button, {variant: 'primary', onClick: openAI, disabled: editorState.dirty}, 'AI ile Zenginleştir'),
+                    editorState.dirty ? el('small', {className: 'kg-wf-unsaved'}, 'Önce tarifteki değişiklikleri kaydet.') : null
+                ),
+                el('div', {className: 'kg-wf-ai-note'}, 'AI önerileri taslak niteliğindedir. Yaş ve alerjen bilgilerini editör kontrol etmeli; doğrulanmamış besin değerleri otomatik hesaplanmaz.')
             )
         ),
         ));
