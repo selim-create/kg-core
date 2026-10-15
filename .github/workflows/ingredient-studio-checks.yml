@@ -1,0 +1,31 @@
+name: Ingredient Studio Checks
+
+on:
+  pull_request:
+    paths:
+      - 'includes/Admin/IngredientMetaBox.php'
+      - 'includes/Services/AIService.php'
+      - 'assets/admin/css/metabox.css'
+      - 'kg-core.php'
+      - '.github/workflows/ingredient-studio-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ingredient-studio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax and ingredient safety
+        run: |
+          php -l kg-core.php
+          php -l includes/Admin/IngredientMetaBox.php
+          php -l includes/Services/AIService.php
+          php tests/test-openai-modernization.php
+          php tests/test-recipe-ai-safety.php
+      - name: Check ingredient form contract
+        run: |
+          test "$(grep -c '<details class="kg-ingredient-section"' includes/Admin/IngredientMetaBox.php)" -eq 10
+          grep -q 'public function save_custom_meta_data' includes/Admin/IngredientMetaBox.php
+          grep -q 'kg_ingredient_nonce' includes/Admin/IngredientMetaBox.php
