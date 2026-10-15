@@ -16,6 +16,10 @@ if (!function_exists('wp_kses_post')) {
     function wp_kses_post($value) { return $value; }
 }
 
+if (!function_exists('wp_strip_all_tags')) {
+    function wp_strip_all_tags($value) { return strip_tags((string) $value); }
+}
+
 function check_result($condition, $label) {
     echo ($condition ? 'PASS: ' : 'FAIL: ') . $label . "\n";
     if (!$condition) exit(1);
