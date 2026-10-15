@@ -17,6 +17,7 @@ class RecipePublicationGuard {
         add_action('add_meta_boxes_recipe', [$this, 'registerNoticeBox']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueReviewScript']);
         add_action('wp_ajax_kg_recipe_acknowledge_warning', [$this, 'ajaxAcknowledgeWarning']);
+        add_action('wp_ajax_kg_recipe_review_status', [$this, 'ajaxReviewStatus']);
         // Runs after the post, taxonomy terms and post meta have been saved.
         // This also covers Gutenberg, REST and scheduled publication.
         add_action('wp_after_insert_post', [$this, 'recordReview'], 100, 4);
@@ -172,6 +173,36 @@ class RecipePublicationGuard {
         ];
         update_post_meta($post_id, self::ACK_META, $ack);
         return $ack;
+    }
+
+    /**
+     * Live read-only review state for the Gutenberg document panel.
+     * Every request is scoped to one recipe and a nonce for that recipe.
+     */
+    public function ajaxReviewStatus() {
+        $post_id = isset($_POST['post_id']) ? absint(wp_unslash($_POST['post_id'])) : 0;
+        if (!$post_id || !check_ajax_referer('kg_recipe_safety_ack_' . $post_id, 'nonce', false)) {
+            wp_send_json_error(['message' => 'Oturum doğrulaması başarısız. Sayfayı yenileyin.'], 403);
+        }
+        $post = get_post($post_id);
+        if (!$post || $post->post_type !== 'recipe' || !current_user_can('edit_post', $post_id)) {
+            wp_send_json_error(['message' => 'Bu tarifi görüntüleme yetkiniz yok.'], 403);
+        }
+
+        $warning = $this->assessPost($post_id);
+        $ack = get_post_meta($post_id, self::ACK_META, true);
+        $approved = $warning !== null && self::ackMatches($ack, $this->signature($post_id, $warning));
+        $logs = get_post_meta($post_id, self::LOG_META, false);
+        $last = is_array($logs) && $logs !== [] ? end($logs) : null;
+        wp_send_json_success([
+            'warning' => $warning,
+            'approved' => $approved,
+            'approved_at' => $approved ? ($ack['time_utc'] ?? null) : null,
+            'last_publication' => is_array($last) ? [
+                'published_at_utc' => $last['published_at_utc'] ?? null,
+                'explicitly_acknowledged' => !empty($last['explicitly_acknowledged']),
+            ] : null,
+        ]);
     }
 
     public function ajaxAcknowledgeWarning() {
