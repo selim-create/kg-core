@@ -58,7 +58,7 @@ $ai = file_get_contents($root . '/includes/Services/AIService.php');
 check_result(strpos($bootstrap, 'new \\KG_Core\\Admin\\IngredientAIReview();') !== false, 'new review controller registered');
 check_result(strpos($bootstrap, 'new \\KG_Core\\Admin\\IngredientEnricher();') === false, 'legacy instant-write metabox disabled');
 check_result(strpos($bootstrap, 'new \\KG_Core\\Admin\\AIEnrichButton();') === false, 'legacy instant-write admin bar disabled');
-check_result(strpos($source, 'hash_equals(') !== false && strpos($source, 'check_ajax_referer') !== false, 'nonce and fresh-preview checks present');
+check_result(strpos($source, 'hash_equals(') !== false && strpos($source, 'check_ajax_referer') !== false, 'nonce and version checks present');
 check_result(strpos($source, "current_user_can('edit_post'") !== false, 'per-post permission checks present');
 check_result(strpos($ai, '$editor_context = []') !== false, 'existing ingredient editorial context supported');
 check_result(strpos($js, 'MutationObserver') !== false, 'Gutenberg remounts initialize the review card');
@@ -73,12 +73,17 @@ check_result(strpos($source, "'complete', 'enrich'") !== false, 'complete and en
 check_result(strpos($source, "\$job['mode'] === 'complete' && self::isFilled(\$current)") !== false, 'complete mode preserves populated fields');
 check_result(strpos($js, "startPreview('complete')") !== false && strpos($js, "startPreview('enrich')") !== false, 'two AI actions available');
 check_result(strpos($js, "if (dirty())") === false && strpos($js, "generate.addEventListener") === false, 'AI save no longer blocked by dirty form');
-check_result(strpos($js, "saveSuggestions(data)") !== false, 'AI result automatically applies via existing secured endpoint');
-check_result(strpos($js, "window.location.reload()") !== false, 'page reloads after successful AI apply');
+check_result(strpos($source, 'applyBackgroundResult') !== false, 'AI result is saved in authenticated status endpoint');
+check_result(strpos($js, "window.location.reload()") !== false, 'page reloads only after verified save');
 
 check_result(strpos($source, 'kg_ingredient_ai_review_generate_job') === false, 'WP-Cron preview job removed');
 check_result(strpos($source, 'startIngredientReviewBackground') !== false, 'OpenAI native background mode starts without WP-Cron');
 check_result(strpos($source, 'kg_ingredient_ai_review_status') !== false, 'polling action present');
-check_result(strpos($source, 'finishBackgroundPreview') !== false, 'background response is normalized before editorial approval');
+check_result(strpos($source, 'applyBackgroundResult') !== false, 'background response is validated and saved without preview token');
 check_result(strpos($js, "kg_ingredient_ai_review_status") !== false, 'editor polls for preview status');
 check_result(strpos($js, "response.text()") !== false, 'HTTP errors no longer hide behind JSON parse failure');
+
+check_result(strpos($source, 'get_transient($this->cacheKey') === false, 'no separate expiring preview cache needed');
+check_result(strpos($source, 'public function apply()') === false, 'no second AJAX apply action');
+check_result(strpos($js, "kg_ingredient_ai_review_apply") === false, 'browser never sends second apply request');
+check_result(strpos($js, "showSaved(result.result)") !== false, 'browser waits for server save result');
