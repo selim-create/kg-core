@@ -160,6 +160,9 @@ class IngredientAIReview {
     private static function fieldDefinitions() {
         return [
             'category' => ['label' => 'Malzeme kategorisi', 'source' => 'category', 'target' => 'ingredient-category', 'format' => 'category'],
+            'seo_title' => ['label' => 'Rank Math · SEO Başlığı', 'source' => 'seo_title', 'target' => 'rank_math_title', 'format' => 'seo_title'],
+            'seo_description' => ['label' => 'Rank Math · Meta Açıklaması', 'source' => 'seo_description', 'target' => 'rank_math_description', 'format' => 'seo_description'],
+            'seo_focus_keyword' => ['label' => 'Rank Math · Odak Anahtar Kelime', 'source' => 'seo_focus_keyword', 'target' => 'rank_math_focus_keyword', 'format' => 'seo_keyword'],
             'excerpt' => ['label' => 'Kısa açıklama', 'source' => 'excerpt', 'target' => 'post_excerpt', 'format' => 'text'],
             'content' => ['label' => 'Malzeme rehberi', 'source' => 'content', 'target' => 'post_content', 'format' => 'html'],
             'start_age' => ['label' => 'Başlangıç yaşı (ay)', 'source' => 'start_age', 'target' => '_kg_start_age', 'format' => 'age'],
@@ -226,6 +229,9 @@ class IngredientAIReview {
             ['key' => 'enrichment', 'title' => 'Tamamlayıcı bilgiler', 'keys' => [
                 'benefits', 'preparation_tips', 'storage_tips', 'selection_tips',
                 'pro_tips', 'season', 'prep_methods', 'prep_by_age', 'pairings',
+            ]],
+            ['key' => 'seo', 'title' => 'Rank Math SEO', 'keys' => [
+                'seo_title', 'seo_description', 'seo_focus_keyword',
             ]],
         ];
 
@@ -305,6 +311,19 @@ class IngredientAIReview {
             $age = (int) $raw;
             if (!in_array($age, [6, 8, 10, 12, 18, 24, 36], true) || (self::isHoneyTitle($title) && $age < 12)) return null;
             return $age;
+        }
+        if (in_array($format, ['seo_title', 'seo_description', 'seo_keyword'], true)) {
+            if (!is_string($raw)) return null;
+            $value = trim(preg_replace('/\\s+/u', ' ', sanitize_text_field($raw)));
+            if ($value === '') return null;
+            // Don't silently truncate editorial SEO text or manufacture keywords.
+            $chars = function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8')
+                : preg_match_all('/./us', $value);
+            $min = $format === 'seo_description' ? 70 : ($format === 'seo_title' ? 10 : 2);
+            $max = $format === 'seo_description' ? 170 : ($format === 'seo_title' ? 70 : 80);
+            if ($chars < $min || $chars > $max) return null;
+            if ($format === 'seo_keyword' && strpos($value, ',') !== false) return null;
+            return $value;
         }
         if ($format === 'risk') {
             if (!is_scalar($raw)) return null;
@@ -391,7 +410,9 @@ class IngredientAIReview {
         $post = get_post($post_id);
         $values = [$post->post_title, $post->post_status, $post->post_content, $post->post_excerpt, $post->post_modified_gmt];
         foreach (self::fieldDefinitions() as $field) {
-            if ($field['target'][0] === '_') $values[$field['target']] = get_post_meta($post_id, $field['target'], true);
+            if ($field['target'][0] === '_' || strpos($field['target'], 'rank_math_') === 0) {
+                $values[$field['target']] = get_post_meta($post_id, $field['target'], true);
+            }
         }
         $category_ids = $this->currentValue($post_id, 'ingredient-category');
         sort($category_ids, SORT_NUMERIC);
@@ -601,7 +622,7 @@ class IngredientAIReview {
                 }
                 continue;
             }
-            if (strpos($target, '_') === 0) {
+            if (strpos($target, '_') === 0 || strpos($target, 'rank_math_') === 0) {
                 update_post_meta($id, $target, $value);
                 // WordPress returns false for an unchanged value as well as
                 // failures, so verify persisted values instead of the return.
