@@ -129,8 +129,37 @@ class IngredientAIReview {
         wp_enqueue_style('kg-ingredient-ai-review', KG_CORE_URL . $css, [], (string) filemtime(KG_CORE_PATH . $css));
     }
 
+    /** Fixed editorial category vocabulary; never create taxonomy terms. */
+    public static function allowedIngredientCategories() {
+        return [
+            'Baharatlar', 'Baklagiller', 'Meyveler', 'Özel Ürünler',
+            'Proteinler', 'Sebzeler', 'Sıvılar', 'Süt Ürünleri',
+            'Tahıllar', 'Yağlar',
+        ];
+    }
+
+    private static function categoryKey($name) {
+        $name = trim(preg_replace('/\\s+/u', ' ', (string) $name));
+        return function_exists('mb_strtolower') ? mb_strtolower($name, 'UTF-8') : strtolower($name);
+    }
+
+    /** Only resolve an existing term from the 10-category whitelist. */
+    private static function existingCategoryId($label) {
+        if (!in_array($label, self::allowedIngredientCategories(), true)) return 0;
+        $terms = get_terms(['taxonomy' => 'ingredient-category', 'hide_empty' => false]);
+        if (is_wp_error($terms) || !is_array($terms)) return 0;
+        foreach ($terms as $term) {
+            if (!isset($term->name, $term->term_id)) continue;
+            if (self::categoryKey($term->name) === self::categoryKey($label)) {
+                return (int) $term->term_id;
+            }
+        }
+        return 0;
+    }
+
     private static function fieldDefinitions() {
         return [
+            'category' => ['label' => 'Malzeme kategorisi', 'source' => 'category', 'target' => 'ingredient-category', 'format' => 'category'],
             'excerpt' => ['label' => 'Kısa açıklama', 'source' => 'excerpt', 'target' => 'post_excerpt', 'format' => 'text'],
             'content' => ['label' => 'Malzeme rehberi', 'source' => 'content', 'target' => 'post_content', 'format' => 'html'],
             'start_age' => ['label' => 'Başlangıç yaşı (ay)', 'source' => 'start_age', 'target' => '_kg_start_age', 'format' => 'age'],
@@ -261,6 +290,16 @@ class IngredientAIReview {
     }
 
     private static function normalizeSuggestion($format, $raw, $title) {
+        if ($format === 'category') {
+            if (!is_string($raw)) return null;
+            $candidate = sanitize_text_field($raw);
+            foreach (self::allowedIngredientCategories() as $allowed) {
+                if (self::categoryKey($candidate) === self::categoryKey($allowed)) {
+                    return $allowed;
+                }
+            }
+            return null;
+        }
         if ($format === 'age') {
             if (!is_numeric($raw)) return null;
             $age = (int) $raw;
@@ -341,6 +380,10 @@ class IngredientAIReview {
         $post = get_post($post_id);
         if ($target === 'post_excerpt') return $post->post_excerpt;
         if ($target === 'post_content') return $post->post_content;
+        if ($target === 'ingredient-category') {
+            $terms = wp_get_post_terms($post_id, 'ingredient-category', ['fields' => 'ids']);
+            return is_wp_error($terms) ? [] : array_map('intval', $terms);
+        }
         return get_post_meta($post_id, $target, true);
     }
 
@@ -350,6 +393,9 @@ class IngredientAIReview {
         foreach (self::fieldDefinitions() as $field) {
             if ($field['target'][0] === '_') $values[$field['target']] = get_post_meta($post_id, $field['target'], true);
         }
+        $category_ids = $this->currentValue($post_id, 'ingredient-category');
+        sort($category_ids, SORT_NUMERIC);
+        $values['ingredient-category'] = $category_ids;
         return hash('sha256', serialize($values));
     }
 
@@ -366,6 +412,10 @@ class IngredientAIReview {
         $allergens = wp_get_post_terms($post_id, 'allergen', ['fields' => 'ids']);
         if (is_wp_error($allergens) || empty($allergens)) {
             unset($definitions['cross_contamination'], $definitions['allergy_symptoms'], $definitions['alternatives']);
+        }
+        // An editor-assigned category must not be changed, even by Enrich.
+        if (self::isFilled($this->currentValue($post_id, 'ingredient-category'))) {
+            unset($definitions['category']);
         }
         if ($mode === 'complete') {
             foreach ($definitions as $key => $definition) {
@@ -537,6 +587,20 @@ class IngredientAIReview {
         $failures = [];
         foreach ($selected as $key => $value) {
             $target = $definitions[$key]['target'];
+            if ($target === 'ingredient-category') {
+                $term_id = self::existingCategoryId($value);
+                $taxonomy = get_taxonomy('ingredient-category');
+                if (!$term_id || !$taxonomy || !current_user_can($taxonomy->cap->assign_terms)) {
+                    $failures[] = $key;
+                    continue;
+                }
+                $result = wp_set_post_terms($id, [$term_id], 'ingredient-category', false);
+                $actual = $this->currentValue($id, 'ingredient-category');
+                if (is_wp_error($result) || !in_array($term_id, $actual, true)) {
+                    $failures[] = $key;
+                }
+                continue;
+            }
             if (strpos($target, '_') === 0) {
                 update_post_meta($id, $target, $value);
                 // WordPress returns false for an unchanged value as well as
