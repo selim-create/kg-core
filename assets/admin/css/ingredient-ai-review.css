@@ -57,3 +57,11 @@
 .kg-ai-review__actions>.kg-ai-review__action-choice+.kg-ai-review__action-choice .button{border-color:#a1c7bf;color:#1c6d65}
 .kg-ai-review__actions>p{width:100%;max-width:none}
 @media(max-width:782px){.kg-ai-review__coverage{margin:14px;padding:15px}.kg-ai-review__coverage-group ul{grid-template-columns:1fr}.kg-ai-review__action-choice{width:100%}}
+
+/* Full-card status colors based on saved ingredient completeness. */
+.kg-ai-review__coverage.kg-ai-review__coverage--critical {--kg-coverage-accent:#c34b47;background:#fce9e7;border-color:#ecb3ae}
+.kg-ai-review__coverage.kg-ai-review__coverage--warning {--kg-coverage-accent:#b96c18;background:#fff1db;border-color:#e9c591}
+.kg-ai-review__coverage.kg-ai-review__coverage--good {--kg-coverage-accent:#208b65;background:#e7f5eb;border-color:#afdfc1}
+.kg-ai-review__coverage[class*="kg-ai-review__coverage--"] .kg-ai-review__coverage-score,
+.kg-ai-review__coverage[class*="kg-ai-review__coverage--"] summary {color:var(--kg-coverage-accent)}
+.kg-ai-review__coverage[class*="kg-ai-review__coverage--"] .kg-ai-review__coverage-track span {background:var(--kg-coverage-accent)}
