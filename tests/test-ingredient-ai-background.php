@@ -12,7 +12,7 @@ $checks = [
  'request native background' => strpos($client, "'background' => true") !== false,
  'background responses stored temporarily' => strpos($client, "'store' => true") !== false,
  'API stores server-side response ID' => strpos($controller, "'response_id' => \$started['response_id']") !== false,
- 'user approves fields before writing' => strpos($controller, "public function apply()") !== false,
+ 'automatic save uses version check' => strpos($controller, 'applyBackgroundResult') !== false && strpos($controller, 'hash_equals($snapshot') !== false,
  'new worker accepts only approved fields' => strpos($controller, 'normalizeSuggestion') !== false,
  'frontend no longer suggests WP-Cron timeout' => strpos($js, 'WP-Cron ve sunucu zaman') === false,
  'focused generation method exists' => strpos($service, 'generateIngredientReviewSuggestions') !== false,
