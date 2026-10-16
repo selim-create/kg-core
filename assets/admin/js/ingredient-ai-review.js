@@ -47,7 +47,7 @@
             block.appendChild(node('strong', '', group.title + ' · ' + group.filled + '/' + group.total));
             var list = node('ul', '');
             (group.items || []).forEach(function (item) {
-                var entry = node('li', item.filled ? 'is-filled' : 'is-missing', (item.filled ? '✓ ' : '○ ') + item.label + (item.key === 'category' && !item.filled ? ' (kategori seçimi gerekli)' : ''));
+                var entry = node('li', item.filled ? 'is-filled' : 'is-missing', (item.filled ? '✓ ' : '○ ') + item.label + (item.key === 'category' && !item.filled ? ' (AI otomatik seçecek)' : ''));
                 list.appendChild(entry);
             });
             block.appendChild(list);
