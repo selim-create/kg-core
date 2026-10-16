@@ -10,6 +10,7 @@ on:
       - 'assets/admin/css/ingredient-ai-review.css'
       - 'tests/test-ingredient-ai-review.php'
       - 'tests/test-ingredient-ai-category.php'
+      - 'tests/test-ingredient-ai-rank-math.php'
       - 'tests/test-ingredient-ai-coverage-persistence.php'
       - 'tests/test-ingredient-ai-background.php'
       - '.github/workflows/ingredient-ai-review-checks.yml'
@@ -33,6 +34,7 @@ jobs:
         run: |
           php tests/test-ingredient-ai-review.php
           php tests/test-ingredient-ai-category.php
+          php tests/test-ingredient-ai-rank-math.php
           php tests/test-ingredient-ai-coverage-persistence.php
           php tests/test-ingredient-ai-background.php
           php tests/test-openai-modernization.php
