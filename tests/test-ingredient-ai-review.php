@@ -70,13 +70,13 @@ check_result(!$class::isFilled(['', ' ']), 'empty nested list is missing');
 check_result($class::isFilled(['', 'Hazırlama']), 'partially filled list is filled');
 check_result(strpos($source, 'coverageSnapshot') !== false, 'server computes saved ingredient completeness');
 check_result(strpos($source, "'complete', 'enrich'") !== false, 'complete and enrich modes validated');
-check_result(strpos($source, "\$mode === 'complete' && self::isFilled(\$current)") !== false, 'complete mode preserves populated fields');
+check_result(strpos($source, "\$job['mode'] === 'complete' && self::isFilled(\$current)") !== false, 'complete mode preserves populated fields');
 check_result(strpos($js, "startPreview('complete')") !== false && strpos($js, "startPreview('enrich')") !== false, 'two AI actions available');
 check_result(strpos($js, "if (dirty())") !== false && strpos($js, "generate.addEventListener") === false, 'preview no longer incorrectly blocked by dirty form');
 
-check_result(strpos($source, 'kg_ingredient_ai_review_generate_job') !== false, 'background job registered');
-check_result(strpos($source, 'wp_schedule_single_event') !== false, 'long AI call scheduled in WP-Cron');
+check_result(strpos($source, 'kg_ingredient_ai_review_generate_job') === false, 'WP-Cron preview job removed');
+check_result(strpos($source, 'startIngredientReviewBackground') !== false, 'OpenAI native background mode starts without WP-Cron');
 check_result(strpos($source, 'kg_ingredient_ai_review_status') !== false, 'polling action present');
-check_result(strpos($source, 'generateIngredientReviewSuggestions') !== false, 'short focused AI generation used');
+check_result(strpos($source, 'finishBackgroundPreview') !== false, 'background response is normalized before editorial approval');
 check_result(strpos($js, "kg_ingredient_ai_review_status") !== false, 'editor polls for preview status');
 check_result(strpos($js, "response.text()") !== false, 'HTTP errors no longer hide behind JSON parse failure');

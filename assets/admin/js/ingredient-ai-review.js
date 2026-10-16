@@ -178,7 +178,7 @@
             if (!job.job_id) throw new Error('AI işi başlatılamadı: sunucu iş kimliği döndürmedi.');
             var started = Date.now();
             function poll() {
-                if (Date.now() - started > 190000) throw new Error('AI işlemi zamanında tamamlanamadı; WP-Cron ve sunucu zaman sınırlarını kontrol et.');
+                if (Date.now() - started > 625000) throw new Error('OpenAI işlemi 10 dakikada tamamlanamadı. OpenAI API durumunu kontrol et.');
                 return ajax('kg_ingredient_ai_review_status', {job_id: job.job_id}).then(function (result) {
                     if (result.status === 'done') return show(result.preview);
                     if (result.status === 'failed') throw new Error(result.message || 'AI sunucuda tamamlanamadı.');

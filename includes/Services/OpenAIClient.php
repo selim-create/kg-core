@@ -137,4 +137,101 @@ class OpenAIClient {
 
         return trim(implode("\n", $parts));
     }
+    /**
+     * Start an OpenAI Responses background request. The API performs the long
+     * generation independently: the WordPress PHP request returns quickly.
+     * This deliberately does not use WP-Cron or a blocking 90-second request.
+     */
+    public function startBackgroundText($instructions, $input, $max_output_tokens = 3000) {
+        if (empty($this->api_key)) {
+            return new \WP_Error('no_api_key', 'OpenAI API anahtarı ayarlanmamış.');
+        }
+
+        $response = wp_remote_post('https://api.openai.com/v1/responses', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->api_key,
+                'Content-Type' => 'application/json',
+            ],
+            'body' => wp_json_encode([
+                'model' => $this->model,
+                'instructions' => (string) $instructions,
+                'input' => (string) $input,
+                'max_output_tokens' => max(1, (int) $max_output_tokens),
+                'background' => true,
+                // Background results stay available temporarily for polling.
+                // Do not persist responses beyond that window.
+                'store' => true,
+            ]),
+            'timeout' => 25,
+        ]);
+        return $this->parseBackgroundResponse($response);
+    }
+
+    /**
+     * Poll one OpenAI background response. The response ID is server-stored
+     * and never accepted directly from an untrusted browser parameter.
+     */
+    public function pollBackgroundText($response_id) {
+        if (empty($this->api_key)) {
+            return new \WP_Error('no_api_key', 'OpenAI API anahtarı ayarlanmamış.');
+        }
+        if (!is_string($response_id) || !preg_match('/^resp_[A-Za-z0-9_-]{5,200}$/', $response_id)) {
+            return new \WP_Error('invalid_response_id', 'AI işlem kimliği geçersiz.');
+        }
+        $response = wp_remote_get(
+            'https://api.openai.com/v1/responses/' . rawurlencode($response_id),
+            [
+                'headers' => ['Authorization' => 'Bearer ' . $this->api_key],
+                'timeout' => 20,
+            ]
+        );
+        return $this->parseBackgroundResponse($response);
+    }
+
+    /**
+     * @return array{status:string,response_id:string,text?:string}|\WP_Error
+     */
+    private function parseBackgroundResponse($response) {
+        if (is_wp_error($response)) {
+            return new \WP_Error('openai_transport_error',
+                'OpenAI bağlantısı kurulamadı: ' . $response->get_error_message());
+        }
+
+        $http = (int) wp_remote_retrieve_response_code($response);
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+        if ($http < 200 || $http >= 300) {
+            $reason = is_array($body) && isset($body['error']['message'])
+                && is_string($body['error']['message'])
+                ? substr($body['error']['message'], 0, 300)
+                : 'Bilinmeyen API hatası.';
+            return new \WP_Error('openai_background_http_error',
+                sprintf('OpenAI HTTP %d: %s', $http, $reason));
+        }
+        if (!is_array($body) || empty($body['id']) || !is_string($body['id'])) {
+            return new \WP_Error('openai_background_parse_error', 'OpenAI geçerli bir işlem kimliği döndürmedi.');
+        }
+        $id = $body['id'];
+        if (!preg_match('/^resp_[A-Za-z0-9_-]{5,200}$/', $id)) {
+            return new \WP_Error('openai_background_parse_error', 'OpenAI işlem kimliği beklenen biçimde değil.');
+        }
+        $status = $body['status'] ?? null;
+        if ($status === 'queued' || $status === 'in_progress') {
+            return ['status' => 'running', 'response_id' => $id];
+        }
+        if ($status === 'completed') {
+            $text = $this->extractOutputText($body);
+            if ($text === '') {
+                return new \WP_Error('openai_empty_text', 'OpenAI işlemi tamamladı ancak öneri metni döndürmedi.');
+            }
+            return ['status' => 'completed', 'response_id' => $id, 'text' => $text];
+        }
+
+        $reason = isset($body['error']['message']) && is_string($body['error']['message'])
+            ? $body['error']['message']
+            : ($body['incomplete_details']['reason'] ?? (is_string($status) ? $status : 'bilinmeyen durum'));
+        if (!is_string($reason)) $reason = 'bilinmeyen durum';
+        return new \WP_Error('openai_background_failed',
+            'OpenAI üretimi tamamlanamadı: ' . substr($reason, 0, 300));
+    }
+
 }
