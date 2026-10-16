@@ -18,6 +18,7 @@
     var count = root.querySelector('[data-kg-ai-count]');
     var token = '';
     var working = false;
+    var publishConfirmed = false;
     var previewMode = 'complete';
     function renderCoverage(data) {
         if (!data) return;
@@ -121,7 +122,8 @@
         });
         preview.hidden = false;
         refresh();
-        report((previewMode === 'complete' ? 'Boş alanlara yönelik' : 'İçerik geliştirmeye yönelik') + ' AI önerileri hazır. Henüz hiçbir veri değişmedi.', false);
+        report('AI önerileri hazır. Uygun alanlar otomatik kaydediliyor...', false);
+        return saveSuggestions(data);
     }
     function clear() {
         token = '';
@@ -169,8 +171,28 @@
         });
     }
 
+    function saveSuggestions(data) {
+        if (!data || !data.token || !Array.isArray(data.fields)) throw new Error('AI önerileri geçersiz.');
+        var fields = data.fields.filter(function (field) {
+            return previewMode === 'complete' ? !!field.empty : true;
+        }).map(function (field) { return field.key; });
+        if (!fields.length) throw new Error('Kaydedilebilecek uygun AI alanı bulunamadı.');
+        report(fields.length + ' alan sunucuya kaydediliyor...', false);
+        return ajax('kg_ingredient_ai_review_apply', {
+            token: data.token,
+            fields: fields,
+            confirm_published: publishConfirmed ? 'yes' : 'no'
+        }).then(function (result) {
+            report((result.message || 'AI alanları kaydedildi.') + ' Sayfa yenileniyor...', false);
+            window.location.reload();
+        });
+    }
     function startPreview(mode) {
         if (working) return;
+        if (cfg.isPublished) {
+            if (!window.confirm('Bu malzeme yayında. AI önerileri tamamlandığında uygun alanlar otomatik olarak canlı içeriğe kaydedilecek. Devam edilsin mi?')) return;
+            publishConfirmed = true;
+        } else publishConfirmed = false;
         previewMode = mode;
         clear();
         busy(true, mode === 'complete' ? 'Eksik alanlar için AI önerileri hazırlanıyor...' : 'Zenginleştirme önerileri hazırlanıyor...');
@@ -199,13 +221,9 @@
     cancel.addEventListener('click', clear);
     apply.addEventListener('click', function () {
         if (working || !token) return;
-        if (dirty()) {
-            report('Onaydan önce değişikliklerini WordPress üzerinden kaydet, sayfayı yenile ve yeni öneri oluştur.', true);
-            return;
-        }
         var fields = selectedFields();
         if (!fields.length) return;
-        if (cfg.isPublished && !window.confirm('Bu malzeme yayında. Seçilen bilgiler canlı sayfada değişecek. Devam edilsin mi?')) return;
+        if (cfg.isPublished && !publishConfirmed && !window.confirm('Bu malzeme yayında. Seçilen bilgiler canlı sayfada değişecek. Devam edilsin mi?')) return;
         busy(true, 'Seçilen alanlar kaydediliyor...');
         ajax('kg_ingredient_ai_review_apply', {
             token: token,
