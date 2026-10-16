@@ -100,30 +100,10 @@
         box.appendChild(node('div', 'kg-ai-review__value-text', value || '(Boş)'));
         container.appendChild(box);
     }
-    function show(data) {
-        token = data.token;
-        rows.textContent = '';
-        (data.fields || []).forEach(function (field) {
-            var card = node('div', 'kg-ai-review__field');
-            var header = node('label', 'kg-ai-review__field-label');
-            var checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.dataset.kgAiField = field.key;
-            checkbox.checked = !!field.empty;
-            header.appendChild(checkbox);
-            header.appendChild(node('strong', '', field.label));
-            header.appendChild(node('span', 'kg-ai-review__field-status', field.empty ? 'Boş alan' : 'Mevcut değer var'));
-            card.appendChild(header);
-            var values = node('div', 'kg-ai-review__compare');
-            compare(values, 'MEVCUT', field.current);
-            compare(values, 'AI ÖNERİSİ', field.suggested);
-            card.appendChild(values);
-            rows.appendChild(card);
-        });
-        preview.hidden = false;
-        refresh();
-        report('AI önerileri hazır. Uygun alanlar otomatik kaydediliyor...', false);
-        return saveSuggestions(data);
+    function showSaved(result) {
+        if (!result || !result.count) throw new Error('Sunucu kayıt doğrulaması eksik.');
+        report(result.message + ' Sayfa yenileniyor...', false);
+        window.location.reload();
     }
     function clear() {
         token = '';
@@ -171,22 +151,6 @@
         });
     }
 
-    function saveSuggestions(data) {
-        if (!data || !data.token || !Array.isArray(data.fields)) throw new Error('AI önerileri geçersiz.');
-        var fields = data.fields.filter(function (field) {
-            return previewMode === 'complete' ? !!field.empty : true;
-        }).map(function (field) { return field.key; });
-        if (!fields.length) throw new Error('Kaydedilebilecek uygun AI alanı bulunamadı.');
-        report(fields.length + ' alan sunucuya kaydediliyor...', false);
-        return ajax('kg_ingredient_ai_review_apply', {
-            token: data.token,
-            fields: fields,
-            confirm_published: publishConfirmed ? 'yes' : 'no'
-        }).then(function (result) {
-            report((result.message || 'AI alanları kaydedildi.') + ' Sayfa yenileniyor...', false);
-            window.location.reload();
-        });
-    }
     function startPreview(mode) {
         if (working) return;
         if (cfg.isPublished) {
@@ -196,13 +160,13 @@
         previewMode = mode;
         clear();
         busy(true, mode === 'complete' ? 'Eksik alanlar için AI önerileri hazırlanıyor...' : 'Zenginleştirme önerileri hazırlanıyor...');
-        ajax('kg_ingredient_ai_review_preview', {mode: mode}).then(function (job) {
+        ajax('kg_ingredient_ai_review_preview', {mode: mode, confirm_published: publishConfirmed ? 'yes' : 'no'}).then(function (job) {
             if (!job.job_id) throw new Error('AI işi başlatılamadı: sunucu iş kimliği döndürmedi.');
             var started = Date.now();
             function poll() {
                 if (Date.now() - started > 625000) throw new Error('OpenAI işlemi 10 dakikada tamamlanamadı. OpenAI API durumunu kontrol et.');
                 return ajax('kg_ingredient_ai_review_status', {job_id: job.job_id}).then(function (result) {
-                    if (result.status === 'done') return show(result.preview);
+                    if (result.status === 'done') return showSaved(result.result);
                     if (result.status === 'failed') throw new Error(result.message || 'AI sunucuda tamamlanamadı.');
                     report(result.message || 'AI önerileri hazırlanıyor...', false);
                     return new Promise(function (resolve) { setTimeout(resolve, 2300); }).then(poll);
@@ -219,25 +183,7 @@
         if (event.target.matches('input[data-kg-ai-field]')) refresh();
     });
     cancel.addEventListener('click', clear);
-    apply.addEventListener('click', function () {
-        if (working || !token) return;
-        var fields = selectedFields();
-        if (!fields.length) return;
-        if (cfg.isPublished && !publishConfirmed && !window.confirm('Bu malzeme yayında. Seçilen bilgiler canlı sayfada değişecek. Devam edilsin mi?')) return;
-        busy(true, 'Seçilen alanlar kaydediliyor...');
-        ajax('kg_ingredient_ai_review_apply', {
-            token: token,
-            fields: fields,
-            confirm_published: cfg.isPublished ? 'yes' : 'no'
-        }).then(function (data) {
-            token = '';
-            preview.hidden = true;
-            report(data.message || 'AI önerileri kaydedildi. Sayfa yenileniyor...', false);
-            window.location.reload();
-        }).catch(function (error) {
-            report(error.message, true);
-        }).finally(function () { busy(false); });
-    });
+
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

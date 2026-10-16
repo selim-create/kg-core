@@ -9,7 +9,6 @@ use KG_Core\Services\AIService;
  * from a server-stored preview can be applied by an authorized editor.
  */
 class IngredientAIReview {
-    private const PREVIEW_TTL = 600;
     private const LOG_META = '_kg_ingredient_ai_review_log';
 
     public function __construct() {
@@ -23,7 +22,6 @@ class IngredientAIReview {
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
         add_action('wp_ajax_kg_ingredient_ai_review_preview', [$this, 'preview']);
         add_action('wp_ajax_kg_ingredient_ai_review_status', [$this, 'status']);
-        add_action('wp_ajax_kg_ingredient_ai_review_apply', [$this, 'apply']);
     }
 
     public function registerBox() {
@@ -316,10 +314,6 @@ class IngredientAIReview {
         return hash('sha256', serialize($values));
     }
 
-    private function cacheKey($post_id, $user_id = null) {
-        return 'kg_ai_review_' . ($user_id === null ? get_current_user_id() : (int) $user_id) . '_' . $post_id;
-    }
-
     private function jobKey($post_id, $user_id = null) {
         return 'kg_ai_review_job_' . ($user_id === null ? get_current_user_id() : (int) $user_id) . '_' . $post_id;
     }
@@ -357,9 +351,8 @@ class IngredientAIReview {
     }
 
     /**
-     * Short request: queue a generation job and return immediately.
-     * The expensive provider call runs in an independent WP-Cron request.
-     * Queue/status cannot write any ingredient data.
+     * Start OpenAI generation quickly; the authenticated status request
+     * applies the finished result once, without a second preview token.
      */
     public function preview() {
         $post = $this->authorizedPost();
@@ -371,6 +364,10 @@ class IngredientAIReview {
         if (!in_array($mode, ['complete', 'enrich'], true)) wp_send_json_error(['message' => 'Geçersiz AI modu.'], 422);
         $definitions = $this->eligibleFields($id, $mode);
         if (!$definitions) wp_send_json_error(['message' => 'Bu modda AI ile önerilecek alan yok.'], 422);
+        $publish_confirmed = isset($_POST['confirm_published']) && $_POST['confirm_published'] === 'yes';
+        if ($post->post_status === 'publish' && !$publish_confirmed) {
+            wp_send_json_error(['message' => 'Yayındaki malzemeye otomatik kayıt için açık onay gerekiyor.'], 409);
+        }
         $uid = get_current_user_id();
         $existing = get_transient($this->jobKey($id, $uid));
         if (is_array($existing) && in_array($existing['status'] ?? '', ['queued','running'], true)
@@ -390,14 +387,15 @@ class IngredientAIReview {
             'id' => $job_id, 'mode' => $mode, 'status' => 'running',
             'response_id' => $started['response_id'],
             'signature' => $this->signature($id), 'queued_at' => time(),
+            'publish_confirmed' => $publish_confirmed,
         ];
         set_transient($this->jobKey($id, $uid), $job, 20 * MINUTE_IN_SECONDS);
         if ($started['status'] === 'completed') {
-            $preview = $this->finishBackgroundPreview($post, $uid, $job, $started['text']);
-            if (is_wp_error($preview)) {
-                $job['status'] = 'failed'; $job['error'] = $preview->get_error_message();
+            $result = $this->applyBackgroundResult($post, $job, $started['text']);
+            if (is_wp_error($result)) {
+                $job['status'] = 'failed'; $job['error'] = $result->get_error_message();
             } else {
-                $job['status'] = 'done'; $job['preview'] = $preview;
+                $job['status'] = 'done'; $job['result'] = $result;
             }
             set_transient($this->jobKey($id, $uid), $job, 20 * MINUTE_IN_SECONDS);
         }
@@ -415,7 +413,7 @@ class IngredientAIReview {
             wp_send_json_error(['message' => 'AI işi bulunamadı. Yeniden dene.'], 404);
         }
         if ($job['status'] === 'failed') wp_send_json_success(['status' => 'failed', 'message' => $job['error']]);
-        if ($job['status'] === 'done') wp_send_json_success(['status' => 'done', 'preview' => $job['preview']]);
+        if ($job['status'] === 'done') wp_send_json_success(['status' => 'done', 'result' => $job['result']]);
         if (time() - (int) $job['queued_at'] > 600) {
             $job['status'] = 'failed'; $job['error'] = 'OpenAI işi 10 dakikada tamamlanamadı. OpenAI durumunu kontrol et.';
             set_transient($key, $job, 20 * MINUTE_IN_SECONDS);
@@ -430,107 +428,112 @@ class IngredientAIReview {
         if ($result['status'] !== 'completed') {
             wp_send_json_success(['status' => 'running', 'message' => 'OpenAI önerileri hazırlanıyor…']);
         }
-        $preview = $this->finishBackgroundPreview($post, get_current_user_id(), $job, $result['text']);
-        if (is_wp_error($preview)) {
-            $job['status'] = 'failed'; $job['error'] = $preview->get_error_message();
+        $saved = $this->applyBackgroundResult($post, $job, $result['text']);
+        if (is_wp_error($saved)) {
+            $job['status'] = 'failed'; $job['error'] = $saved->get_error_message();
         } else {
-            $job['status'] = 'done'; $job['preview'] = $preview;
+            $job['status'] = 'done'; $job['result'] = $saved;
         }
         set_transient($key, $job, 20 * MINUTE_IN_SECONDS);
         wp_send_json_success($job['status'] === 'done'
-            ? ['status' => 'done', 'preview' => $job['preview']]
+            ? ['status' => 'done', 'result' => $job['result']]
             : ['status' => 'failed', 'message' => $job['error']]);
     }
 
-    private function finishBackgroundPreview($post, $user_id, $job, $raw_text) {
+    /**
+     * Commit an authenticated, version-checked AI completion in the same
+     * request that receives the finished OpenAI result. No second AJAX call,
+     * review token or ephemeral preview cache is required.
+     *
+     * Complete updates only empty supported fields. Enrich may update
+     * populated supported fields. Neither modifies expert approval,
+     * verified nutrition numbers, terms, or publication status.
+     */
+    private function applyBackgroundResult($post, $job, $raw_text) {
         $id = (int) $post->ID;
-        $snapshot = $job['signature'];
-        if (!hash_equals($snapshot, $this->signature($id))) {
-            return new \WP_Error('ingredient_changed', 'Malzeme AI işlemi sırasında değişti; yeniden dene.');
+        $snapshot = $job['signature'] ?? '';
+        if (!$snapshot || !hash_equals($snapshot, $this->signature($id))) {
+            return new \WP_Error('ingredient_changed', 'AI çalışırken malzeme değişti; kayıt yapılmadı. Sayfayı yenileyip yeniden dene.');
+        }
+        if ($post->post_status === 'publish' && empty($job['publish_confirmed'])) {
+            return new \WP_Error('published_confirm_required', 'Yayındaki malzemeye otomatik kayıt için editör onayı gerekiyor.');
+        }
+        $mode = $job['mode'] ?? '';
+        if (!in_array($mode, ['complete', 'enrich'], true)) {
+            return new \WP_Error('invalid_ai_mode', 'AI çalışma modu geçersiz.');
         }
         $ai = (new AIService())->parseIngredientReviewBackgroundText($raw_text);
         if (is_wp_error($ai)) return $ai;
-        $definitions = $this->eligibleFields($id, $job['mode']);
-        $values = []; $fields = [];
+
+        $definitions = $this->eligibleFields($id, $mode);
+        $selected = [];
         foreach ($definitions as $key => $field) {
             if (!array_key_exists($field['source'], $ai)) continue;
             $proposed = self::normalizeSuggestion($field['format'], $ai[$field['source']], $post->post_title);
             if ($proposed === null) continue;
             $current = $this->currentValue($id, $field['target']);
             if (serialize($current) === serialize($proposed)) continue;
-            if ($job['mode'] === 'complete' && self::isFilled($current)) continue;
-            $values[$key] = $proposed;
-            $fields[] = [
-                'key' => $key, 'label' => $field['label'],
-                'current' => self::present($current), 'suggested' => self::present($proposed),
-                'empty' => !self::isFilled($current),
-            ];
+            if ($mode === 'complete' && self::isFilled($current)) continue;
+            $selected[$key] = $proposed;
         }
-        if (!$fields) return new \WP_Error('no_ai_suggestions', 'Uygulanabilir AI önerisi bulunamadı.');
-        $token = wp_generate_password(40, false, false);
-        set_transient($this->cacheKey($id, $user_id), [
-            'token' => $token, 'signature' => $snapshot, 'values' => $values,
-            'mode' => $job['mode'], 'time' => current_time('mysql', true),
-        ], self::PREVIEW_TTL);
-        return ['token' => $token, 'fields' => $fields, 'mode' => $job['mode'],
-            'expires_in' => self::PREVIEW_TTL];
-    }
+        if (!$selected) {
+            return new \WP_Error('no_ai_suggestions', 'AI geçerli bir değişiklik önermedi; mevcut alanlara dokunulmadı.');
+        }
+        // Prevent writing anything when the post changed after the comparisons.
+        if (!hash_equals($snapshot, $this->signature($id))) {
+            return new \WP_Error('ingredient_changed', 'AI kayıt öncesinde malzeme değişti; işlem durduruldu.');
+        }
 
-    public function apply() {
-        $post = $this->authorizedPost();
-        $id = (int) $post->ID;
-        $cache = get_transient($this->cacheKey($id));
-        $token = isset($_POST['token']) && is_string($_POST['token']) ? sanitize_text_field(wp_unslash($_POST['token'])) : '';
-        if (!is_array($cache) || empty($cache['token']) || !$token || !hash_equals($cache['token'], $token)) {
-            wp_send_json_error(['message' => 'AI onizleme suresi dolmus veya gecersiz. Yeniden olusturun.'], 409);
-        }
-        if (!hash_equals($cache['signature'], $this->signature($id))) {
-            delete_transient($this->cacheKey($id));
-            wp_send_json_error(['message' => 'Malzeme degistirildi. Eski oneri kaydedilemez; yeniden olusturun.'], 409);
-        }
-        $submitted = isset($_POST['fields']) && is_array($_POST['fields']) ? wp_unslash($_POST['fields']) : [];
-        $selected = array_map('sanitize_key', array_filter($submitted, 'is_string'));
-        $selected = array_values(array_unique($selected));
-        if ($selected === [] || count($selected) > count(self::fieldDefinitions())) {
-            wp_send_json_error(['message' => 'Kaydetmek icin en az bir oneriyi secin.'], 422);
-        }
-        foreach ($selected as $key) {
-            if (!isset($cache['values'][$key]) || !isset(self::fieldDefinitions()[$key])) {
-                wp_send_json_error(['message' => 'Secilen alanlardan biri gecersiz.'], 422);
-            }
-        }
-        if ($post->post_status === 'publish' && (!isset($_POST['confirm_published']) || $_POST['confirm_published'] !== 'yes')) {
-            wp_send_json_error(['message' => 'Yayindaki malzemenin degisecegini ayrica onaylayin.'], 409);
-        }
-        // Only values persisted in our server-side transient can be written.
         $post_update = ['ID' => $id];
-        foreach ($selected as $key) {
-            $def = self::fieldDefinitions()[$key];
-            if ($def['target'] === 'post_content' || $def['target'] === 'post_excerpt') {
-                $post_update[$def['target']] = $cache['values'][$key];
+        foreach ($selected as $key => $value) {
+            $target = $definitions[$key]['target'];
+            if ($target === 'post_content' || $target === 'post_excerpt') {
+                $post_update[$target] = $value;
             }
         }
         if (count($post_update) > 1) {
-            $result = wp_update_post($post_update, true);
-            if (is_wp_error($result)) {
-                wp_send_json_error(['message' => $result->get_error_message()], 500);
+            $updated = wp_update_post($post_update, true);
+            if (is_wp_error($updated)) return $updated;
+        }
+        $failures = [];
+        foreach ($selected as $key => $value) {
+            $target = $definitions[$key]['target'];
+            if (strpos($target, '_') === 0) {
+                update_post_meta($id, $target, $value);
+                // WordPress returns false for an unchanged value as well as
+                // failures, so verify persisted values instead of the return.
+                if (serialize(get_post_meta($id, $target, true)) !== serialize($value)) {
+                    $failures[] = $key;
+                }
             }
         }
-        foreach ($selected as $key) {
-            $def = self::fieldDefinitions()[$key];
-            if ($def['target'][0] === '_') {
-                update_post_meta($id, $def['target'], $cache['values'][$key]);
-            }
+        if ($failures) {
+            error_log('KG Ingredient AI: failed to persist meta fields for post ' . $id
+                . ': ' . implode(',', $failures));
+            return new \WP_Error('partial_ai_save', 'Bazı AI alanları kaydedilemedi. Sayfayı yenileyip mevcut alanları kontrol et.');
         }
+        if (class_exists('\KG_Core\Config\FeatureFlags')
+            && \KG_Core\Config\FeatureFlags::useDualWrite()
+            && class_exists('\KG_Core\Services\MetaSyncService')) {
+            \KG_Core\Services\MetaSyncService::syncIngredient($id);
+        }
+
         $log = get_post_meta($id, self::LOG_META, true);
         if (!is_array($log)) $log = [];
         $log[] = [
             'user_id' => get_current_user_id(),
             'applied_at_utc' => current_time('mysql', true),
-            'fields' => $selected,
+            'fields' => array_keys($selected),
+            'mode' => $mode,
+            'automatic' => true,
         ];
         update_post_meta($id, self::LOG_META, array_slice($log, -30));
-        delete_transient($this->cacheKey($id));
-        wp_send_json_success(['message' => count($selected) . ' onayli AI oneri alani kaydedildi.', 'fields' => $selected]);
+
+        return [
+            'count' => count($selected),
+            'fields' => array_keys($selected),
+            'message' => count($selected) . ' AI alanı otomatik kaydedildi.',
+        ];
     }
+
 }
