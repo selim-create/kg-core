@@ -72,7 +72,9 @@ check_result(strpos($source, 'coverageSnapshot') !== false, 'server computes sav
 check_result(strpos($source, "'complete', 'enrich'") !== false, 'complete and enrich modes validated');
 check_result(strpos($source, "\$job['mode'] === 'complete' && self::isFilled(\$current)") !== false, 'complete mode preserves populated fields');
 check_result(strpos($js, "startPreview('complete')") !== false && strpos($js, "startPreview('enrich')") !== false, 'two AI actions available');
-check_result(strpos($js, "if (dirty())") !== false && strpos($js, "generate.addEventListener") === false, 'preview no longer incorrectly blocked by dirty form');
+check_result(strpos($js, "if (dirty())") === false && strpos($js, "generate.addEventListener") === false, 'AI save no longer blocked by dirty form');
+check_result(strpos($js, "saveSuggestions(data)") !== false, 'AI result automatically applies via existing secured endpoint');
+check_result(strpos($js, "window.location.reload()") !== false, 'page reloads after successful AI apply');
 
 check_result(strpos($source, 'kg_ingredient_ai_review_generate_job') === false, 'WP-Cron preview job removed');
 check_result(strpos($source, 'startIngredientReviewBackground') !== false, 'OpenAI native background mode starts without WP-Cron');
