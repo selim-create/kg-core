@@ -160,7 +160,7 @@ class OpenAIClient {
                 'background' => true,
                 // Background results stay available temporarily for polling.
                 // Do not persist responses beyond that window.
-                'store' => false,
+                'store' => true,
             ]),
             'timeout' => 25,
         ]);
