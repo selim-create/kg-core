@@ -70,7 +70,7 @@ check_result(!$class::isFilled(['', ' ']), 'empty nested list is missing');
 check_result($class::isFilled(['', 'Hazırlama']), 'partially filled list is filled');
 check_result(strpos($source, 'coverageSnapshot') !== false, 'server computes saved ingredient completeness');
 check_result(strpos($source, "'complete', 'enrich'") !== false, 'complete and enrich modes validated');
-check_result(strpos($source, "\$job['mode'] === 'complete' && self::isFilled(\$current)") !== false, 'complete mode preserves populated fields');
+check_result(strpos($source, "\$mode === 'complete' && self::isFilled(\$current)") !== false, 'complete mode preserves populated fields');
 check_result(strpos($js, "startPreview('complete')") !== false && strpos($js, "startPreview('enrich')") !== false, 'two AI actions available');
 check_result(strpos($js, "if (dirty())") === false && strpos($js, "generate.addEventListener") === false, 'AI save no longer blocked by dirty form');
 check_result(strpos($source, 'applyBackgroundResult') !== false, 'AI result is saved in authenticated status endpoint');
