@@ -31,6 +31,13 @@
         if (!headline || !groups) return;
         headline.textContent = data.missing + ' eksik alan';
         summary.textContent = data.filled + ' alan dolu · ' + data.total + ' alan kontrol edildi';
+        var card = root.querySelector('[data-kg-ai-coverage]');
+        if (card) {
+            var pct = data.total ? Math.round(data.filled * 100 / data.total) : 0;
+            card.classList.remove('kg-ai-review__coverage--critical', 'kg-ai-review__coverage--warning', 'kg-ai-review__coverage--good');
+            card.classList.add(pct >= 86 ? 'kg-ai-review__coverage--good' :
+                pct >= 70 ? 'kg-ai-review__coverage--warning' : 'kg-ai-review__coverage--critical');
+        }
         score.textContent = data.total ? Math.round(data.filled * 100 / data.total) + '%' : '—';
         progress.style.width = (data.total ? Math.round(data.filled * 100 / data.total) : 0) + '%';
         toggle.textContent = data.missing ? 'Eksik alanları göster (' + data.missing + ')' : 'Kontrol edilen alanları göster';
@@ -40,7 +47,7 @@
             block.appendChild(node('strong', '', group.title + ' · ' + group.filled + '/' + group.total));
             var list = node('ul', '');
             (group.items || []).forEach(function (item) {
-                var entry = node('li', item.filled ? 'is-filled' : 'is-missing', (item.filled ? '✓ ' : '○ ') + item.label);
+                var entry = node('li', item.filled ? 'is-filled' : 'is-missing', (item.filled ? '✓ ' : '○ ') + item.label + (item.key === 'category' && !item.filled ? ' (kategori seçimi gerekli)' : ''));
                 list.appendChild(entry);
             });
             block.appendChild(list);
