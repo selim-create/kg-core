@@ -167,6 +167,26 @@ class IngredientAIReview {
         return false;
     }
 
+    /** Compare metadata as WordPress returns it (scalars are strings after reload). */
+    private static function canonicalStoredValue($value) {
+        if (is_array($value)) {
+            $output = [];
+            foreach ($value as $key => $part) {
+                $output[$key] = self::canonicalStoredValue($part);
+            }
+            return $output;
+        }
+        if ($value === null || $value === false) return '';
+        if ($value === true) return '1';
+        if (is_scalar($value)) return (string) $value;
+        return $value;
+    }
+
+    public static function savedValueMatches($actual, $expected) {
+        return serialize(self::canonicalStoredValue($actual))
+            === serialize(self::canonicalStoredValue($expected));
+    }
+
     private function coverageSnapshot($post_id) {
         $post = get_post($post_id);
         $definitions = self::fieldDefinitions();
@@ -248,8 +268,21 @@ class IngredientAIReview {
             return $age;
         }
         if ($format === 'risk') {
-            $value = sanitize_text_field((string) $raw);
-            return in_array($value, ["D\u{00FC}\u{015F}\u{00FC}k", 'Orta', "Y\u{00FC}ksek"], true) ? $value : null;
+            if (!is_scalar($raw)) return null;
+            $value = trim(sanitize_text_field((string) $raw));
+            if (in_array($value, ['Düşük', 'Orta', 'Yüksek'], true)) return $value;
+            $aliases = [
+                'düşük' => 'Düşük', 'dusuk' => 'Düşük',
+                'düşük risk' => 'Düşük', 'dusuk risk' => 'Düşük',
+                'low' => 'Düşük', 'low risk' => 'Düşük',
+                'orta' => 'Orta', 'orta risk' => 'Orta',
+                'medium' => 'Orta', 'medium risk' => 'Orta',
+                'yüksek' => 'Yüksek', 'yuksek' => 'Yüksek',
+                'yüksek risk' => 'Yüksek', 'yuksek risk' => 'Yüksek',
+                'high' => 'Yüksek', 'high risk' => 'Yüksek',
+            ];
+            $key = function_exists('mb_strtolower') ? mb_strtolower($value, 'UTF-8') : strtolower($value);
+            return isset($aliases[$key]) ? $aliases[$key] : null;
         }
         if ($format === 'html' || $format === 'text') {
             if (!is_string($raw) || trim($raw) === '') return null;
@@ -280,11 +313,17 @@ class IngredientAIReview {
                         'text' => sanitize_textarea_field($row['text'])
                     ];
                 }
-                if ($format === 'pairings' && isset($row['name'], $row['emoji'])) {
-                    $rows[] = [
-                        'name' => sanitize_text_field($row['name']),
-                        'emoji' => sanitize_text_field($row['emoji'])
-                    ];
+                if ($format === 'pairings') {
+                    $name = isset($row['name']) ? $row['name']
+                        : (isset($row['ingredient']) ? $row['ingredient'] : null);
+                    if (is_string($name) && trim($name) !== '') {
+                        $emoji = isset($row['emoji']) && is_string($row['emoji']) && trim($row['emoji']) !== ''
+                            ? $row['emoji'] : '🍽️';
+                        $rows[] = [
+                            'name' => sanitize_text_field($name),
+                            'emoji' => sanitize_text_field($emoji),
+                        ];
+                    }
                 }
             }
             return $rows === [] ? null : $rows;
@@ -502,15 +541,18 @@ class IngredientAIReview {
                 update_post_meta($id, $target, $value);
                 // WordPress returns false for an unchanged value as well as
                 // failures, so verify persisted values instead of the return.
-                if (serialize(get_post_meta($id, $target, true)) !== serialize($value)) {
+                if (!self::savedValueMatches(get_post_meta($id, $target, true), $value)) {
                     $failures[] = $key;
                 }
             }
         }
         if ($failures) {
-            error_log('KG Ingredient AI: failed to persist meta fields for post ' . $id
+            error_log('KG Ingredient AI: fields did not verify on post ' . $id
                 . ': ' . implode(',', $failures));
-            return new \WP_Error('partial_ai_save', 'Bazı AI alanları kaydedilemedi. Sayfayı yenileyip mevcut alanları kontrol et.');
+        }
+        $saved_keys = array_values(array_diff(array_keys($selected), $failures));
+        if (!$saved_keys) {
+            return new \WP_Error('ai_save_failed', 'AI alanları kaydedilemedi. Mevcut içerik ve sunucu günlükleri kontrol edilmeli.');
         }
         if (class_exists('\KG_Core\Config\FeatureFlags')
             && \KG_Core\Config\FeatureFlags::useDualWrite()
@@ -523,16 +565,20 @@ class IngredientAIReview {
         $log[] = [
             'user_id' => get_current_user_id(),
             'applied_at_utc' => current_time('mysql', true),
-            'fields' => array_keys($selected),
+            'fields' => $saved_keys,
             'mode' => $mode,
             'automatic' => true,
         ];
         update_post_meta($id, self::LOG_META, array_slice($log, -30));
 
         return [
-            'count' => count($selected),
-            'fields' => array_keys($selected),
-            'message' => count($selected) . ' AI alanı otomatik kaydedildi.',
+            'count' => count($saved_keys),
+            'fields' => $saved_keys,
+            'partial' => !empty($failures),
+            'failed_fields' => $failures,
+            'message' => empty($failures)
+                ? count($saved_keys) . ' AI alanı otomatik kaydedildi.'
+                : count($saved_keys) . ' alan kaydedildi. Kontrol gerektiren alanlar: ' . implode(', ', $failures),
         ];
     }
 
